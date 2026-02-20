@@ -1,0 +1,101 @@
+{
+  "Title": "P-5 WAIST SECTION",
+  "table_type": "roll",
+  "rolltype": "2d6", 
+  "determines": "waist_damage",
+  "description": "Roll 2D per shell hit on Waist section",
+  "rolls": {
+    "2": {
+      "result": "Oxygen Supply Hit",
+      "description": "Roll 1D: 1,2 = Port Gunner; 3,4 = Starboard Gunner; 5 = Ball Gunner; 6 = Fire, Waist oxygen out",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Port Gunner oxygen out",
+        "3-4": "Starboard Gunner oxygen out", 
+        "5": "Ball Gunner oxygen out",
+        "6": "Fire, Waist oxygen out - roll to extinguish on Table BL-3"
+      },
+      "notes": ["See rules section Oxygen Out"]
+    },
+    "3": {
+      "result": "Armament",
+      "description": "Roll 1D: 1-3 = Port gun out; 4-6 = Starboard gun out",
+      "sub_roll": {
+        "type": "1d6",
+        "1-3": "Port waist gun out",
+        "4-6": "Starboard waist gun out"
+      }
+    },
+    "4": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "5": {
+      "result": "Superficial Damage", 
+      "description": "No effect"
+    },
+    "6": {
+      "result": "Port Gunner",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Port Waist Gunner"
+      }
+    },
+    "7": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "8": {
+      "result": "Starboard Gunner",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Starboard Waist Gunner"
+      }
+    },
+    "9": {
+      "result": "Ball Turret",
+      "description": "Roll 1D: 1,2 = roll wound for gunner on Table BL-4; 3 = gunner's heat out; 4,5 = guns out; 6 = turret mechanism inoperable",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Roll wound for Ball Gunner on Table BL-4",
+        "3": "Ball Gunner's heat out",
+        "4-5": "Ball turret guns out", 
+        "6": "Ball turret mechanism inoperable - gunner trapped"
+      },
+      "notes": ["If result is 6: Gunner is trapped in turret, may not fire guns, and may not bail out. If landing gear is inoperable, gunner is automatically KIA on landing."]
+    },
+    "10": {
+      "result": "Waist Gunners",
+      "description": "Roll wound for each waist gunner on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Both Waist Gunners"
+      }
+    },
+    "11": {
+      "result": "Suit Heaters",
+      "description": "Roll 1D: 1-3 = Port Gunner heat out; 4-6 = Starboard Gunner heat out",
+      "sub_roll": {
+        "type": "1d6",
+        "1-3": "Port Gunner heat out",
+        "4-6": "Starboard Gunner heat out"
+      },
+      "notes": ["See rules section Heat Out/Frostbite"]
+    },
+    "12": {
+      "result": "Control Cables",
+      "description": "See effect for roll of 12 on Pilot Compartment Table P-2",
+      "follow_up": {
+        "table": "P-2",
+        "roll": "12"
+      }
+    }
+  },
+  "notes": [
+    "a) See rules section Oxygen Out.",
+    "b) See rules section Heat Out/Frostbite.", 
+    "c) Gunner is trapped in turret, may not fire guns, and may not bail out. If landing gear is inoperable, gunner is automatically KIA on landing."
+  ]
+}

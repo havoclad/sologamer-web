@@ -1,0 +1,59 @@
+{
+  "Title": "Zone Movement",
+  "table_type": "Flow",
+  "description": "Handles movement through a zone including weather, fighter encounters, and flak",
+  "flow": [
+    {
+      "pre": "Entering zone",
+      "type": "state_update",
+      "action": "reset_combat_state"
+    },
+    {
+      "type": "table",
+      "Table": "B-1",
+      "pre": "Rolling for fighter encounters",
+      "post": "Fighter wave determination: <1>"
+    },
+    {
+      "type": "conditional",
+      "condition": "fighters_present",
+      "if_true": {
+        "type": "flow",
+        "flow_table": "FLOW-fighter-combat",
+        "pre": "Fighter attack developing"
+      }
+    },
+    {
+      "type": "table",
+      "Table": "O-2",
+      "pre": "Rolling for flak intensity",
+      "post": "Flak intensity: <1>",
+      "only_if": "near_target"
+    },
+    {
+      "type": "table",
+      "Table": "O-3",
+      "pre": "Rolling for flak damage",
+      "post": "<1> hit(s) from flak",
+      "only_if": "flak_present"
+    },
+    {
+      "type": "flow",
+      "flow_table": "FLOW-flak-damage",
+      "pre": "Resolving flak damage",
+      "only_if": "flak_hits > 0"
+    },
+    {
+      "type": "state_check",
+      "check": "aircraft_status",
+      "critical_damage": {
+        "type": "flow",
+        "flow_table": "FLOW-emergency",
+        "pre": "Critical damage - emergency procedures"
+      }
+    },
+    {
+      "post": "Zone transit complete"
+    }
+  ]
+}

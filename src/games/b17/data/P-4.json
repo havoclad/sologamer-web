@@ -1,0 +1,81 @@
+{
+  "Title": "P-4 RADIO ROOM",
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "radio_room_damage", 
+  "description": "Roll 2D per shell hit on Radio Room",
+  "rolls": {
+    "2": {
+      "result": "Radio Equipment",
+      "description": "Radio equipment inoperable - no rescue if bailout over water",
+      "effect": "radio_out",
+      "notes": ["If crew bailout over water with radio out, all crew die"]
+    },
+    "3": {
+      "result": "Radio Room Gun",
+      "description": "Radio room gun inoperable"
+    },
+    "4": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "5": {
+      "result": "Superficial Damage", 
+      "description": "No effect"
+    },
+    "6": {
+      "result": "Radio Operator",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Radio Operator"
+      }
+    },
+    "7": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "8": {
+      "result": "Radio Operator",
+      "description": "Roll for wound on Table BL-4", 
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Radio Operator"
+      }
+    },
+    "9": {
+      "result": "Oxygen Supply Hit",
+      "description": "Radio room oxygen out - drop to 10,000 feet",
+      "effect": "oxygen_out",
+      "notes": ["See rules sections Oxygen Out and Out of Formation"]
+    },
+    "10": {
+      "result": "Radio Equipment",
+      "description": "Radio equipment inoperable - no rescue if bailout over water",
+      "effect": "radio_out",
+      "notes": ["If crew bailout over water with radio out, all crew die"]
+    },
+    "11": {
+      "result": "Suit Heater",
+      "description": "Radio operator's heat out",
+      "effect": "radio_operator_heat_out",
+      "notes": ["See rules section Heat Out/Frostbite"]
+    },
+    "12": {
+      "result": "Ball Turret Power",
+      "description": "Ball turret power supply hit - turret mechanism inoperable",
+      "effect": "ball_turret_power_out",
+      "notes": ["Ball turret gunner trapped, may not fire guns, may not bailout", "If landing gear inoperable, gunner automatically KIA on landing"]
+    }
+  },
+  "critical_effects": {
+    "radio_out": "Affects survival chances if crew bailout over water",
+    "oxygen_out": "Forces B-17 out of formation and down to 10,000 feet",
+    "ball_turret_power": "Traps ball turret gunner with serious consequences"
+  },
+  "notes": [
+    "Radio equipment damage is critical for water bailout survival",
+    "Radio operator must be in radio room for equipment to be considered operational",
+    "See rules sections for Oxygen Out, Heat Out/Frostbite, and Out of Formation"
+  ]
+}

@@ -1,0 +1,517 @@
+{
+  "Title": "Area Damage Tables",
+  "description": "B-17 compartment sections hit from each attack area. Roll 2D for each shell hit, and then go to appropriate Tables P-1 through P-6 and BL-1,2 to determine specific damage for each hit.",
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "hit_location",
+  "scope": "shell_hit",
+  "attack_positions": {
+    "12_1:30_10:30": {
+      "name": "12/1:30/10:30",
+      "high": {
+        "2-4": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "5": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "6": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "7": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "8": {
+          "location": "Wings",
+          "description": "Roll 1D: 1-3 = Port, 4-6 = Starboard",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "10": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "11": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "12": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+        }
+      },
+      "level": {
+        "2": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "3-5": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "6": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "7": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "10-11": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "12": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        }
+      },
+      "low": {
+        "2-4": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "5": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "6": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "7": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "8": {
+          "location": "Wings",
+          "description": "Roll 1D: 1-3 = Port, 4-6 = Starboard",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "10": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "11": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "12": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+        }
+      }
+    },
+    "3_9": {
+      "name": "3/9",
+      "high": {
+        "2": {
+          "location": "Walking Hits/Wings",
+          "type": "walking_hits_b",
+          "description": "2 shell hits on each Wing"
+        },
+        "3": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "4": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "5": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "6": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "7": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "10": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "11": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "12": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+        }
+      },
+      "level": {
+        "2": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "3": {
+          "location": "Wing-Attacking Side",
+          "description": "Wing on attacking side",
+          "table": "BL-1"
+        },
+        "4": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "5": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "6": {
+          "location": "Wing-Attacking Side",
+          "description": "Wing on attacking side",
+          "table": "BL-1"
+        },
+        "7-8": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "9": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "10": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "11": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "12": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_c",
+          "description": "1 shell hit in each: Nose, Wing (attacking side), Waist, Tail"
+        }
+      },
+      "low": {
+        "2": {
+          "location": "Walking Hits/Wings",
+          "type": "walking_hits_b",
+          "description": "2 shell hits on each Wing"
+        },
+        "3": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "4": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "5": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "6": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "7": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "10": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "11": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "12": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_c",
+          "description": "1 shell hit in each: Nose, Wing (attacking side), Waist, Tail"
+        }
+      }
+    },
+    "6": {
+      "name": "6 O'Clock",
+      "high": {
+        "2-3": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "4": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "5": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "6": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "7": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "10": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        },
+        "11": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+        },
+        "12": {
+          "location": "Nose",
+          "table": "P-1"
+        }
+      },
+      "level": {
+        "2-3": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "4-5": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "6": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "7": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9-10": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "11": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "12": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        }
+      },
+      "low": {
+        "2": {
+          "location": "Nose",
+          "table": "P-1"
+        },
+        "3-4": {
+          "location": "Superficial",
+          "description": "Superficial Damage"
+        },
+        "5": {
+          "location": "Bomb Bay",
+          "table": "P-3"
+        },
+        "6": {
+          "location": "Port Wing",
+          "table": "BL-1"
+        },
+        "7": {
+          "location": "Tail",
+          "table": "P-6"
+        },
+        "8": {
+          "location": "Starboard Wing",
+          "table": "BL-1"
+        },
+        "9": {
+          "location": "Waist",
+          "table": "P-5"
+        },
+        "10": {
+          "location": "Radio Room",
+          "table": "P-4"
+        },
+        "11": {
+          "location": "Walking Hits/Fuselage",
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+        },
+        "12": {
+          "location": "Pilot Compt.",
+          "table": "P-2"
+        }
+      }
+    },
+    "vertical_dive": {
+      "name": "Vertical Dive",
+      "2-3": {
+        "location": "Superficial",
+        "description": "Superficial Damage"
+      },
+      "4": {
+        "location": "Bomb Bay",
+        "table": "P-3"
+      },
+      "5": {
+        "location": "Radio Room",
+        "table": "P-4"
+      },
+      "6": {
+        "location": "Port Wing",
+        "table": "BL-1"
+      },
+      "7": {
+        "location": "Walking Hits/Fuselage",
+        "type": "walking_hits_a",
+        "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+      },
+      "8": {
+        "location": "Starboard Wing",
+        "table": "BL-1"
+      },
+      "9": {
+        "location": "Pilot Compt.",
+        "table": "P-2"
+      },
+      "10": {
+        "location": "Tail",
+        "table": "P-6"
+      },
+      "11": {
+        "location": "Waist",
+        "table": "P-5"
+      },
+      "12": {
+        "location": "Nose",
+        "table": "P-1"
+      }
+    },
+    "vertical_climb": {
+      "name": "Vertical Climb",
+      "2-3": {
+        "location": "Superficial",
+        "description": "Superficial Damage"
+      },
+      "4": {
+        "location": "Bomb Bay",
+        "table": "P-3"
+      },
+      "5": {
+        "location": "Tail",
+        "table": "P-6"
+      },
+      "6": {
+        "location": "Port Wing",
+        "table": "BL-1"
+      },
+      "7": {
+        "location": "Radio Room",
+        "table": "P-4"
+      },
+      "8": {
+        "location": "Starboard Wing",
+        "table": "BL-1"
+      },
+      "9": {
+        "location": "Walking Hits/Fuselage",
+        "type": "walking_hits_a",
+        "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
+      },
+      "10": {
+        "location": "Pilot Compt.",
+        "table": "P-2"
+      },
+      "11": {
+        "location": "Waist",
+        "table": "P-5"
+      },
+      "12": {
+        "location": "Nose",
+        "table": "P-1"
+      }
+    }
+  },
+  "walking_hits": {
+    "type_a": {
+      "description": "1 shell hit in each of the following sections—Nose, Pilot Compartment, Bomb Bay, Radio Room, Waist and Tail",
+      "hits": [
+        {"location": "Nose", "table": "P-1"},
+        {"location": "Pilot Compartment", "table": "P-2"},
+        {"location": "Bomb Bay", "table": "P-3"},
+        {"location": "Radio Room", "table": "P-4"},
+        {"location": "Waist", "table": "P-5"},
+        {"location": "Tail", "table": "P-6"}
+      ]
+    },
+    "type_b": {
+      "description": "2 shell hits on each Wing",
+      "hits": [
+        {"location": "Port Wing", "table": "BL-1", "count": 2},
+        {"location": "Starboard Wing", "table": "BL-1", "count": 2}
+      ]
+    },
+    "type_c": {
+      "description": "1 shell hit in each of the following sections: Nose, Wing (attacking side), Waist, and Tail",
+      "hits": [
+        {"location": "Nose", "table": "P-1"},
+        {"location": "Wing (attacking side)", "table": "BL-1"},
+        {"location": "Waist", "table": "P-5"},
+        {"location": "Tail", "table": "P-6"}
+      ]
+    }
+  },
+  "notes": [
+    "A \"walking hits\" result negates all other shell hits by this fighter for this attack, and does the following damage:",
+    "a) 1 shell hit in each of the following sections—Nose, Pilot Compartment, Bomb Bay, Radio Room, Waist and Tail.",
+    "b) 2 shell hits on each Wing.",
+    "c) 1 shell hit in each of the following sections: Nose, Wing (attacking side), Waist, and Tail."
+  ]
+}

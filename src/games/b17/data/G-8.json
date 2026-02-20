@@ -1,0 +1,20 @@
+{
+   "Title": "Bailout Over Water",
+   "table_type": "roll",
+   "rolltype": "1d6",
+   "determines": "water_bailout_result",
+   "notes": [
+     "Roll for each crewman separately",
+     "If the radio was not operating, all crewmen bailing out over water die"
+   ],
+   "rolls": {
+     "1-4": {
+        "water_bailout_result": "Dies of drowning, exposure, etc.",
+        "set": {"crewman_status": "KIA"}
+     },
+     "5-6": {
+        "water_bailout_result": "Rescued",
+        "set": {"crewman_status": "rescued"}
+     }
+   }
+}

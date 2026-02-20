@@ -1,0 +1,17 @@
+{
+  "Title": "Fighter Cover",
+  "table_type": "roll",
+  "rolltype": "1d6",
+  "determines": "fighter_cover",
+  "rolls": {
+    "1-2": {
+      "fighter_cover": "Poor"
+    },
+    "3-4": {
+      "fighter_cover": "Fair"
+    },
+    "5-6": {
+      "fighter_cover": "Good"
+    }
+  }
+}

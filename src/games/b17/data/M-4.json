@@ -1,0 +1,98 @@
+{
+    "Title": "M-4 FIGHTER COVER DEFENSE",
+    "table_type": "roll",
+    "rolltype": "1d6",
+    "Description": "Roll one die for each wave; roll needed to get the number of fighters driven off.",
+    "determines": "result",
+    "table_input": "fighter_cover",
+    "rolls": {
+        "1": {
+            "Poor": {
+                "result": "1(0)",
+                "description": "1 fighter driven off initial attack, 0 on successive"
+            },
+            "Fair": {
+                "result": "1(0)",
+                "description": "1 fighter driven off initial attack, 0 on successive"
+            },
+            "Good": {
+                "result": "1(1)",
+                "description": "1 fighter driven off initial attack, 1 on successive"
+            }
+        },
+        "2": {
+            "Poor": {
+                "result": "1(0)",
+                "description": "1 fighter driven off initial attack, 0 on successive"
+            },
+            "Fair": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            },
+            "Good": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            }
+        },
+        "3": {
+            "Poor": {
+                "result": "1(0)",
+                "description": "1 fighter driven off initial attack, 0 on successive"
+            },
+            "Fair": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            },
+            "Good": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            }
+        },
+        "4": {
+            "Poor": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            },
+            "Fair": {
+                "result": "3(1)",
+                "description": "3 fighters driven off initial attack, 1 on successive"
+            },
+            "Good": {
+                "result": "3(2)",
+                "description": "3 fighters driven off initial attack, 2 on successive"
+            }
+        },
+        "5": {
+            "Poor": {
+                "result": "2(1)",
+                "description": "2 fighters driven off initial attack, 1 on successive"
+            },
+            "Fair": {
+                "result": "3(2)",
+                "description": "3 fighters driven off initial attack, 2 on successive"
+            },
+            "Good": {
+                "result": "4(2)",
+                "description": "4 fighters driven off initial attack, 2 on successive"
+            }
+        },
+        "6": {
+            "Poor": {
+                "result": "3(2)",
+                "description": "3 fighters driven off initial attack, 2 on successive"
+            },
+            "Fair": {
+                "result": "4(2)",
+                "description": "4 fighters driven off initial attack, 2 on successive"
+            },
+            "Good": {
+                "result": "5(3)",
+                "description": "5 fighters driven off initial attack, 3 on successive"
+            }
+        }
+    },
+    "notes": [
+        "Notes: The first number is the number of fighters driven off before the initial attack and the second number if attacked again (successive attack phase).",
+        "Aggressive 'Little Friends' (Random Event): Roll for fighter cover defense +1 for remainder of the mission."
+    ]
+}

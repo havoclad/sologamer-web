@@ -1,0 +1,45 @@
+{
+    "Title": "M-6 FIGHTER PILOT STATUS",
+    "table_type": "roll",
+    "rolltype": "1d6", 
+    "Description": "Roll for each German fighter pilot (Optional Rule). Roll one die for each German fighter on the mapboard to determine if the pilot is an Ace or Green Pilot.",
+    "determines": "pilot_status",
+    "rolls": {
+        "1": {
+            "result": "Green",
+            "description": "Green Pilot",
+            "notes": ["B-17 defensive fire rolls against Green Pilots get +1", "Inexperienced pilot"]
+        },
+        "2": {
+            "result": "Average",
+            "description": "Average Pilot", 
+            "notes": ["No modifier", "Standard pilot skill"]
+        },
+        "3": {
+            "result": "Average",
+            "description": "Average Pilot",
+            "notes": ["No modifier", "Standard pilot skill"]
+        },
+        "4": {
+            "result": "Average", 
+            "description": "Average Pilot",
+            "notes": ["No modifier", "Standard pilot skill"]
+        },
+        "5": {
+            "result": "Average",
+            "description": "Average Pilot",
+            "notes": ["No modifier", "Standard pilot skill"]
+        },
+        "6": {
+            "result": "Ace",
+            "description": "Ace Pilot",
+            "notes": ["B-17 defensive fire rolls against Ace Pilots get -1", "Experienced veteran pilot"]
+        }
+    },
+    "notes": [
+        "At the expense of extended playing time, players may include this provision for Ace and Green German fighter pilots.",
+        "During the Combat Procedure after the B-17 has allocated its defensive fire and noted any gun positions which are employing spray fire, roll on Table M-6 for each German fighter on the mapboard to determine if the pilot is an Ace or Green Pilot.",
+        "Mark Ace or Green Pilots with an appropriate marker.",
+        "The +1 or -1 modifications to B-17 defensive fire rolls against Green and Ace Pilots, respectively, apply to both Tables M-1, B-17 Defensive Fire, and M-5, B-17 Area Spray Fire."
+    ]
+}

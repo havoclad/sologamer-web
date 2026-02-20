@@ -1,0 +1,64 @@
+{
+  "Title": "Successive Attacks",
+  "table_type": "Flow",
+  "description": "Handles successive attacks by fighters that scored hits",
+  "flow": [
+    {
+      "pre": "Processing successive attacks"
+    },
+    {
+      "type": "foreach",
+      "iterate": "fighters_with_hits",
+      "flow": [
+        {
+          "type": "conditional",
+          "condition": "can_make_successive_attack",
+          "if_true": {
+            "type": "table",
+            "Table": "B-6",
+            "pre": "The $fighter_type hit $plane_name and is coming back for another attack, rolling on Table B-6 for position",
+            "post": "New attack position: <1>"
+          }
+        },
+        {
+          "type": "conditional",
+          "condition": "successive_attack_position_determined",
+          "if_true": {
+            "type": "table",
+            "Table": "M-4",
+            "pre": "Rolling for fighter cover vs successive attack",
+            "post": "Fighter cover result: <1>",
+            "only_if": "fighter_cover_available"
+          }
+        },
+        {
+          "type": "conditional",
+          "condition": "fighter_not_driven_off",
+          "if_true": {
+            "type": "flow",
+            "flow_table": "FLOW-fighter-attack",
+            "pre": "$fighter_type making $attack_ordinal successive attack"
+          }
+        },
+        {
+          "type": "state_update",
+          "action": "record_successive_attack",
+          "post": "Successive attack recorded"
+        },
+        {
+          "type": "conditional",
+          "condition": "fighter_hit_again && attacks_made < 3",
+          "if_true": {
+            "type": "recursive",
+            "description": "$fighter_type scored another hit and is making a final attack pass",
+            "pre": "The $fighter_type hit again! Rolling on Table B-6 for final attack position",
+            "max_depth": 3
+          }
+        }
+      ]
+    },
+    {
+      "post": "All successive attacks resolved"
+    }
+  ]
+}

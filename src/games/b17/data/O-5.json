@@ -1,0 +1,46 @@
+{
+   "Title": "Area Affected by Flak Hits",
+   "table_type": "onlyif",
+   "rolltype": "2d6",
+   "determines": "area_affected",
+   "table_count": "shell_hits",
+   "variable_to_test": "shell_hits",
+   "test_criteria": ">",
+   "test_against": "0",
+   "fail_message": "No shell hits means no damage here ",
+   "rolls": {
+     "2": {
+        "area_affected": "Bomb Bay"
+     },
+     "3": {
+        "area_affected": "Port Wing"
+     },
+     "4": {
+        "area_affected": "Radio Room"
+     },
+     "5": {
+        "area_affected": "Tail"
+     },
+     "6": {
+        "area_affected": "Port Wing"
+     },
+     "7": {
+        "area_affected": "Tail"
+     },
+     "8": {
+        "area_affected": "Starboard Wing"
+     },
+     "9": {
+        "area_affected": "Waist"
+     },
+     "10": {
+        "area_affected": "Nose"
+     },
+     "11": {
+        "area_affected": "Starboard Wing"
+     },
+     "12": {
+        "area_affected": "Pilot Compartment"
+     }
+   }
+}

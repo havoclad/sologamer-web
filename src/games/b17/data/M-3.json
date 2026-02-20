@@ -1,0 +1,80 @@
+{
+    "Title": "M-3 GERMAN OFFENSIVE FIRE",
+    "table_type": "roll",
+    "rolltype": "1d6", 
+    "Description": "Fighter vs Hit B-7; roll one die per fighter. Regardless of any modifiers in effect, a roll of 6 is always a hit to the B-17 bomber.",
+    "determines": "german_fighter_hit",
+    "attack_position": {
+        "12_high_level_low": {
+            "109": {
+                "hit_on": [5, 6]
+            },
+            "110": {
+                "hit_on": [4, 5, 6]
+            },
+            "190": {
+                "hit_on": [6]
+            }
+        },
+        "3_9_high_level_low": {
+            "109": {
+                "hit_on": [3, 4, 5, 6]
+            },
+            "110": {
+                "hit_on": [5, 6]
+            }, 
+            "190": {
+                "hit_on": [3, 4, 5, 6]
+            }
+        },
+        "6_high_level_low": {
+            "109": {
+                "hit_on": [3, 4, 5, 6]
+            },
+            "110": {
+                "hit_on": [3, 4, 5, 6]
+            },
+            "190": {
+                "hit_on": [3, 4, 5, 6]
+            }
+        },
+        "10:30_1:30_high_level_low": {
+            "109": {
+                "hit_on": [5, 6]
+            },
+            "110": {
+                "hit_on": [4, 5, 6]
+            },
+            "190": {
+                "hit_on": [6]
+            }
+        },
+        "vertical_dive": {
+            "109": {
+                "hit_on": [5, 6]
+            },
+            "110": {
+                "hit_on": [5, 6] 
+            },
+            "190": {
+                "hit_on": [5, 6]
+            }
+        },
+        "vertical_climb": {
+            "109": {
+                "hit_on": [3, 4, 5, 6]
+            },
+            "110": {
+                "hit_on": [3, 4, 5, 6]
+            },
+            "190": {
+                "hit_on": [3, 4, 5, 6]
+            }
+        }
+    },
+    "notes": [
+        "Notes: Regardless of any modifiers in effect, a roll of 6 is always a hit. The first number is the number of fighters driven off before the initial attack and the second number if attacked.",
+        "109 = Me 109; 110 = Me 110; 190 = FW 190.",
+        "If a fighter takes any damage during the attack it receives, it is given an FCA or FBOA marker and its attempt to hit is modified."
+    ]
+}

@@ -1,0 +1,60 @@
+{
+  "Title": "BL-5 FROSTBITE", 
+  "table_type": "roll",
+  "rolltype": "1d6",
+  "determines": "frostbite_effects",
+  "description": "Roll 1D per affected crewman", 
+  "rolls": {
+    "1": {
+      "result": "Frostbite",
+      "description": "Crewman suffers frostbite this turn",
+      "effect": "frostbitten"
+    },
+    "2": {
+      "result": "Frostbite", 
+      "description": "Crewman suffers frostbite this turn",
+      "effect": "frostbitten"
+    },
+    "3": {
+      "result": "Frostbite",
+      "description": "Crewman suffers frostbite this turn",
+      "effect": "frostbitten" 
+    },
+    "4": {
+      "result": "No frostbite", 
+      "description": "No frostbite this turn",
+      "effect": "none"
+    },
+    "5": {
+      "result": "No frostbite",
+      "description": "No frostbite this turn", 
+      "effect": "none"
+    },
+    "6": {
+      "result": "No frostbite",
+      "description": "No frostbite this turn",
+      "effect": "none"
+    }
+  },
+  "frostbite_effects": {
+    "mission_effects": {
+      "gunner_penalty": "Frostbitten gunners can only hit attacking fighters by rolling a 6, regardless of attack position",
+      "duration": "Remains frostbitten for rest of mission"
+    },
+    "post_mission_recovery": {
+      "description": "After landing, roll 1D for each frostbitten crewman separately",
+      "recovery_table": {
+        "1-3": "Crewman may not fly any more missions", 
+        "4-6": "Crewman recovers, may fly next mission"
+      }
+    },
+    "wound_interaction": "Any frostbitten crew member who is also seriously wounded adds 1 to his serious wound survival die roll"
+  },
+  "notes": [
+    "a) See rules section Heat Out/Frostbite.",
+    "b) After landing, roll 1D for each frostbitten crewman separately: 1-3 = crewman may not fly any more missions; 4-6 = crewman recovers, may fly next mission.", 
+    "Once a crew member is frostbitten, he remains so for the rest of the mission.",
+    "Frostbitten gunners can only hit attacking fighters by rolling a 6, regardless of the position of their attack.",
+    "Any frostbitten crew member who is also seriously wounded adds 1 to his serious wound survival die roll."
+  ]
+}

@@ -1,0 +1,30 @@
+{
+   "Title": "Effect of Flak Hits",
+   "table_type": "onlyif",
+   "rolltype": "2d6",
+   "determines": "shell_hits",
+   "table_count": "flak_hits",
+   "group_by": "sum",
+   "variable_to_test": "flak_hits",
+   "test_criteria": ">",
+   "test_against": "0",
+   "fail_message": "No flak hits means no shell hits either",
+   "pre": "Rolling for shell hits",
+   "rolls": {
+     "3,7,11": {
+        "shell_hits": "1"
+     },
+     "6,8": {
+        "shell_hits": "2"
+     },
+     "5,9": {
+        "shell_hits": "3"
+     },
+     "4,10,12": {
+        "shell_hits": "4"
+     },
+     "2": {
+        "shell_hits": "6"
+     }
+   }
+}

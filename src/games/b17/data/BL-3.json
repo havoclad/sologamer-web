@@ -1,0 +1,50 @@
+{
+  "Title": "BL-3 HAND HELD EXTINGUISHERS",
+  "table_type": "roll",
+  "rolltype": "1d6", 
+  "determines": "fire_suppression",
+  "description": "Roll 1D per attempt to extinguish fire",
+  "rolls": {
+    "1": {
+      "result": "Fire out",
+      "description": "Fire successfully extinguished"
+    },
+    "2": {
+      "result": "Fire out", 
+      "description": "Fire successfully extinguished"
+    },
+    "3": {
+      "result": "Fire out",
+      "description": "Fire successfully extinguished"
+    },
+    "4": {
+      "result": "Fire out",
+      "description": "Fire successfully extinguished"
+    },
+    "5": {
+      "result": "Fire continues",
+      "description": "Fire continues, try again (3 try limit)"
+    },
+    "6": {
+      "result": "Fire continues", 
+      "description": "Fire continues, try again (3 try limit)"
+    }
+  },
+  "extinguisher_rules": {
+    "total_available": 5,
+    "usage": "Each extinguisher may be used once, then it's empty",
+    "max_attempts": 3,
+    "crew_restrictions": "A crewman may not operate a gun during an attack in which he is fighting a fire",
+    "rapid_attempts": "A crewman may immediately attempt 3 times to put out a fire (use up 3 extinguishers)",
+    "failure_consequence": "If fire is not out after 3rd try, crew must immediately bailout on Table G-6",
+    "removal": "Used extinguishers are removed from play"
+  },
+  "notes": [
+    "There are 5 portable fire extinguishers in the B-17, represented by individual counters placed on the Crew Placement Chart.",
+    "Each may be sprayed once and then it's empty.", 
+    "A crewman may not operate a gun during an attack in which he is fighting a fire.",
+    "A crewman may immediately attempt 3 times to put out a fire (i.e., use up 3 extinguishers).",
+    "If the fire is not out after the 3rd try, the crew must immediately bailout on Table G-6.",
+    "Used extinguishers are removed from play."
+  ]
+}

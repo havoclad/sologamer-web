@@ -1,0 +1,77 @@
+{
+  "Title": "BL-2 INSTRUMENTS",
+  "table_type": "roll", 
+  "rolltype": "2d6",
+  "determines": "instrument_damage",
+  "description": "Roll 2D per shell hit on instruments",
+  "rolls": {
+    "2": {
+      "result": "Autopilot",
+      "description": "Autopilot mechanism inoperable - Bomb Run roll on Table O-6 -2",
+      "effect": "autopilot_out"
+    },
+    "3": {
+      "result": "Landing Gear Indicator",
+      "description": "Landing gear indicator out - landing roll on Table G-9 -3",
+      "effect": "gear_indicator_out"
+    },
+    "4": {
+      "result": "Intercom System",
+      "description": "Intercom system out - Mission may be aborted",
+      "effect": "intercom_out",
+      "notes": ["All gunners now must roll a 6 to hit attacking fighters except Tail gunners which hit on 5 or 6", "See rules section Aborting the Mission"]
+    },
+    "5": {
+      "result": "Oxygen System",
+      "description": "Drop out of formation to 10,000 feet in next zone",
+      "effect": "oxygen_system_out", 
+      "notes": ["See rules sections Oxygen Out and Out of Formation"]
+    },
+    "6": {
+      "result": "Wing Flaps Indicator",
+      "description": "Wing flaps indicator out - landing roll on Table G-9 or G-10 -1",
+      "effect": "flaps_indicator_out"
+    },
+    "7": {
+      "result": "Aileron Controls", 
+      "description": "Aileron controls out - landing roll on Table G-9 or G-10 -1",
+      "effect": "aileron_controls_out"
+    },
+    "8": {
+      "result": "Elevator Controls",
+      "description": "Elevator controls out - landing roll on Table G-9 or G-10 -1", 
+      "effect": "elevator_controls_out"
+    },
+    "9": {
+      "result": "Rudder Controls",
+      "description": "Rudder controls out - landing roll on Table G-9 or G-10 -1",
+      "effect": "rudder_controls_out"
+    },
+    "10": {
+      "result": "Propeller Feathering",
+      "description": "Propeller feathering mechanism out - crew must immediately bailout Table G-6 in case of subsequent runaway engine result from Table BL-1",
+      "effect": "prop_feathering_out"
+    },
+    "11": {
+      "result": "Engine Fire Extinguishers",
+      "description": "Engine fire extinguishers out - crew must immediately bailout Table G-6 if engine fire occurs",
+      "effect": "engine_extinguishers_out"
+    },
+    "12": {
+      "result": "Electrical System",
+      "description": "Electrical system out - crew must immediately bailout Table G-6",
+      "effect": "electrical_system_out"
+    }
+  },
+  "landing_modifiers": {
+    "description": "Most instrument damage affects landing difficulty",
+    "cumulative": "Landing roll modifiers are cumulative",
+    "critical": "Some results (electrical system) force immediate bailout"
+  },
+  "notes": [
+    "If intercom system also out along with autopilot, Bomb Run is automatically off target",
+    "Landing roll modifications are cumulative with other damage",
+    "Propeller feathering and engine extinguisher damage create emergency bailout conditions",
+    "See rules sections for Oxygen Out, Aborting the Mission, and Out of Formation"
+  ]
+}

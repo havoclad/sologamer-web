@@ -1,0 +1,106 @@
+{
+  "Title": "Damage Resolution",
+  "table_type": "Flow",
+  "description": "Resolves damage to specific B-17 compartments",
+  "flow": [
+    {
+      "pre": "Resolving damage to <compartment>"
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == nose",
+      "if_true": {
+        "type": "table",
+        "Table": "P-1",
+        "pre": "Rolling on nose damage table",
+        "post": "Nose damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == pilot",
+      "if_true": {
+        "type": "table",
+        "Table": "P-2",
+        "pre": "Rolling on pilot compartment damage table",
+        "post": "Pilot compartment damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == bomb_bay",
+      "if_true": {
+        "type": "table",
+        "Table": "P-3",
+        "pre": "Rolling on bomb bay damage table",
+        "post": "Bomb bay damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == radio_room",
+      "if_true": {
+        "type": "table",
+        "Table": "P-4",
+        "pre": "Rolling on radio room damage table",
+        "post": "Radio room damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == waist",
+      "if_true": {
+        "type": "table",
+        "Table": "P-5",
+        "pre": "Rolling on waist section damage table",
+        "post": "Waist section damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == tail",
+      "if_true": {
+        "type": "table",
+        "Table": "P-6",
+        "pre": "Rolling on tail section damage table",
+        "post": "Tail section damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "compartment == wing",
+      "if_true": {
+        "type": "table",
+        "Table": "BL-1",
+        "pre": "Rolling on wing damage table",
+        "post": "Wing damage: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "crew_wounded",
+      "if_true": {
+        "type": "table",
+        "Table": "BL-4",
+        "pre": "Rolling for wound severity",
+        "post": "Wound severity: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "fire_started",
+      "if_true": {
+        "type": "table",
+        "Table": "BL-3",
+        "pre": "Rolling for fire suppression",
+        "post": "Fire suppression: <1>"
+      }
+    },
+    {
+      "type": "state_update",
+      "action": "apply_damage",
+      "updates": ["aircraft_state", "crew_state"],
+      "post": "Damage applied to aircraft systems"
+    }
+  ]
+}

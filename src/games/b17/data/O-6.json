@@ -1,0 +1,14 @@
+{
+   "Title": "Bomb Run",
+   "table_type": "roll",
+   "rolltype": "d6",
+   "determines": "bomb_run_on_target",
+   "rolls": {
+     "1-2": {
+        "bomb_run_on_target": "Off"
+     },
+     "3-6": {
+        "bomb_run_on_target": "On"
+     }
+   }
+}

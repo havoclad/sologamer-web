@@ -1,0 +1,145 @@
+{
+   "Title": "Missions 11-25",
+   "table_type": "roll",
+   "rolltype": "d6d6",
+   "scope": "global",
+   "rolls": {
+     "11": {
+        "Target": "St. Omer",
+        "Type": "Airfield"
+     },
+     "12": {
+        "Target": "Cherbourg",
+        "Type": "Airfield"
+     },
+     "13": {
+        "Target": "Amiens",
+        "Type": "Rail Yard"
+     },
+     "14": {
+        "Target": "Meaulte",
+        "Type": "Aircraft"
+     },
+     "15": {
+        "Target": "Abbeville",
+        "Type": "Airfield"
+     },
+     "16": {
+        "Target": "Lille",
+        "Type": "Industry"
+     },
+     "21": {
+        "Target": "Rotterdam",
+        "Type": "Ship Yard"
+     },
+     "22": {
+        "Target": "Antwerp",
+        "Type": "Industry"
+     },
+     "23": {
+        "Target": "Rouen",
+        "Type": "Rail Yard"
+     },
+     "24,25": {
+        "Target": "Paris",
+        "Type": "Industry"
+     },
+     "26,31": {
+        "Target": "Romilly-sur-Seine",
+        "Type": "Aircraft"
+     },
+     "32,33": {
+        "Target": "Rennes",
+        "Type": "Rail Yard"
+     },
+     "34,35": {
+        "Target": "Brest",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "36,41": {
+        "Target": "Lorient",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "42-44": {
+        "Target": "St. Nazaire",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "45,46": {
+        "Target": "Wilhelmshaven",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "51,52": {
+        "Target": "Emden",
+        "Type": "Industry"
+     },
+     "53,54": {
+        "Target": "Vegesack",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "55,56": {
+        "Target": "Bremen",
+        "Type": "Aircraft"
+     },
+     "61,62": {
+        "Target": "Hamm",
+        "Type": "Rail Yard"
+     },
+     "63,64": {
+        "Target": "La Rochelle",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     },
+     "65,66": {
+        "Target": "Kiel",
+        "notes": [
+           {
+              "table": "O-2",
+              "why": "Increased flak defenses",
+              "modifier": "1"
+           }
+        ],
+        "Type": "U-Boats"
+     }
+   }
+}

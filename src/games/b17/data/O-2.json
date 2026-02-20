@@ -1,0 +1,24 @@
+{
+   "Title": "Flak Over Target",
+   "table_type": "roll",
+   "rolltype": "d6",
+   "determines": "Flak",
+   "roll_modifier": {
+      "condition": "$target in ['Brest', 'Lorient', 'St. Nazaire', 'Wilhelmshaven', 'Vegesack', 'La Rochelle', 'Kiel']",
+      "value": 1
+   },
+   "rolls": {
+     "1": {
+        "Flak": "No flak"
+     },
+     "2-3": {
+        "Flak": "Light flak"
+     },
+     "4-5": {
+        "Flak": "Medium flak"
+     },
+     "6": {
+        "Flak": "Heavy flak"
+     }
+   }
+}

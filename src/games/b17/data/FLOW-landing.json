@@ -1,0 +1,26 @@
+{
+	"Title": "Landing",
+	"table_type": "Flow",
+	"flow": [
+		{
+			"pre": "The $plane_name is attempting to land in England"
+		},
+		{
+			"type": "table",
+			"Table": "O-1",
+			"pre": "Rolling for weather",
+			"post": "Weather over the base is <1>"
+		},
+		{
+			"type": "table",
+			"Table": "G-9",
+			"pre": "Rolling for landing",
+			"post": "Landing result is <1>"
+		},
+		{
+			"type": "process_wounds",
+			"pre": "Processing serious wounds for survival (BL-4 subnote b)"
+		}
+	]
+}
+

@@ -1,0 +1,95 @@
+{
+    "Title": "M-1 B-17 DEFENSIVE FIRE",
+    "table_type": "roll",
+    "rolltype": "1d6",
+    "Description": "B-17 MGs with Field of Fire. Roll once die per fighter; roll needed on one die to hit.",
+    "Notes": [
+        "The Tail guns (Ball Turret and Top Turret) guns may be allocated to any fighter attacking from the 10:30, 12, or 1:30 positions, whether High, Level, or Low. However, this defensive fire is not resolved until after all other defensive fire and all German offensive fire is resolved. Thus the target fighter could be shot down, or the Tail Guns themselves be knocked out, before the Tail Guns get a chance to fire. No ammunition is marked off unless the Tail Guns actually shoot. Tail Guns firing in this manner must roll a '6' to hit, regardless of the position of the fighter. Tail Guns may not fire in this manner if the intercom is out."
+    ],
+    "gun_positions": {
+        "12_level": {
+            "Top_Turret": 6,
+            "Nose": 6
+        },
+        "10:30_level": {
+            "Top_Turret": 6,
+            "Nose": 6
+        },
+        "9_level": {
+            "Top_Turret": 6
+        },
+        "6_level": {
+            "Ball_Turret": 6,
+            "Tail": 4
+        },
+        "3_level": {
+            "Top_Turret": 6
+        },
+        "1:30_level": {
+            "Top_Turret": 6,
+            "Starboard_Cheek": 6
+        },
+        "12_high": {
+            "Top_Turret": 6,
+            "Nose": 6
+        },
+        "10:30_high": {
+            "Top_Turret": 6,
+            "Nose": 6,
+            "Port_Cheek": 6
+        },
+        "9_high": {
+            "Top_Turret": 6,
+            "Port_Waist": 6,
+            "Radio": 6
+        },
+        "6_high": {
+            "Ball_Turret": 6,
+            "Tail": 4,
+            "Port_Waist": 6,
+            "Starboard_Waist": 6
+        },
+        "3_high": {
+            "Top_Turret": 6,
+            "Starboard_Waist": 6,
+            "Radio": 6
+        },
+        "1:30_high": {
+            "Top_Turret": 6,
+            "Nose": 6,
+            "Starboard_Cheek": 6
+        },
+        "12_low": {
+            "Ball_Turret": 6
+        },
+        "10:30_low": {
+            "Ball_Turret": 6
+        },
+        "9_low": {
+            "Ball_Turret": 6,
+            "Port_Waist": 6,
+            "Radio": 6
+        },
+        "6_low": {
+            "Ball_Turret": 6,
+            "Tail": 4,
+            "Port_Waist": 6,
+            "Starboard_Waist": 6
+        },
+        "3_low": {
+            "Ball_Turret": 6,
+            "Starboard_Waist": 6,
+            "Radio": 6
+        },
+        "1:30_low": {
+            "Ball_Turret": 6
+        },
+        "vertical_dive": {
+            "Top_Turret": 6,
+            "Radio": 6
+        },
+        "vertical_climb": {
+            "Ball_Turret": 4
+        }
+    }
+}

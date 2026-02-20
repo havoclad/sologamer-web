@@ -1,0 +1,105 @@
+{
+  "Title": "Shell Hits By Area",
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "shell_hits",
+  "scope": "attack",
+  "attack_positions": {
+    "12_1:30_10:30": {
+      "name": "12/1:30/10:30",
+      "rolls": {
+        "2": 3,
+        "3": 4,
+        "4": 6,
+        "5": 3,
+        "6": 4,
+        "7": 2,
+        "8": 3,
+        "9": 5,
+        "10": 2,
+        "11": 4,
+        "12": 2
+      }
+    },
+    "3_9": {
+      "name": "3/9",
+      "rolls": {
+        "2": 3,
+        "3": 3,
+        "4": 1,
+        "5": 2,
+        "6": 1,
+        "7": 2,
+        "8": 2,
+        "9": 1,
+        "10": 2,
+        "11": 1,
+        "12": 1
+      }
+    },
+    "6": {
+      "name": "6",
+      "rolls": {
+        "2": 5,
+        "3": 5,
+        "4": 4,
+        "5": 3,
+        "6": 2,
+        "7": 2,
+        "8": 2,
+        "9": 3,
+        "10": 4,
+        "11": 1,
+        "12": 7
+      }
+    },
+    "vertical_dive": {
+      "name": "Vertical Dive",
+      "rolls": {
+        "2": 3,
+        "3": 4,
+        "4": 2,
+        "5": 1,
+        "6": 1,
+        "7": 1,
+        "8": 1,
+        "9": 1,
+        "10": 2,
+        "11": 1,
+        "12": 4
+      }
+    },
+    "vertical_climb": {
+      "name": "Vertical Climb",
+      "rolls": {
+        "2": 4,
+        "3": 4,
+        "4": 3,
+        "5": 2,
+        "6": 2,
+        "7": 2,
+        "8": 2,
+        "9": 2,
+        "10": 3,
+        "11": 3,
+        "12": 5
+      }
+    }
+  },
+  "modifiers": {
+    "fighter_type": {
+      "FW190": {
+        "multiplier": 1.5,
+        "description": "FW 190 shell hits are multiplied by 1.5 (rounding down)"
+      },
+      "Me110": {
+        "modifier": "+1",
+        "description": "Me 110 gets +1 to shell hits"
+      }
+    }
+  },
+  "notes": [
+    "a) If the attacking fighter is a FW 190, multiply the number of shell hits by 1.5 (rounding down). If the fighter was a Me 110, add 1 to the number of shell hits.",
+    "b) After determining the number of shell hits the B-17 takes, go to Table B-5 to find out where the shells hit."
+  ]
+}

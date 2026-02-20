@@ -1,0 +1,77 @@
+{
+	"Title": "B-17 Queen of the Skies",
+	"table_type": "Flow",
+	"missions": "25",
+	"flow": [
+		{
+			"type": "choosemax",
+			"variable": "Mission",
+			"pre": "Rolling for Mission",
+			"post": "We're going to <1>",
+			"choices": [
+				{
+					"max" : "5",
+					"Table": "G-1"
+				},
+				{
+					"max" : "10",
+					"Table": "G-2"
+				},
+				{
+					"max" : "25",
+					"Table": "G-3"
+				},
+				{
+					"max": "26",
+					"Table": "end"
+				}
+			]
+		},
+		{
+			"type": "table",
+			"Table": "G-4",
+			"pre": "Rolling for Formation Position",
+			"post": "We are in the <1> formation position"
+		},
+		{
+			"type": "table",
+			"Table": "G-4a",
+			"pre": "Rolling for Squadron Position",
+			"post": "We are in the <1> squadron position"
+		},
+		{
+			"type": "table",
+			"Table": "G-5",
+			"pre": "Rolling for Fighter Cover",
+			"post": "Fighter cover: <1>"
+		},
+		{
+			"type": "loop",
+			"pre": "The $plane_name took off",
+			"post": "Bombing run!",
+			"loop_table": "G-11",
+			"loop_variable": "zone",
+			"do": "zone_process"
+		},
+		{
+			"type": "flow",
+			"flow_table": "FLOW-target-zone",
+			"pre": "Reached target zone"
+		},
+		{
+			"type": "loop",
+			"reverse": "1",
+			"pre": "Heading back to base",
+			"post": "The mission is over",
+			"loop_table": "G-11",
+			"loop_variable": "zone",
+			"do": "zone_process"
+		},
+		{
+			"type": "flow",
+			"flow_table": "FLOW-landing",
+			"pre": "Starting landing procedure"
+		}
+	]
+}
+

@@ -1,0 +1,285 @@
+{
+  "Title": "Attacking Fighter Waves",
+  "table_type": "roll",
+  "rolltype": "d6d6",
+  "determines": "fighters",
+  "scope": "wave",
+  "rolls": {
+    "11": {
+      "fighters": [
+        {"type": "Me109", "position": "6 High", "count": 1}
+      ],
+      "description": "109 6 High"
+    },
+    "12": {
+      "fighters": [
+        {"type": "Me109", "position": "1:30 High", "count": 1},
+        {"type": "Me109", "position": "9 Level", "count": 1}
+      ],
+      "description": "Two 109's: 1:30 High and 9 Level"
+    },
+    "13": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "1:30 High", "count": 1},
+        {"type": "FW190", "position": "3 High", "count": 1}
+      ],
+      "description": "Three 190's: 12 High, 1:30 High, 3 High"
+    },
+    "14": {
+      "fighters": [
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "10:30 High", "count": 1},
+        {"type": "Me109", "position": "1:30 High", "count": 1},
+        {"type": "Me109", "position": "12 Level", "count": 1}
+      ],
+      "description": "Four 109's: 12 High, 10:30 High, 1:30 High, and 12 Level"
+    },
+    "15": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "10:30 Level", "count": 1},
+        {"type": "FW190", "position": "9 Level", "count": 1},
+        {"type": "FW190", "position": "6 High", "count": 1},
+        {"type": "FW190", "position": "Vertical Dive", "count": 1}
+      ],
+      "description": "Five 190's: 12 High, 10:30 Level, 9 Level, 6 High, and Vertical Dive",
+      "notes": ["B-17 cannot fire at Vertical Dive fighter, nor may it be driven off by fighter cover"]
+    },
+    "16": {
+      "fighters": [],
+      "description": "NO ATTACKERS (c)",
+      "notes": ["Fighters are driven off by other B-17's. If out of formation, roll again."]
+    },
+    "21": {
+      "fighters": [
+        {"type": "FW190", "position": "Vertical Dive", "count": 1}
+      ],
+      "description": "One 190: Vertical Dive",
+      "notes": ["Only the Top Turret or Radio Room guns may fire at this fighter (both must roll a 6 to hit), and this fighter may not be driven off by fighter cover"]
+    },
+    "22": {
+      "fighters": [
+        {"type": "Me110", "position": "12 Low", "count": 1},
+        {"type": "Me110", "position": "10:30 Low", "count": 1}
+      ],
+      "description": "Two 110's: 12 Low and 10:30 Low"
+    },
+    "23": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "3 Level", "count": 1},
+        {"type": "FW190", "position": "3 High", "count": 1}
+      ],
+      "description": "Three 190's: 12 High, 3 Level, and 3 High"
+    },
+    "24": {
+      "fighters": [
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "3 High", "count": 1},
+        {"type": "Me109", "position": "9 High", "count": 1},
+        {"type": "Me109", "position": "9 Level", "count": 1}
+      ],
+      "description": "Four 109's: 12 High, 3 High, 9 High, and 9 Level"
+    },
+    "25": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "1:30 High", "count": 1},
+        {"type": "FW190", "position": "3 High", "count": 1},
+        {"type": "FW190", "position": "6 High", "count": 1},
+        {"type": "FW190", "position": "9 High", "count": 1}
+      ],
+      "description": "Five 190's: 12 High, 1:30 High, 3 High, 6 High, and 9 High"
+    },
+    "26": {
+      "fighters": [],
+      "description": "NO ATTACKERS (c)",
+      "notes": ["Fighters are driven off by other B-17's. If out of formation, roll again."]
+    },
+    "31": {
+      "fighters": [
+        {"type": "Me110", "position": "Vertical Climb", "count": 1}
+      ],
+      "description": "110: Vertical Climb",
+      "notes": ["Only the Ball Turret may fire at this fighter (it must roll a 3-6 to hit), and this fighter may be driven off by fighter cover"]
+    },
+    "32": {
+      "fighters": [
+        {"type": "FW190", "position": "10:30 High", "count": 1},
+        {"type": "FW190", "position": "3 Level", "count": 1}
+      ],
+      "description": "Two 190's: 10:30 High and 3 Level"
+    },
+    "33": {
+      "fighters": [
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "1:30 Level", "count": 1}
+      ],
+      "description": "Three 109's: 12 Level, 12 High, and 1:30 Level"
+    },
+    "34": {
+      "fighters": [
+        {"type": "FW190", "position": "10:30 High", "count": 1},
+        {"type": "Me110", "position": "Vertical Climb", "count": 1}
+      ],
+      "description": "190: 10:30 High; 110: Vertical Climb",
+      "notes": ["Only the Ball Turret may fire at Vertical Climb fighter (it must roll a 3-6 to hit)"]
+    },
+    "35": {
+      "fighters": [
+        {"type": "FW190", "position": "12 Level", "count": 1},
+        {"type": "FW190", "position": "1:30 Low", "count": 1}
+      ],
+      "description": "Two 190's: 12 Level and 1:30 Low"
+    },
+    "36": {
+      "fighters": [],
+      "description": "NO ATTACKERS (c)",
+      "notes": ["Fighters are driven off by other B-17's. If out of formation, roll again."]
+    },
+    "41": {
+      "fighters": [
+        {"type": "Me109", "position": "12 High", "count": 1}
+      ],
+      "description": "109: 12 High"
+    },
+    "42": {
+      "fighters": [
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "1:30 High", "count": 1}
+      ],
+      "description": "Two 109's: 12 Level and 1:30 High"
+    },
+    "43": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "1:30 Level", "count": 1},
+        {"type": "Me109", "position": "3 Level", "count": 1}
+      ],
+      "description": "190: 12 High; Two 109's: 1:30 Level and 3 Level"
+    },
+    "44": {
+      "fighters": [
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "12 Low", "count": 1},
+        {"type": "Me109", "position": "1:30 Level", "count": 1},
+        {"type": "Me110", "position": "6 Low", "count": 1}
+      ],
+      "description": "Two 190's: 12 High and 12 Low; 109: 1:30 Level; 110: 6 Low"
+    },
+    "45": {
+      "fighters": [
+        {"type": "Me109", "position": "10:30 Level", "count": 1},
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me110", "position": "10:30 Low", "count": 1}
+      ],
+      "description": "Two 109's: 10:30 Level and 12 Level; 110: 10:30 Low"
+    },
+    "46": {
+      "fighters": [],
+      "description": "NO ATTACKERS (c)",
+      "notes": ["Fighters are driven off by other B-17's. If out of formation, roll again."]
+    },
+    "51": {
+      "fighters": [
+        {"type": "FW190", "position": "10:30 High", "count": 1}
+      ],
+      "description": "190: 10:30 High"
+    },
+    "52": {
+      "fighters": [
+        {"type": "Me110", "position": "6 Level", "count": 1},
+        {"type": "Me110", "position": "9 Low", "count": 1}
+      ],
+      "description": "Two 110's: 6 Level and 9 Low"
+    },
+    "53": {
+      "fighters": [
+        {"type": "Me110", "position": "12 Low", "count": 1},
+        {"type": "Me110", "position": "10:30 Level", "count": 1},
+        {"type": "Me110", "position": "6 Low", "count": 1}
+      ],
+      "description": "Three 110's: 12 Low, 10:30 Level, and 6 Low"
+    },
+    "54": {
+      "fighters": [
+        {"type": "Me109", "position": "12 Low", "count": 1},
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "9 High", "count": 1}
+      ],
+      "description": "Four 109's: 12 Low, 12 Level, 12 High, and 9 High"
+    },
+    "55": {
+      "fighters": [
+        {"type": "FW190", "position": "12 Low", "count": 1},
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "10:30 Level", "count": 1}
+      ],
+      "description": "190: 12 Low; Three 109's: 12 Level, 12 High, and 10:30 Level"
+    },
+    "56": {
+      "fighters": [],
+      "description": "NO ATTACKERS (c)",
+      "notes": ["Fighters are driven off by other B-17's. If out of formation, roll again."]
+    },
+    "61": {
+      "fighters": [
+        {"type": "Me109", "position": "Vertical Dive", "count": 1}
+      ],
+      "description": "109: Vertical Dive",
+      "notes": ["Only the Top Turret or Radio Room guns may fire at this fighter (both must roll a 6 to hit), and this fighter may not be driven off by fighter cover"]
+    },
+    "62": {
+      "fighters": [
+        {"type": "Me109", "position": "3 Low", "count": 1},
+        {"type": "Me110", "position": "1:30 Low", "count": 1}
+      ],
+      "description": "109: 3 Low; 110: 1:30 Low"
+    },
+    "63": {
+      "fighters": [
+        {"type": "FW190", "position": "10:30 High", "count": 1},
+        {"type": "FW190", "position": "12 High", "count": 1},
+        {"type": "FW190", "position": "1:30 High", "count": 1}
+      ],
+      "description": "Three 190's: 10:30 High, 12 High, and 1:30 High"
+    },
+    "64": {
+      "fighters": [
+        {"type": "FW190", "position": "12 Level", "count": 1},
+        {"type": "FW190", "position": "1:30 Level", "count": 1},
+        {"type": "FW190", "position": "3 Low", "count": 1},
+        {"type": "FW190", "position": "9 High", "count": 1}
+      ],
+      "description": "Four 190's: 12 Level, 1:30 Level, 3 Low, and 9 High"
+    },
+    "65": {
+      "fighters": [
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "3 High", "count": 1},
+        {"type": "Me109", "position": "1:30 High", "count": 1},
+        {"type": "Me109", "position": "6 High", "count": 1},
+        {"type": "Me109", "position": "Vertical Dive", "count": 1}
+      ],
+      "description": "Five 109's: 12 Level, 3 High, 1:30 High, 6 High, and Vertical Dive",
+      "notes": ["B-17 cannot fire at Vertical Dive fighter, nor may it be driven off by fighter cover"]
+    },
+    "66": {
+      "trigger": "random_events",
+      "next": "B-7",
+      "description": "RANDOM EVENTS: See rules section Random Events",
+      "notes": ["Roll on Table B-7 for random event"]
+    }
+  },
+  "notes": [
+    "a) 109 = Me 109, 110 = Me 110, and 190 = FW 190.",
+    "b) B-17 cannot fire at this fighter, nor may it be driven off by fighter cover.",
+    "c) Fighters are driven off by other B-17's. If out of formation, roll again.",
+    "d) Only the Top Turret or Radio Room guns may fire at this fighter (both must roll a 6 to hit), and this fighter may not be driven off by fighter cover.",
+    "e) Only the Ball Turret may fire at this fighter (it must roll a 3-6 to hit), and this fighter may be driven off by fighter cover."
+  ]
+}

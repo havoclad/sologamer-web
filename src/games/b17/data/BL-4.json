@@ -1,0 +1,114 @@
+{
+  "Title": "BL-4 WOUNDS",
+  "table_type": "roll", 
+  "rolltype": "1d6",
+  "determines": "crew_wounds",
+  "description": "Roll 1D per affected crew member",
+  "rolls": {
+    "1": {
+      "result": "Light Wound",
+      "description": "Crewman may continue duties unimpaired",
+      "severity": "light",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "light",
+          "location": "body"
+        }
+      ]
+    },
+    "2": {
+      "result": "Light Wound",
+      "description": "Crewman may continue duties unimpaired",
+      "severity": "light",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "light",
+          "location": "body"
+        }
+      ]
+    },
+    "3": {
+      "result": "Light Wound",
+      "description": "Crewman may continue duties unimpaired",
+      "severity": "light",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "light",
+          "location": "body"
+        }
+      ]
+    },
+    "4": {
+      "result": "Serious Wound",
+      "description": "Crewman may not continue duties, may not bailout",
+      "severity": "serious",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "serious",
+          "location": "body"
+        }
+      ]
+    },
+    "5": {
+      "result": "Serious Wound",
+      "description": "Crewman may not continue duties, may not bailout",
+      "severity": "serious",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "serious",
+          "location": "body"
+        }
+      ]
+    },
+    "6": {
+      "result": "KIA",
+      "description": "Crewman killed in action",
+      "severity": "kia",
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "target_crew_member",
+          "severity": "mortal",
+          "location": "body"
+        }
+      ]
+    }
+  },
+  "wound_accumulation": {
+    "light_wound_effects": {
+      "second_light_wound": {
+        "gunners": "May only hit fighters with a roll of 6",
+        "bombardier": "Loses 11-25th mission bonus, Bomb Run roll on Table O-6 is -1",
+        "pilot_copilot": "Lose 11-25th mission bonus when landing (but if either hasn't taken 2 light wounds he may land using his bonus)",
+        "bailout": "Bailout roll on Table G-6 is -1"
+      },
+      "accumulation_rules": {
+        "3_light_wounds": "Becomes a serious wound",
+        "4_light_wounds": "KIA",
+        "light_plus_serious": "KIA"
+      }
+    },
+    "serious_wound_survival": {
+      "description": "After landing roll 1D for each serious wounded crewman for survival",
+      "survival_table": {
+        "1": "Rapid recovery, may fly on next mission",
+        "2-5": "Recovery, but may not fly any more missions", 
+        "6": "Wounds fatal, crewman dies"
+      }
+    }
+  },
+  "notes": [
+    "a) A 2nd light wound results in: Gunners may only hit fighters with a roll of 6; Bombardier loses his 11-25th mission bonus and the Bomb Run roll on Table O-6 is -1; Pilot and Co-Pilot lose their 11-25th mission bonus when landing (but if either hasn't taken 2 light wounds he may land the plane using his bonus); Bailout for this crewman on Table G-6 is -1. 3 light wounds = a serious wound. 4 light wounds = KIA. Light wound + serious wound = KIA.",
+    "b) After landing roll 1D for each serious wounded crewman for survival: 1 = Rapid recovery, may fly on next mission; 2-5 = Recovery, but may not fly any more missions; 6 = Wounds fatal, crewman dies."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+   "Title": "Landing on Land",
+   "table_type": "roll",
+   "rolltype": "2d6",
+   "determines": "landing",
+   "rolls": {
+     "-3": {
+        "landing": "Crew KIA and the $plane_name wrecked"
+     },
+     "-2": {
+        "landing": "Crew rolls for wounds, Table B1-4, die roll +1; the $plane_name wrecked"
+     },
+     "-1": {
+        "landing": "Crew rolls for wounds, Table B1-4; the $plane_name wrecked"
+     },
+     "0": {
+        "landing": "Crew safe and the $plane_name, irrepairably damaged."
+     },
+     "1": {
+        "landing": "Crew safe and the $plane_name repairable by next mission."
+     },
+     "2-12": {
+        "landing": "Crew and the $plane_name safe"
+     }
+   }
+}

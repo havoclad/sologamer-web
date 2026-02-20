@@ -1,0 +1,15 @@
+{
+  "name": "solitaire-engine",
+  "version": "0.1.0",
+  "description": "Generic solitaire wargame engine — B-17 Queen of the Skies first",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "Title": "Fighter Combat",
+  "table_type": "Flow",
+  "description": "Complete fighter combat resolution sequence",
+  "flow": [
+    {
+      "pre": "Fighter wave approaching"
+    },
+    {
+      "type": "table",
+      "Table": "B-2",
+      "pre": "Rolling for number of attacking fighters",
+      "post": "<1> fighter(s) in this wave"
+    },
+    {
+      "type": "table",
+      "Table": "B-3",
+      "pre": "Rolling for fighter types and positions",
+      "post": "Fighter composition determined"
+    },
+    {
+      "type": "state_update",
+      "action": "start_fighter_wave",
+      "pre": "Initializing combat state for wave"
+    },
+    {
+      "type": "table",
+      "Table": "M-6",
+      "pre": "Rolling for fighter pilot quality",
+      "post": "Fighter pilot status: <1>",
+      "optional": true
+    },
+    {
+      "type": "table",
+      "Table": "M-4",
+      "pre": "Rolling for fighter cover",
+      "post": "Fighter cover effectiveness: <1>",
+      "only_if": "fighter_cover_available"
+    },
+    {
+      "type": "flow",
+      "flow_table": "FLOW-fighter-attack",
+      "pre": "Processing individual fighter attacks",
+      "repeat_for": "each_active_fighter"
+    },
+    {
+      "type": "flow",
+      "flow_table": "FLOW-successive-attacks",
+      "pre": "Processing successive attacks",
+      "only_if": "fighters_scored_hits"
+    },
+    {
+      "type": "table",
+      "Table": "B-7",
+      "pre": "Rolling for random events",
+      "post": "Random event: <1>",
+      "only_if": "random_event_triggered"
+    },
+    {
+      "type": "state_update",
+      "action": "complete_wave",
+      "post": "Fighter wave resolved"
+    },
+    {
+      "type": "state_summary",
+      "show": ["fighters_destroyed", "crew_wounds", "aircraft_damage"],
+      "post": "Combat summary: <1> fighters destroyed, <2> crew wounded, <3> damage points"
+    }
+  ]
+}

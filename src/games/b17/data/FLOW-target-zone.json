@@ -1,0 +1,45 @@
+{
+	"Title": "Target Zone",
+	"table_type": "Flow",
+	"flow": [
+		{
+			"pre": "Getting ready to drop bombs"
+		},
+		{
+			"type": "table",
+			"Table": "O-1",
+			"pre": "Rolling for weather",
+			"post": "Weather over the target zone is <1>"
+		},
+		{	"type": "table",
+			"Table": "O-2",
+			"pre": "Rolling for flak",
+			"post": "There is <1> over the target"
+		},
+		{	"type": "table",
+			"Table": "O-3",
+			"pre": "Rolling for flak hits",
+			"post": "<1> flak hit(s) to the B-17"
+		},
+		{	"type": "table",
+			"Table": "O-4",
+			"post": "<1> shell hit(s) to the B-17"
+		},
+		{	"type": "table",
+			"Table": "O-5",
+			"pre": "Rolling for affected areas",
+			"post": "<1> affected"
+		},
+		{	"type": "table",
+			"Table": "O-6",
+			"pre": "Rolling for bomb run",
+			"post": "Bomb run was <1> target"
+		},
+		{	"type": "table",
+			"Table": "O-7",
+			"pre": "Rolling for bombing accuracy",
+			"post": "Percent of bombs hitting within 1000 feet of the target was <1>%"
+		}
+	]
+}
+

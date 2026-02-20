@@ -1,0 +1,61 @@
+{
+  "Title": "Successive Attacks",
+  "description": "Roll 2D for each fighter that scored a hit in its initial attack to determine its new attack position",
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "successive_attack_position",
+  "scope": "fighter",
+  "rolls": {
+    "2": {
+      "position": "6 High",
+      "description": "6 High"
+    },
+    "3": {
+      "position": "6 Level",
+      "description": "6 Level"
+    },
+    "4": {
+      "position": "9 Level",
+      "description": "9 Level"
+    },
+    "5": {
+      "position": "12 Level",
+      "description": "12 Level"
+    },
+    "6": {
+      "position": "10:30 Level",
+      "description": "10:30 Level"
+    },
+    "7": {
+      "position": "12 High",
+      "description": "12 High"
+    },
+    "8": {
+      "position": "1:30 Level",
+      "description": "1:30 Level"
+    },
+    "9": {
+      "position": "12 Level",
+      "description": "12 Level"
+    },
+    "10": {
+      "position": "3 Level",
+      "description": "3 Level"
+    },
+    "11": {
+      "position": "9 High",
+      "description": "9 High"
+    },
+    "12": {
+      "position": "3 High",
+      "description": "3 High"
+    }
+  },
+  "notes": [
+    "Any fighter which scores a hit in its initial attack (even if the hit has no effect) attacks the B-17 again.",
+    "After all fighters conducting successive attacks are positioned, remove the number of fighters allowed due to successful fighter cover according to the roll on Table M-4 during the initial attack.",
+    "Fighters which score a hit during their first successive attack conduct a second successive attack.",
+    "After its second successive attack, a fighter is removed from play, even if it scored hits every time.",
+    "The most attacks any one fighter can make against the B-17 during one wave is three—one initial and two successive attacks."
+  ]
+}

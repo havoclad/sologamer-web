@@ -1,0 +1,26 @@
+{
+  "Title": "Number of German Fighter Waves in Non-Designated Target Zone",
+  "table_type": "roll",
+  "rolltype": "1d6",
+  "determines": "fighter_waves",
+  "scope": "zone",
+  "rolls": {
+    "1-2": {
+      "fighter_waves": 0,
+      "description": "None",
+      "notes": []
+    },
+    "3-5": {
+      "fighter_waves": 1,
+      "description": "1 wave",
+      "next": "B-3",
+      "notes": []
+    },
+    "6": {
+      "fighter_waves": 2,
+      "description": "2 waves",
+      "next": "B-3",
+      "notes": []
+    }
+  }
+}

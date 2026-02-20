@@ -1,0 +1,65 @@
+{
+  "Title": "Individual Fighter Attack",
+  "table_type": "Flow",
+  "description": "Resolves a single fighter's attack on the B-17",
+  "flow": [
+    {
+      "pre": "Fighter attacking from <position>"
+    },
+    {
+      "type": "table",
+      "Table": "M-1",
+      "pre": "Rolling for defensive fire",
+      "post": "Defensive fire from <1> gun position(s)"
+    },
+    {
+      "type": "table",
+      "Table": "M-2",
+      "pre": "Rolling for defensive fire effectiveness",
+      "post": "Defensive fire result: <1>",
+      "repeat_for": "each_firing_gun"
+    },
+    {
+      "type": "conditional",
+      "condition": "fighter_not_destroyed",
+      "if_true": {
+        "type": "table",
+        "Table": "M-3",
+        "pre": "Rolling for fighter attack",
+        "post": "Fighter attack: <1>"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "fighter_hits",
+      "if_true": {
+        "type": "table",
+        "Table": "B-4",
+        "pre": "Rolling for number of shell hits",
+        "post": "<1> shell hit(s)"
+      }
+    },
+    {
+      "type": "conditional",
+      "condition": "shell_hits > 0",
+      "if_true": {
+        "type": "table",
+        "Table": "B-5",
+        "pre": "Rolling for hit locations",
+        "post": "Hits to: <1>"
+      }
+    },
+    {
+      "type": "flow",
+      "flow_table": "FLOW-damage-resolution",
+      "pre": "Resolving damage",
+      "only_if": "damage_occurred",
+      "repeat_for": "each_hit_location"
+    },
+    {
+      "type": "state_update",
+      "action": "update_fighter_status",
+      "post": "Fighter status updated"
+    }
+  ]
+}

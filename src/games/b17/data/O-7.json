@@ -1,0 +1,57 @@
+{
+   "Title": "Bombing Accuracy",
+   "table_type": "roll",
+   "table_input": "bomb_run_on_target",
+   "rolltype": "2d6",
+   "determines": "bombing_accuracy",
+   "rolls": {
+     "2,12": {
+        "On": { 
+           "bombing_accuracy": "75"
+        },
+        "Off": { 
+           "bombing_accuracy": "10"
+        }
+     },
+     "3": {
+        "On": { 
+           "bombing_accuracy": "60"
+        },
+        "Off": { 
+           "bombing_accuracy": "5"
+        }
+     },
+     "4,6,8,10": {
+        "On": { 
+           "bombing_accuracy": "30"
+        },
+        "Off": { 
+           "bombing_accuracy": "0"
+        }
+     },
+     "7": {
+        "On": { 
+           "bombing_accuracy": "40"
+        },
+        "Off": { 
+           "bombing_accuracy": "0"
+        }
+     },
+     "5,9": {
+        "On": { 
+           "bombing_accuracy": "20"
+        },
+        "Off": { 
+           "bombing_accuracy": "0"
+        }
+     },
+     "11": {
+        "On": { 
+           "bombing_accuracy": "50"
+        },
+        "Off": { 
+           "bombing_accuracy": "5"
+        }
+     }
+   }
+}

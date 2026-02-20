@@ -1,0 +1,78 @@
+{
+  "Title": "P-3 BOMB BAY",
+  "table_type": "roll",
+  "rolltype": "2d6", 
+  "determines": "bomb_bay_damage",
+  "description": "Roll 2D per shell hit on Bomb Bay",
+  "rolls": {
+    "2": {
+      "result": "Bomb Detonation",
+      "description": "Bomb explodes in bomb bay - B-17 and crew destroyed",
+      "effect": "destroyed",
+      "condition": "bombs_aboard"
+    },
+    "3": {
+      "result": "Bomb Hit",
+      "description": "Roll 1D: 1-5 = bomb damaged but does not explode; 6 = bomb explodes, B-17 and crew destroyed",
+      "sub_roll": {
+        "type": "1d6",
+        "1-5": "Bomb damaged but does not explode",
+        "6": "Bomb explodes - B-17 and crew destroyed"
+      },
+      "condition": "bombs_aboard"
+    },
+    "4": {
+      "result": "Rubber Rafts",
+      "description": "Rubber rafts damaged - landing in water roll -6",
+      "effect": "rafts_damaged"
+    },
+    "5": {
+      "result": "Superficial Damage", 
+      "description": "No effect"
+    },
+    "6": {
+      "result": "Bomb Bay Doors",
+      "description": "Bomb bay doors inoperable - must jettison bombs or abort mission",
+      "effect": "doors_inoperable",
+      "notes": ["Mission may be aborted - see rules section Aborting the Mission"]
+    },
+    "7": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "8": {
+      "result": "Superficial Damage", 
+      "description": "No effect"
+    },
+    "9": {
+      "result": "Bomb Controls",
+      "description": "Bomb release mechanism inoperable - bombs cannot be dropped normally",
+      "effect": "release_mechanism_out"
+    },
+    "10": {
+      "result": "Bomb Sight",
+      "description": "Norden bombsight inoperable - Bomb Run automatically off target",
+      "effect": "bombsight_out",
+      "notes": ["Bomb Run automatically off target regardless of Table O-6 roll"]
+    },
+    "11": {
+      "result": "Ball Turret",
+      "description": "Ball turret guns inoperable"
+    },
+    "12": {
+      "result": "Ball Turret Mechanism", 
+      "description": "Ball turret mechanism inoperable - gunner trapped",
+      "effect": "ball_turret_trapped",
+      "notes": ["Gunner trapped in turret, may not fire guns, may not bailout", "If landing gear inoperable, gunner automatically KIA on landing"]
+    }
+  },
+  "condition_effects": {
+    "bombs_aboard": "Results 2 and 3 only apply if bombs are still aboard",
+    "no_bombs": "If no bombs aboard, treat results 2 and 3 as Superficial Damage"
+  },
+  "notes": [
+    "Results 2 and 3 only apply if bombs are still aboard the aircraft",
+    "Rubber raft damage affects water landing survival",
+    "See rules section Aborting the Mission for bomb bay door damage"
+  ]
+}

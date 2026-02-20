@@ -1,0 +1,85 @@
+{
+   "Title": "Weather",
+   "table_type": "roll",
+   "rolltype": "2d6",
+   "determines": "weather",
+   "scope": "zone",
+   "rolls": {
+     "2,12": {
+        "weather": "Bad",
+        "icon": "⛈",
+        "notes": [
+           {
+              "table": "B-2",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "M-4",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "O-2",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "O-6",
+              "why": "Bad weather",
+              "modifier": "-2"
+           },
+           {
+              "table": "G-9",
+              "why": "Bad weather",
+              "modifier": "-2"
+           },
+           {
+              "table": "G-10",
+              "why": "Bad weather",
+              "modifier": "-2"
+           }
+        ]
+     },
+     "3,11": {
+        "weather": "Poor",
+        "icon": "☁",
+        "notes": [
+           {
+              "table": "B-2",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "M-4",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "O-2",
+              "why": "Bad weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "O-6",
+              "why": "Poor weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "G-9",
+              "why": "Poor weather",
+              "modifier": "-1"
+           },
+           {
+              "table": "G-10",
+              "why": "Poor weather",
+              "modifier": "-1"
+           }
+        ]
+     },
+     "4-10": {
+        "weather": "Good",
+        "icon": "☀"
+     }
+   }
+}

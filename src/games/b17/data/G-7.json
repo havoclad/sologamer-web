@@ -1,0 +1,24 @@
+{
+   "Title": "Bailout from Uncontrolled Plane",
+   "table_type": "roll",
+   "rolltype": "1d6",
+   "determines": "bailout_result",
+   "notes": [
+     "Roll for each crewman separately",
+     "Seriously wounded crewmen may not bailout",
+     "If bailout is over Germany or the Netherlands, crewman is automatically captured",
+     "If bailout is over France or Belgium, for each crewman who lands OK roll 1D: 1-5 = Captured; 6 = returned to England by the Underground in time for next mission",
+     "If crewmen bailout over water, also roll 1D on Table G-8",
+     "Lightly wounded crewmen: die roll -1"
+   ],
+   "rolls": {
+     "1-5": {
+        "bailout_result": "No bailout, goes down with plane",
+        "set": {"crewman_status": "KIA"}
+     },
+     "6": {
+        "bailout_result": "Bailout OK",
+        "set": {"crewman_status": "OK"}
+     }
+   }
+}

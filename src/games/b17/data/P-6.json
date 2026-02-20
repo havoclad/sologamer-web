@@ -1,0 +1,102 @@
+{
+  "Title": "P-6 TAIL SECTION", 
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "tail_damage", 
+  "description": "Roll 2D per shell hit on Tail section",
+  "rolls": {
+    "2": {
+      "result": "Suit Heater",
+      "description": "Tail Gunner's heat out",
+      "notes": ["See rules section Heat Out/Frostbite"]
+    },
+    "3": {
+      "result": "Tailwheel or Autopilot Mechanism", 
+      "description": "Roll 1D: 1-3 = Tailwheel damaged, landing roll -1; 4-6 = Autopilot mechanism inoperable, Bomb Run -2",
+      "sub_roll": {
+        "type": "1d6",
+        "1-3": "Tailwheel damaged - landing roll on Table G-9 -1",
+        "4-6": "Autopilot mechanism inoperable - Bomb Run on Table O-6 -2"
+      }
+    },
+    "4": {
+      "result": "Tail Turret",
+      "description": "Tail guns inoperable"
+    },
+    "5": {
+      "result": "Tail Gunner",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4", 
+        "target": "Tail Gunner"
+      }
+    },
+    "6": {
+      "result": "Superficial Damage",
+      "description": "No effect"
+    },
+    "7": {
+      "result": "Rudder",
+      "description": "Rudder takes 1 hit. With 3 hits rudder is inoperable, landing roll -1",
+      "cumulative": {
+        "type": "rudder_hits",
+        "threshold": 3,
+        "effect": "Rudder inoperable - landing roll on Tables G-9 or G-10 -1"
+      }
+    },
+    "8": {
+      "result": "Superficial Damage", 
+      "description": "No effect"
+    },
+    "9": {
+      "result": "Tailplane",
+      "description": "Roll 1D: 1,2 = No effect; 3 = Port elevator inoperable; 4 = Starboard elevator inoperable; 5 = Port tailplane root hit; 6 = Starboard tailplane root hit",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "No effect",
+        "3": "Port elevator inoperable",
+        "4": "Starboard elevator inoperable", 
+        "5": "Port tailplane root hit",
+        "6": "Starboard tailplane root hit"
+      },
+      "notes": ["If both elevators are inoperable, landing rolls -1", "If tailplane root accumulates 3 hits, tailplane rips off"]
+    },
+    "10": {
+      "result": "Tailplane",
+      "description": "Roll 1D: 1,2 = No effect; 3 = Port elevator inoperable; 4 = Starboard elevator inoperable; 5 = Port tailplane root hit; 6 = Starboard tailplane root hit", 
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "No effect",
+        "3": "Port elevator inoperable",
+        "4": "Starboard elevator inoperable",
+        "5": "Port tailplane root hit", 
+        "6": "Starboard tailplane root hit"
+      },
+      "notes": ["If both elevators are inoperable, landing rolls -1", "If tailplane root accumulates 3 hits, tailplane rips off"]
+    },
+    "11": {
+      "result": "Oxygen Supply Hit",
+      "description": "Roll 1D: 1-5 = 1 oxygen supply hit; 6 = Fire, and Tail oxygen out", 
+      "sub_roll": {
+        "type": "1d6",
+        "1-5": "1 oxygen supply hit",
+        "6": "Fire, and Tail oxygen out - roll to extinguish on Table BL-3"
+      },
+      "notes": ["See rules section Oxygen Out"]
+    },
+    "12": {
+      "result": "Control Cables",
+      "description": "See effect for roll of 12 on Pilot Compartment Table P-2",
+      "follow_up": {
+        "table": "P-2",
+        "roll": "12"
+      }
+    }
+  },
+  "notes": [
+    "a) See rules section Heat Out/Frostbite.",
+    "b) If both elevators are inoperable, landing rolls on Tables G-9 and G-10 are -1.",
+    "c) If tailplane root accumulates 3 hits during mission, tailplane rips off. If 1 tailplane is off, landing rolls on Tables G-9 and G-10 are -1; if both tailplanes come off, bailout immediately on Table G-7.",
+    "d) See rules section Oxygen Out."
+  ]
+}

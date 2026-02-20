@@ -1,0 +1,131 @@
+{
+  "Title": "P-1 NOSE COMPARTMENT",
+  "table_type": "roll",
+  "rolltype": "2d6",
+  "determines": "nose_damage",
+  "description": "Roll 2D per shell hit on Nose Compartment",
+  "rolls": {
+    "2": {
+      "result": "Starboard Cheek Gun",
+      "description": "Starboard cheek gun inoperable",
+      "damage_effects": [
+        {
+          "type": "gun_damage",
+          "position": "starboard_cheek",
+          "damage_type": "destroy"
+        }
+      ]
+    },
+    "3": {
+      "result": "Bomb Controls",
+      "description": "Bomb controls inoperable. Can drop all bombs at once only",
+      "damage_effects": [
+        {
+          "type": "equipment_damage",
+          "equipment": "bomb_controls",
+          "modifier": 0
+        }
+      ]
+    },
+    "4": {
+      "result": "Bomb Release",
+      "description": "Bomb release mechanism inoperable. Bombs cannot be dropped"
+    },
+    "5": {
+      "result": "Nose Gun",
+      "description": "Nose gun inoperable",
+      "damage_effects": [
+        {
+          "type": "gun_damage",
+          "position": "nose",
+          "damage_type": "destroy"
+        }
+      ]
+    },
+    "6": {
+      "result": "Bombardier",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Bombardier"
+      },
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "bombardier",
+          "severity": "light",
+          "location": "body"
+        }
+      ]
+    },
+    "7": {
+      "result": "Superficial Damage",
+      "description": "No effect",
+      "damage_effects": [
+        {
+          "type": "structural_damage",
+          "compartment": "nose",
+          "damage_type": "superficial"
+        }
+      ]
+    },
+    "8": {
+      "result": "Nose Gun",
+      "description": "Nose gun inoperable",
+      "damage_effects": [
+        {
+          "type": "gun_damage",
+          "position": "nose",
+          "damage_type": "destroy"
+        }
+      ]
+    },
+    "9": {
+      "result": "Navigator",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Navigator"
+      },
+      "damage_effects": [
+        {
+          "type": "crew_wound",
+          "position": "navigator",
+          "severity": "light",
+          "location": "body"
+        }
+      ]
+    },
+    "10": {
+      "result": "Navigator's Equipment",
+      "description": "Roll 1D: 4-6 = Bomb Run -3; 1-3 = No effect",
+      "sub_roll": {
+        "type": "1d6",
+        "1-3": "No effect",
+        "4-6": "Navigator's equipment damaged - Bomb Run on Table O-6 -3"
+      },
+      "notes": ["If Navigator is KIA or seriously wounded, this result becomes automatic Bomb Run -3"]
+    },
+    "11": {
+      "result": "Windshield",
+      "description": "Windshield knocked out - pilot compartment heat out",
+      "effect": "pilot_copilot_heat_out",
+      "notes": ["See rules section Heat Out/Frostbite"]
+    },
+    "12": {
+      "result": "Port Cheek Gun",
+      "description": "Port cheek gun inoperable",
+      "damage_effects": [
+        {
+          "type": "gun_damage",
+          "position": "port_cheek",
+          "damage_type": "destroy"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "See rules sections for Oxygen Out, Heat Out/Frostbite, and Aborting the Mission",
+    "If Navigator is KIA or seriously wounded, roll of 10 automatically becomes Bomb Run -3"
+  ]
+}

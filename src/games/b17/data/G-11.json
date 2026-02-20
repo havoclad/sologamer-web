@@ -1,0 +1,459 @@
+{
+   "Title": "Flight Log Gazetteer",
+   "table_type": "roll",
+   "type": "data",
+   "target city": {
+     "Abbeville": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "1",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Amiens": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Antwerp": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "Belgium" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "Belgium" ]
+           }
+        }
+     },
+     "Bremen": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     },
+     "Brest": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-3",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "1",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Cherbourg": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "water", "France" ]
+           }
+        }
+     },
+     "Emden": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     },
+     "Hamm": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "Netherlands" ]
+           },
+           "6": {
+              "B-1 Modifier": "0",
+              "over": [ "Netherlands" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     },
+     "Kiel": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "7": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "8": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     },
+     "La Rochelle": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "6": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "8": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Lille": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Lorient": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "6": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Meaulte": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Paris": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Rennes": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Romilly-sur-Seine": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Rotterdam": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "water", "Netherlands" ]
+           }
+        }
+     },
+     "Rouen": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           }
+        }
+     },
+     "St. Omer": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "0",
+              "over": [ "water", "France" ]
+           }
+        }
+     },
+     "St. Nazaire": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "6": {
+              "B-1 Modifier": "1",
+              "over": [ "France" ]
+           }
+        }
+     },
+     "Vegesack": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     },
+     "Wilhelmshaven": {
+        "zone": {
+           "2": {
+              "B-1 Modifier": "-2",
+              "over": [ "water" ]
+           },
+           "3": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "4": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "5": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "6": {
+              "B-1 Modifier": "-1",
+              "over": [ "water" ]
+           },
+           "7": {
+              "B-1 Modifier": "0",
+              "over": [ "Germany" ]
+           }
+        }
+     }
+   }
+}

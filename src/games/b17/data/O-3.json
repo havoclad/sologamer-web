@@ -1,0 +1,87 @@
+{
+   "Title": "Flak to Hit B-17",
+   "table_type": "roll",
+   "table_input": "Flak",
+   "table_skip": "No flak",
+   "table_count": "3",
+   "group_by": "sum",
+   "rolltype": "2d6",
+   "determines": "flak_hits",
+   "rolls": {
+     "2,12": {
+        "Heavy flak": { 
+           "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        },
+        "Medium flak": { "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        },
+        "Light flak": { "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        }
+     },
+     "3,7": {
+        "Heavy flak": { "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        },
+        "Medium flak": { "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        },
+        "Light flak": { "flak_hits": "0" }
+     },
+     "5,9,11": {
+        "Heavy flak": { "flak_hits": "1",
+           "notes": [
+              {
+                 "table": "O-6",
+                 "why": "Hit by flak",
+                 "modifier": "-1",
+                 "stack": "0"
+              }
+           ]
+        },
+        "Medium flak": { "flak_hits": "0" },
+        "Light flak": { "flak_hits": "0" }
+     },
+     "4,6,8,10": {
+        "Heavy flak": { "flak_hits": "0" },
+        "Medium flak": { "flak_hits": "0" },
+        "Light flak": { "flak_hits": "0" }
+     }
+   }
+}
