@@ -3,3 +3,8 @@ export * from './zone-movement.js';
 export * from './fighter-encounters.js';
 export * from './combat.js';
 export * from './damage.js';
+export * from './flak.js';
+export * from './bomb-run.js';
+export * from './landing.js';
+export * from './random-events.js';
+export * from './bailout.js';
