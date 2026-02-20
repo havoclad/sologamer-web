@@ -1,0 +1,394 @@
+/* ═══ B-17 Queen of the Skies — Military/Vintage Theme ═══ */
+
+:root {
+  --bg-dark: #2a2a20;
+  --bg-panel: #3a3a2e;
+  --bg-header: #4a4a3a;
+  --bg-input: #2e2e24;
+  --border: #5a5a48;
+  --text: #d4c9a8;
+  --text-dim: #8a8268;
+  --text-bright: #f0e8c8;
+  --accent: #b89b4a;
+  --accent-dim: #8a7636;
+  --good: #5a9a3a;
+  --warn: #c8a030;
+  --bad: #c04030;
+  --critical: #ff4040;
+  --info: #6090b0;
+  --olive: #6b6b3a;
+  --khaki: #c3b091;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Courier New', 'Consolas', monospace;
+  background: var(--bg-dark);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ─── Title Bar ─── */
+#title-bar {
+  background: linear-gradient(180deg, #4a4a3a 0%, #3a3a2a 100%);
+  border-bottom: 2px solid var(--accent);
+  padding: 8px 20px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+#title-bar h1 {
+  font-size: 18px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+#title-bar .subtitle {
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+/* ─── Screens ─── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ─── Start Screen ─── */
+#start-screen {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 50px);
+}
+#start-screen.active {
+  display: flex;
+}
+.start-box {
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+}
+.start-logo {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+.start-box h2 {
+  color: var(--accent);
+  margin-bottom: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.form-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+.form-group label {
+  display: block;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.form-group input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  font-family: inherit;
+  font-size: 14px;
+  border-radius: 2px;
+}
+.form-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ─── Buttons ─── */
+.btn {
+  padding: 8px 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-header);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--border); color: var(--text-bright); }
+.btn-primary { background: var(--olive); border-color: var(--accent-dim); color: var(--text-bright); }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-danger { background: #4a2020; border-color: #6a3030; }
+.btn-danger:hover { background: #6a3030; }
+.btn-secondary { background: var(--bg-panel); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── Top Bar ─── */
+#top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+#campaign-info { display: flex; align-items: center; gap: 12px; }
+.plane-name { font-weight: bold; color: var(--accent); font-size: 15px; }
+.badge {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  padding: 2px 10px;
+  border-radius: 2px;
+  font-size: 11px;
+}
+.badge.dim { color: var(--text-dim); }
+#controls { display: flex; gap: 8px; }
+
+/* ─── Main Layout ─── */
+#main-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 8px;
+  padding: 8px;
+  height: calc(100vh - 90px);
+  overflow: hidden;
+}
+
+/* ─── Panels ─── */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.panel-title {
+  background: var(--bg-header);
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ─── Columns ─── */
+#left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+#center-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+#right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+/* ─── Strategic Map ─── */
+#map-container { padding: 8px; }
+#strategic-map { width: 100%; height: 160px; }
+
+/* ─── Crew Grid ─── */
+#crew-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 6px;
+  overflow-y: auto;
+}
+.crew-card {
+  padding: 4px 8px;
+  background: var(--bg-dark);
+  border-left: 3px solid var(--good);
+  font-size: 11px;
+}
+.crew-card.wounded { border-left-color: var(--warn); }
+.crew-card.serious { border-left-color: var(--bad); }
+.crew-card.kia { border-left-color: var(--critical); opacity: 0.5; }
+.crew-card .crew-pos { color: var(--text-dim); font-size: 10px; text-transform: uppercase; }
+.crew-card .crew-name { color: var(--text-bright); }
+.crew-card .crew-status { font-size: 10px; }
+.crew-card .crew-status.ok { color: var(--good); }
+.crew-card .crew-status.wound { color: var(--warn); }
+.crew-card .crew-status.down { color: var(--bad); }
+
+/* ─── Aircraft Status ─── */
+#aircraft-status {
+  padding: 8px;
+  font-size: 11px;
+  overflow-y: auto;
+}
+.engine-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.engine-indicator {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.engine-indicator.ok { background: var(--good); }
+.engine-indicator.out { background: var(--bad); }
+.system-damage {
+  color: var(--warn);
+  margin-top: 4px;
+}
+
+/* ─── Event Log ─── */
+#log-panel {
+  flex: 1;
+  min-height: 0;
+}
+#event-log {
+  overflow-y: auto;
+  padding: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.log-entry {
+  padding: 4px 8px;
+  margin-bottom: 2px;
+  border-left: 3px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 12px;
+}
+.log-entry:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.log-entry.selected {
+  background: rgba(184, 155, 74, 0.15);
+  border-left-color: var(--accent);
+}
+.log-entry.has-details::before {
+  content: '▶ ';
+  color: var(--accent);
+  font-size: 10px;
+}
+.log-entry.sev-good { border-left-color: var(--good); }
+.log-entry.sev-warn { border-left-color: var(--warn); }
+.log-entry.sev-bad { border-left-color: var(--bad); }
+.log-entry.sev-critical { border-left-color: var(--critical); }
+.log-entry.sev-info { border-left-color: var(--info); }
+
+.log-entry .log-phase {
+  display: inline-block;
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-right: 8px;
+  min-width: 60px;
+}
+.log-entry .log-zone {
+  display: inline-block;
+  font-size: 9px;
+  color: var(--olive);
+  margin-right: 8px;
+}
+.log-entry .log-msg { color: var(--text); }
+.log-entry.sev-good .log-msg { color: var(--good); }
+.log-entry.sev-bad .log-msg { color: var(--bad); }
+.log-entry.sev-critical .log-msg { color: var(--critical); font-weight: bold; }
+.log-entry.sev-warn .log-msg { color: var(--warn); }
+
+/* Zone separator in log */
+.log-zone-header {
+  padding: 6px 8px;
+  margin: 8px 0 4px;
+  background: var(--bg-header);
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-left: 3px solid var(--accent);
+}
+
+/* ─── Combat View ─── */
+#combat-view { padding: 8px; text-align: center; }
+#combat-svg { width: 100%; height: 220px; }
+#combat-info { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+
+/* ─── Detail Panel ─── */
+#detail-content {
+  padding: 10px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 12px;
+}
+.placeholder { color: var(--text-dim); font-style: italic; }
+
+.detail-roll {
+  margin-bottom: 10px;
+  padding: 8px;
+  background: var(--bg-dark);
+  border-left: 2px solid var(--accent);
+}
+.detail-roll .detail-table {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 11px;
+}
+.detail-roll .detail-type {
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-left: 8px;
+}
+.detail-roll .detail-result {
+  margin-top: 4px;
+  color: var(--text-bright);
+}
+.detail-roll .detail-desc {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.detail-roll .detail-dice {
+  color: var(--info);
+  font-size: 11px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1024px) {
+  #main-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    height: auto;
+    min-height: calc(100vh - 90px);
+  }
+  #left-col { flex-direction: row; flex-wrap: wrap; }
+  #left-col .panel { flex: 1; min-width: 250px; }
+  #right-col { flex-direction: row; flex-wrap: wrap; }
+  #right-col .panel { flex: 1; min-width: 250px; }
+  #event-log { max-height: 50vh; }
+}
+
+/* ─── Animations ─── */
+@keyframes flash-in {
+  from { background: rgba(184, 155, 74, 0.3); }
+  to { background: transparent; }
+}
+.log-entry.new {
+  animation: flash-in 0.8s ease-out;
+}

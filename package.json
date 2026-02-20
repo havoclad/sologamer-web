@@ -7,7 +7,8 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "play": "tsx src/cli/index.ts"
+    "play": "tsx src/cli/index.ts",
+    "web": "tsx src/web/server.ts"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
@@ -16,7 +17,9 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "@types/express": "^5.0.6",
     "chalk": "^5.6.2",
-    "commander": "^12.1.0"
+    "commander": "^12.1.0",
+    "express": "^5.2.1"
   }
 }

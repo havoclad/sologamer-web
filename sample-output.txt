@@ -1,0 +1,149 @@
+[1m[36m
+  ╔══════════════════════════════════════════════════╗
+  ║     B-17: QUEEN OF THE SKIES                    ║
+  ║     Avalon Hill Solitaire Bomber Game (1981)     ║
+  ╚══════════════════════════════════════════════════╝
+[0m
+[2m  Deterministic mode: seed = 42[0m
+[2m  Loaded 51 game tables[0m
+
+  Your bomber: [1mMemphis Belle[0m
+  Tour of duty: 25 missions over occupied Europe
+
+
+[1m[36m════════════════════════════════════════════════════════════[0m
+[1m[36m  Mission #1: Pre-Mission Briefing[0m
+[1m[36m════════════════════════════════════════════════════════════[0m
+
+  Target: [1mAbbeville[0m
+  Target type: Airfield
+  Target zone: 3
+  Formation position: Middle
+
+[1m[37m── Crew Manifest ──[0m
+  [32m✓[0m Pilot: [1mNorman Martin[0m
+  [32m✓[0m Co-Pilot: [1mPaul Roberts[0m
+  [32m✓[0m Navigator: [1mLeonard Turner[0m
+  [32m✓[0m Bombardier: [1mGeorge Evans[0m
+  [32m✓[0m Engineer/Top Turret: [1mHerbert Parker[0m
+  [32m✓[0m Radio Operator: [1mWalter Allen[0m
+  [32m✓[0m Ball Turret Gunner: [1mArthur Torres[0m
+  [32m✓[0m Left Waist Gunner: [1mRoy Torres[0m
+  [32m✓[0m Right Waist Gunner: [1mHarold Hill[0m
+  [32m✓[0m Tail Gunner: [1mEugene Mitchell[0m
+
+[1m[36m════════════════════════════════════════════════════════════[0m
+[1m[36m  Mission Underway[0m
+[1m[36m════════════════════════════════════════════════════════════[0m
+
+[1mMemphis Belle[0m takes off from base and forms up...
+
+[1m[37m── Zone 2 — Outbound ──[0m
+  Over: water
+  Fighter cover: [32mGood[0m
+[32m  No enemy fighters encountered.[0m
+
+[1m[37m── Zone 3 — TARGET: Abbeville ──[0m
+  Over: France
+  Weather: [32mClear[0m
+  Fighter cover: [32mGood[0m
+
+  [1m[31mFighter wave 1![0m
+[33m  2 fighters approaching: Me109 at 12 Level, Me109 at 1:30 High[0m
+[32m  Friendly fighters drive off 1 enemy fighter![0m
+  [2mTop turret fires at 1:30 High... miss[0m
+  [2mNose guns fires at 1:30 High... miss[0m
+[32m  Starboard cheek gun (Leonard Turner) fires at 1:30 High... HIT! Me109 damaged, breaks off![0m
+[32m  All fighters driven off or destroyed![0m
+
+  [1m[31mFighter wave 2![0m
+[33m  3 fighters approaching: FW190 at 12 High, FW190 at 1:30 High, FW190 at 3 High[0m
+[32m  Friendly fighters drive off 2 enemy fighters![0m
+[32m  Top turret (Herbert Parker) fires at 3 High... [1mHIT! FW190 DESTROYED![0m[0m
+  [2mRight waist gun fires at 3 High... miss[0m
+  [2mRadio room gun fires at 3 High... miss[0m
+
+[31m  FW190 at 3 High fires... [1mHIT![0m[0m
+[31m    3 shell hits![0m
+    Shell 1: Hit to [1mTail[0m
+[2m      Tail: Superficial — no effect[0m
+    Shell 2: Hit to [1mPort Wing[0m
+[2m      Port Wing: Superficial — no effect[0m
+    Shell 3: Hit to [1mPort Wing[0m
+[2m      Port Wing: Superficial — no effect[0m
+
+  [2m--- Successive attack round 2 ---[0m
+  [2mBall turret fires at 6 Level... miss[0m
+  [2mTail guns fires at 6 Level... miss[0m
+
+[31m  FW190 at 6 Level fires... [1mHIT![0m[0m
+[31m    3 shell hits![0m
+    Shell 1: Hit to [1mTail[0m
+[2m      Tail: Superficial — no effect[0m
+    Shell 2: Hit to [1mPort Wing[0m
+[2m      Port Wing: Roll 1D: 1-3 = Flap inoperable, landing roll -1; 4-6 = No effect[0m
+    Shell 3: Hit to [1mTail[0m
+[2m      Tail: Superficial — no effect[0m
+
+  [2m--- Successive attack round 3 ---[0m
+  [2mBall turret fires at 6 Level... miss[0m
+[32m  Tail guns (Eugene Mitchell) fires at 6 Level... HIT! FW190 damaged, breaks off![0m
+[32m  All fighters driven off or destroyed![0m
+
+  [1m[31mFighter wave 3![0m
+[33m  5 fighters approaching: FW190 at 12 High, FW190 at 10:30 Level, FW190 at 9 Level, FW190 at 6 High, FW190 at Vertical Dive[0m
+[32m  Friendly fighters drive off 3 enemy fighters![0m
+  [2mBall turret fires at 6 High... miss[0m
+[33m  Tail guns (Eugene Mitchell) fires at 6 High... HIT! FW190 damaged, continues attack.[0m
+[32m  Left waist gun (Roy Torres) fires at 6 High... HIT! FW190 damaged, breaks off![0m
+  [2mRight waist gun fires at 6 High... miss[0m
+  [2mTop turret fires at Vertical Dive... miss[0m
+  [2mRadio room gun fires at Vertical Dive... miss[0m
+
+  [2mFW190 at Vertical Dive fires... miss[0m
+
+[1m[37m── Bomb Run ──[0m
+  [1mBombs away![0m Target: Abbeville
+[32m  Bombs dropped on target.[0m
+
+[1m[37m── Zone 2 — Inbound ──[0m
+  Over: water
+  Fighter cover: [33mFair[0m
+[32m  No enemy fighters encountered.[0m
+
+[1m[37m── Landing ──[0m
+  Memphis Belle approaches the airfield...
+[32m  [1mSafe landing![0m Memphis Belle touches down.[0m
+
+[1m[36m════════════════════════════════════════════════════════════[0m
+[1m[36m  Mission Debrief[0m
+[1m[36m════════════════════════════════════════════════════════════[0m
+
+  Mission #1 to [1mAbbeville[0m: [32m✓ SURVIVED[0m
+[32m  Bombs successfully dropped on target.[0m
+  Enemy fighters destroyed: 1
+
+[1m[37m── Damage Report ──[0m
+[33m    • Port Wing: Wing Flap[0m
+
+[1m[37m── Aircraft Status ──[0m
+    Engine #1: [32mOK[0m
+    Engine #2: [32mOK[0m
+    Engine #3: [32mOK[0m
+    Engine #4: [32mOK[0m
+
+[1m[37m── Crew Status ──[0m
+    [32mPilot: Norman Martin — 1 missions, 0 kills[0m
+    [32mCo-Pilot: Paul Roberts — 1 missions, 0 kills[0m
+    [32mNavigator: Leonard Turner — 1 missions, 0 kills[0m
+    [32mBombardier: George Evans — 1 missions, 0 kills[0m
+    [32mEngineer/Top Turret: Herbert Parker — 1 missions, 1 kills[0m
+    [32mRadio Operator: Walter Allen — 1 missions, 0 kills[0m
+    [32mBall Turret Gunner: Arthur Torres — 1 missions, 0 kills[0m
+    [32mLeft Waist Gunner: Roy Torres — 1 missions, 0 kills[0m
+    [32mRight Waist Gunner: Harold Hill — 1 missions, 0 kills[0m
+    [32mTail Gunner: Eugene Mitchell — 1 missions, 0 kills[0m
+
+[1m[37m── Campaign Progress ──[0m
+    [█░░░░░░░░░░░░░░░░░░░░░░░░] 1/25 missions
+

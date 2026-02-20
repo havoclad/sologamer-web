@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>B-17: Queen of the Skies</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ═══ Title Bar ═══ -->
+  <header id="title-bar">
+    <h1>B-17: Queen of the Skies</h1>
+    <span class="subtitle">Avalon Hill Solitaire Bomber Game (1981)</span>
+  </header>
+
+  <!-- ═══ Start Screen ═══ -->
+  <div id="start-screen" class="screen active">
+    <div class="start-box">
+      <div class="start-logo">✈</div>
+      <h2>New Campaign</h2>
+      <div class="form-group">
+        <label for="bomber-name">Bomber Name</label>
+        <input type="text" id="bomber-name" value="Memphis Belle" placeholder="Name your B-17">
+      </div>
+      <div class="form-group">
+        <label for="seed-input">Seed (optional, for replay)</label>
+        <input type="number" id="seed-input" placeholder="Leave blank for random">
+      </div>
+      <button id="btn-start" class="btn btn-primary">Begin Tour of Duty</button>
+    </div>
+  </div>
+
+  <!-- ═══ Game Screen ═══ -->
+  <div id="game-screen" class="screen">
+    <!-- Top bar: campaign info + controls -->
+    <div id="top-bar">
+      <div id="campaign-info">
+        <span id="plane-name" class="plane-name"></span>
+        <span id="mission-count" class="badge">Mission 0/25</span>
+        <span id="seed-display" class="badge dim"></span>
+      </div>
+      <div id="controls">
+        <button id="btn-fly" class="btn btn-primary">✈ Fly Mission</button>
+        <button id="btn-new-mission" class="btn btn-secondary" style="display:none">New Mission</button>
+        <button id="btn-restart" class="btn btn-danger">↻ New Campaign</button>
+      </div>
+    </div>
+
+    <!-- Main layout -->
+    <div id="main-layout">
+      <!-- Left column: map + crew -->
+      <div id="left-col">
+        <!-- Strategic Map -->
+        <div class="panel" id="map-panel">
+          <h3 class="panel-title">Strategic Map</h3>
+          <div id="map-container">
+            <svg id="strategic-map" viewBox="0 0 700 200"></svg>
+          </div>
+        </div>
+
+        <!-- Crew Status -->
+        <div class="panel" id="crew-panel">
+          <h3 class="panel-title">Crew Status</h3>
+          <div id="crew-grid"></div>
+        </div>
+
+        <!-- Aircraft Damage -->
+        <div class="panel" id="aircraft-panel">
+          <h3 class="panel-title">Aircraft Status</h3>
+          <div id="aircraft-status"></div>
+        </div>
+      </div>
+
+      <!-- Center: event log -->
+      <div id="center-col">
+        <div class="panel" id="log-panel">
+          <h3 class="panel-title">Mission Log</h3>
+          <div id="event-log"></div>
+        </div>
+      </div>
+
+      <!-- Right column: combat + detail -->
+      <div id="right-col">
+        <!-- Combat View -->
+        <div class="panel" id="combat-panel">
+          <h3 class="panel-title">Combat View</h3>
+          <div id="combat-view">
+            <svg id="combat-svg" viewBox="0 0 300 300"></svg>
+            <div id="combat-info">No active combat</div>
+          </div>
+        </div>
+
+        <!-- Detail Panel -->
+        <div class="panel" id="detail-panel">
+          <h3 class="panel-title">Mechanics Detail</h3>
+          <div id="detail-content">
+            <p class="placeholder">Click any event in the log to see the underlying dice rolls and table lookups.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
