@@ -8,3 +8,5 @@ export * from './bomb-run.js';
 export * from './landing.js';
 export * from './random-events.js';
 export * from './bailout.js';
+export * from './mission.js';
+export * from './campaign.js';
