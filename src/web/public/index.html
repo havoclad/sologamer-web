@@ -26,6 +26,9 @@
         <label for="seed-input">Seed (optional, for replay)</label>
         <input type="number" id="seed-input" placeholder="Leave blank for random">
       </div>
+      <div class="form-group checkbox-group">
+        <label><input type="checkbox" id="autoplay-toggle"> Autoplay mode (auto-advance through events)</label>
+      </div>
       <button id="btn-start" class="btn btn-primary">Begin Tour of Duty</button>
     </div>
   </div>
@@ -40,10 +43,26 @@
         <span id="seed-display" class="badge dim"></span>
       </div>
       <div id="controls">
-        <button id="btn-fly" class="btn btn-primary">✈ Fly Mission</button>
+        <button id="btn-fly" class="btn btn-primary">✈ Fly Mission 1</button>
         <button id="btn-new-mission" class="btn btn-secondary" style="display:none">New Mission</button>
+        <button id="btn-autoplay" class="btn btn-toggle" title="Toggle autoplay">🎲 Manual</button>
         <button id="btn-restart" class="btn btn-danger">↻ New Campaign</button>
       </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="status-bar">
+      <span id="status-target" class="status-item status-target">Target: —</span>
+      <span class="status-sep">│</span>
+      <span id="status-zone" class="status-item">Current: —</span>
+      <span class="status-sep">│</span>
+      <span id="status-fighter-cover" class="status-item">Cover: —</span>
+      <span class="status-sep">│</span>
+      <span id="status-weather" class="status-item">Weather: —</span>
+      <span class="status-sep">│</span>
+      <span id="status-kills" class="status-item">Kills: 0</span>
+      <span class="status-sep">│</span>
+      <span id="status-losses" class="status-item">Losses: 0</span>
     </div>
 
     <!-- Main layout -->
@@ -71,8 +90,9 @@
         </div>
       </div>
 
-      <!-- Center: event log -->
+      <!-- Center: event log + roll panel -->
       <div id="center-col">
+        <div class="panel" id="roll-panel" style="display:none"></div>
         <div class="panel" id="log-panel">
           <h3 class="panel-title">Mission Log</h3>
           <div id="event-log"></div>

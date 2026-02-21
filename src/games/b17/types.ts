@@ -25,6 +25,32 @@ export interface CrewMember {
 
 export type EngineStatus = 'ok' | 'fire' | 'runaway' | 'oil_leak' | 'supercharger_out' | 'out';
 
+/** Ammo tracking per gun position. Each value = rounds remaining. */
+export interface AmmoState {
+  Nose: number;
+  Port_Cheek: number;
+  Starboard_Cheek: number;
+  Top_Turret: number;
+  Ball_Turret: number;
+  Port_Waist: number;
+  Starboard_Waist: number;
+  Radio: number;
+  Tail: number;
+}
+
+/** Default ammo loadout per gun position (number of shots per mission). */
+export const DEFAULT_AMMO: AmmoState = {
+  Nose: 12,
+  Port_Cheek: 12,
+  Starboard_Cheek: 12,
+  Top_Turret: 16,
+  Ball_Turret: 16,
+  Port_Waist: 12,
+  Starboard_Waist: 12,
+  Radio: 8,
+  Tail: 16,
+};
+
 export interface AircraftState {
   engines: [EngineStatus, EngineStatus, EngineStatus, EngineStatus];
   fuelLeak: boolean;
@@ -38,6 +64,7 @@ export interface AircraftState {
   wingSurfaceDamage: { left: number; right: number };
   controlDamage: { rudder: boolean; elevator: boolean; ailerons: boolean };
   fireExtinguishersUsed: number;
+  ammo: AmmoState;
 }
 
 // ─── Mission ───

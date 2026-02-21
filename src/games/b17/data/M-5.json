@@ -2,47 +2,18 @@
     "Title": "M-5 B-17 AREA SPRAY FIRE",
     "table_type": "roll",
     "rolltype": "1d6",
-    "Description": "B-17 Area Spray Fire (Optional). Roll one die per fighter attacked normally.",
-    "determines": "spray_fire_effect",
+    "Description": "Roll one die per MG using spray fire. (Optional)",
+    "determines": "spray_fire_result",
     "rolls": {
-        "1": {
-            "result": "1 Hit",
-            "description": "Spray fire hits fighter",
-            "notes": ["Roll on Table M-2 for damage"]
-        },
-        "2": {
-            "result": "1 Hit", 
-            "description": "Spray fire hits fighter",
-            "notes": ["Roll on Table M-2 for damage"]
-        },
-        "3": {
-            "result": "Miss",
-            "description": "Spray fire misses fighter",
-            "notes": ["No effect on fighter"]
-        },
-        "4": {
-            "result": "Miss",
-            "description": "Spray fire misses fighter", 
-            "notes": ["No effect on fighter"]
-        },
-        "5": {
-            "result": "Gun Jammed",
-            "description": "Machine gun jams",
-            "notes": ["Gun is jammed and cannot fire for remainder of mission unless repaired"]
-        },
-        "6": {
-            "result": "Gun Jammed",
-            "description": "Machine gun jams",
-            "notes": ["Gun is jammed and cannot fire for remainder of mission unless repaired"]
-        }
+        "1": { "result": "MG Jams", "description": "MG Jams / Fighter attacks normally" },
+        "2": { "result": "Break Off", "description": "Fighter breaks off without firing" },
+        "3": { "result": "Normal", "description": "Fighter attacks normally" },
+        "4": { "result": "Break Off", "description": "Fighter breaks off without firing" },
+        "5": { "result": "Normal", "description": "Fighter attacks normally" },
+        "6": { "result": "Hit", "description": "Fighter hit — Roll for damage to fighter on Table M-2" }
     },
     "notes": [
-        "Area Spray Fire represents the 'hosing' of an area with a long burst of an unaimed spray of bullets.",
-        "Mark off three bursts of ammunition for each gun position that sprays.",
-        "When the spraying gun fires, resolve its fire on Table M-5 instead of Table M-1.",
-        "Area Spray Fire may not be used against any 10:30, 12, 1:30, or Vertical Dive attacks.",
-        "It may be used against any 3, 6, 9, or Vertical Climb attacks.",
-        "Ace Gunners employing Area Spray Fire do not add 1 to their die roll.",
-        "Jammed guns may be repaired during turns when no fighter waves appear by having a crew member spend the turn working on the gun. Roll 1D: 1-4 = Gun repaired; 5-6 = Still jammed, try again next opportunity."
+        "a) Spray Fire may only be used against 3, 6, 9, or Vertical Climb attacks, not against 12, 1:30, 10:30 or Vertical Dive attacks.",
+        "b) A gunner may attempt to fix a jammed gun each time the B-17 enters a new zone. Roll one die; 1,2- gun fixed; 3,4,5- gun remains jammed; 6- gun broken permanently."
     ]
 }

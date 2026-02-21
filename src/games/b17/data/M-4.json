@@ -6,93 +6,44 @@
     "determines": "result",
     "table_input": "fighter_cover",
     "rolls": {
+        "0": {
+            "Poor": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Fair": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Good": { "result": "0(0)", "description": "0 fighters driven off" }
+        },
         "1": {
-            "Poor": {
-                "result": "1(0)",
-                "description": "1 fighter driven off initial attack, 0 on successive"
-            },
-            "Fair": {
-                "result": "1(0)",
-                "description": "1 fighter driven off initial attack, 0 on successive"
-            },
-            "Good": {
-                "result": "1(1)",
-                "description": "1 fighter driven off initial attack, 1 on successive"
-            }
+            "Poor": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Fair": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Good": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" }
         },
         "2": {
-            "Poor": {
-                "result": "1(0)",
-                "description": "1 fighter driven off initial attack, 0 on successive"
-            },
-            "Fair": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            },
-            "Good": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            }
+            "Poor": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Fair": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Good": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" }
         },
         "3": {
-            "Poor": {
-                "result": "1(0)",
-                "description": "1 fighter driven off initial attack, 0 on successive"
-            },
-            "Fair": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            },
-            "Good": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            }
+            "Poor": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Fair": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" },
+            "Good": { "result": "2(1)", "description": "2 fighters driven off initial attack, 1 on successive" }
         },
         "4": {
-            "Poor": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            },
-            "Fair": {
-                "result": "3(1)",
-                "description": "3 fighters driven off initial attack, 1 on successive"
-            },
-            "Good": {
-                "result": "3(2)",
-                "description": "3 fighters driven off initial attack, 2 on successive"
-            }
+            "Poor": { "result": "0(0)", "description": "0 fighters driven off" },
+            "Fair": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" },
+            "Good": { "result": "2(1)", "description": "2 fighters driven off initial attack, 1 on successive" }
         },
         "5": {
-            "Poor": {
-                "result": "2(1)",
-                "description": "2 fighters driven off initial attack, 1 on successive"
-            },
-            "Fair": {
-                "result": "3(2)",
-                "description": "3 fighters driven off initial attack, 2 on successive"
-            },
-            "Good": {
-                "result": "4(2)",
-                "description": "4 fighters driven off initial attack, 2 on successive"
-            }
+            "Poor": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" },
+            "Fair": { "result": "2(1)", "description": "2 fighters driven off initial attack, 1 on successive" },
+            "Good": { "result": "3(2)", "description": "3 fighters driven off initial attack, 2 on successive" }
         },
         "6": {
-            "Poor": {
-                "result": "3(2)",
-                "description": "3 fighters driven off initial attack, 2 on successive"
-            },
-            "Fair": {
-                "result": "4(2)",
-                "description": "4 fighters driven off initial attack, 2 on successive"
-            },
-            "Good": {
-                "result": "5(3)",
-                "description": "5 fighters driven off initial attack, 3 on successive"
-            }
+            "Poor": { "result": "1(0)", "description": "1 fighter driven off initial attack, 0 on successive" },
+            "Fair": { "result": "2(1)", "description": "2 fighters driven off initial attack, 1 on successive" },
+            "Good": { "result": "3(2)", "description": "3 fighters driven off initial attack, 2 on successive" }
         }
     },
     "notes": [
-        "Notes: The first number is the number of fighters driven off before the initial attack and the second number if attacked again (successive attack phase).",
+        "Notes: The first number is the number of fighters driven off before the initial attack phase. The number in parentheses is the number of fighters driven off in Successive Attack phases.",
         "Aggressive 'Little Friends' (Random Event): Roll for fighter cover defense +1 for remainder of the mission."
     ]
 }

@@ -1,46 +1,19 @@
 {
     "Title": "M-2 HIT DAMAGE AGAINST GERMAN FIGHTER",
-    "table_type": "roll", 
+    "table_type": "roll",
     "rolltype": "1d6",
-    "Description": "Roll one die per fighter damaged and breaks off after this attack (-2)",
-    "determines": "result",
+    "Description": "Roll one die for each hit result from Table M-1.",
+    "determines": "fighter_damage",
     "rolls": {
-        "1": {
-            "result": "FCA",
-            "description": "Fighter damaged and breaks off after this attack (-1)",
-            "notes": ["Fighter continues attack with offensive fire roll -1"]
-        },
-        "2": {
-            "result": "FCA", 
-            "description": "Fighter damaged and breaks off after this attack (-1)",
-            "notes": ["Fighter continues attack with offensive fire roll -1"]
-        },
-        "3": {
-            "result": "FCA",
-            "description": "Fighter damaged and breaks off after this attack (-1)", 
-            "notes": ["Fighter continues attack with offensive fire roll -1"]
-        },
-        "4": {
-            "result": "FBOA",
-            "description": "Fighter breaks off attack (-2)",
-            "notes": ["Fighter breaks off attack and is removed from play"]
-        },
-        "5": {
-            "result": "FBOA",
-            "description": "Fighter breaks off attack (-2)",
-            "notes": ["Fighter breaks off attack and is removed from play"]
-        },
-        "6": {
-            "result": "Destroyed",
-            "description": "Fighter destroyed",
-            "notes": ["Fighter is destroyed and removed from play"]
-        }
+        "1": { "result": "FCA", "description": "Fighter damaged but continues attack at -1" },
+        "2": { "result": "FCA", "description": "Fighter damaged but continues attack at -1" },
+        "3": { "result": "FBOA", "description": "Fighter damaged and breaks off after this attack -2" },
+        "4": { "result": "FBOA", "description": "Fighter damaged and breaks off after this attack -2" },
+        "5": { "result": "Destroyed", "description": "Fighter destroyed and may not fire at B-17" },
+        "6": { "result": "Destroyed", "description": "Fighter destroyed and may not fire at B-17" }
     },
     "notes": [
-        "(a) FW 190 = FW 190, and 109 = Me 109, 110 = Me 110.",
-        "(b) Any twin guns (Ball and Top Turret, and Tail positions) add +1 to die roll when checking for damage against fighters, unless fighter type is specifically mentioned.",
-        "2 or more FCA = FBOA",
-        "2 or more FBOA = Destroyed", 
-        "FCA + FBOA = FBOA"
+        "a) Twin guns (Ball and Top Turrets and Tail Guns) add +1 to die roll, except against FW 190.",
+        "b) All damage die rolls against FW 190 are -1, unless firing gun was a twin gun which roll damage normally."
     ]
 }

@@ -21,7 +21,7 @@ function makeAircraft(overrides: Partial<AircraftState> = {}): AircraftState {
     radioOut: false, tailWheelInop: false,
     wingSurfaceDamage: { left: 0, right: 0 },
     controlDamage: { rudder: false, elevator: false, ailerons: false },
-    fireExtinguishersUsed: 0,
+    fireExtinguishersUsed: 0, ammo: { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
     ...overrides,
   };
 }

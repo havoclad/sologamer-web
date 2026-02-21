@@ -23,19 +23,80 @@ let session: GameSession | null = null;
 
 /** Start a new campaign */
 app.post('/api/game/new', (req, res) => {
-  const { seed, bomberName } = req.body ?? {};
+  const { seed, bomberName, autoplay } = req.body ?? {};
   session = new GameSession(
     seed ? Number(seed) : undefined,
     bomberName || undefined,
   );
+  if (autoplay) session.setAutoplay(true);
   res.json({
     ok: true,
     seed: session.getSeed(),
     state: session.getState(),
+    autoplay: session.isAutoplay(),
   });
 });
 
-/** Advance one step (runs full mission, returns all events) */
+/** Toggle autoplay mode */
+app.post('/api/game/autoplay', (req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game.' });
+  }
+  const { enabled } = req.body ?? {};
+  session.setAutoplay(!!enabled);
+  res.json({ ok: true, autoplay: session.isAutoplay() });
+});
+
+/** Start a mission — returns first pending roll or events */
+app.post('/api/game/start-mission', (_req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game. POST /api/game/new first.' });
+  }
+  const result = session.startMission();
+  res.json({
+    ok: true,
+    events: result.events,
+    pendingRoll: result.pendingRoll,
+    complete: result.complete,
+    state: session.getState(),
+  });
+});
+
+/** Submit a roll value — advances the mission */
+app.post('/api/game/submit-roll', (req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game.' });
+  }
+  const { value } = req.body ?? {};
+  if (value === undefined || value === null) {
+    return res.status(400).json({ error: 'Missing roll value.' });
+  }
+  const result = session.submitRoll(Number(value));
+  res.json({
+    ok: true,
+    events: result.events,
+    pendingRoll: result.pendingRoll,
+    complete: result.complete,
+    state: session.getState(),
+  });
+});
+
+/** Auto-step — auto-roll and advance */
+app.post('/api/game/auto-step', (_req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game.' });
+  }
+  const result = session.autoStep();
+  res.json({
+    ok: true,
+    events: result.events,
+    pendingRoll: result.pendingRoll,
+    complete: result.complete,
+    state: session.getState(),
+  });
+});
+
+/** Backward compat: run full mission eagerly */
 app.post('/api/game/step', (_req, res) => {
   if (!session) {
     return res.status(400).json({ error: 'No active game. POST /api/game/new first.' });
@@ -49,7 +110,7 @@ app.post('/api/game/step', (_req, res) => {
   });
 });
 
-/** Auto-run (same as step for now) */
+/** Backward compat: auto-run */
 app.post('/api/game/auto', (_req, res) => {
   if (!session) {
     return res.status(400).json({ error: 'No active game.' });
@@ -63,15 +124,21 @@ app.post('/api/game/auto', (_req, res) => {
   });
 });
 
-/** Get current state */
+/** Get current state — always 200, used for session reconnect on refresh */
 app.get('/api/game/state', (_req, res) => {
   if (!session) {
-    return res.status(400).json({ error: 'No active game.' });
+    return res.json({ ok: true, inProgress: false });
   }
   res.json({
     ok: true,
+    inProgress: true,
     state: session.getState(),
+    events: session.getEvents(),
     missionInProgress: session.isMissionInProgress(),
+    pendingRoll: session.getCurrentPendingRoll(),
+    seed: session.getSeed(),
+    bomberName: session.getState().campaign.planeName,
+    autoplay: session.isAutoplay(),
   });
 });
 

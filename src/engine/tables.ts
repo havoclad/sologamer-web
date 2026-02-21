@@ -218,4 +218,37 @@ export class TableStore {
     const table = this.getRoll(name);
     return table?.entries.get(String(value));
   }
+
+  /** Lookup with a specific roll value (for player-provided rolls), applying modifier and clamping */
+  lookupWithValue(name: string, rollValue: number, modifier = 0): { roll: number; modified: number; entry: RollEntry } | undefined {
+    const table = this.getRoll(name);
+    if (!table) return undefined;
+    const modified = Math.max(table.minRoll, Math.min(table.maxRoll, rollValue + modifier));
+    const entry = table.entries.get(String(modified));
+    if (!entry) return undefined;
+    return { roll: rollValue, modified, entry };
+  }
+
+  /** Get display-friendly table data: array of { roll, columns } for UI rendering */
+  getTableDisplayData(name: string): { title: string; rolltype: string; rows: Array<{ roll: string; columns: Record<string, string> }> } | undefined {
+    const table = this.getRoll(name);
+    if (!table) return undefined;
+
+    // Group entries back by original roll ranges from raw data
+    const rows: Array<{ roll: string; columns: Record<string, string> }> = [];
+    if (table.raw.rolls) {
+      for (const [key, entry] of Object.entries(table.raw.rolls)) {
+        const columns: Record<string, string> = {};
+        for (const [k, v] of Object.entries(entry)) {
+          if (k === 'notes' || k === 'next' || k === 'damage_effects' || k === 'set' || k === 'fighters') continue;
+          if (typeof v === 'string' || typeof v === 'number') {
+            columns[k] = String(v);
+          }
+        }
+        rows.push({ roll: key, columns });
+      }
+    }
+
+    return { title: table.title, rolltype: table.rolltype, rows };
+  }
 }

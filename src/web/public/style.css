@@ -154,13 +154,36 @@ body {
 .badge.dim { color: var(--text-dim); }
 #controls { display: flex; gap: 8px; }
 
+/* ─── Status Bar ─── */
+#status-bar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 16px;
+  background: linear-gradient(180deg, #3a3a2a 0%, #2e2e22 100%);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+#game-screen.active #status-bar { display: flex; }
+.status-item { color: var(--text); }
+.status-target {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(184, 155, 74, 0.4);
+}
+.status-sep { color: var(--border); font-size: 11px; }
+
 /* ─── Main Layout ─── */
 #main-layout {
   display: grid;
   grid-template-columns: 280px 1fr 300px;
   gap: 8px;
   padding: 8px;
-  height: calc(100vh - 90px);
+  height: calc(100vh - 120px);
   overflow: hidden;
 }
 
@@ -391,4 +414,320 @@ body {
 }
 .log-entry.new {
   animation: flash-in 0.8s ease-out;
+}
+
+/* ─── Roll Button ─── */
+.btn-roll {
+  background: #b89b4a;
+  color: #1a1a14;
+  font-size: 1.1rem;
+  font-weight: bold;
+  padding: 8px 24px;
+  border: 2px solid #d4b85a;
+  cursor: pointer;
+}
+.btn-roll:hover { background: #d4b85a; }
+.btn-roll.pulse {
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(184,155,74,0.4); }
+  50% { box-shadow: 0 0 16px rgba(184,155,74,0.8); }
+}
+
+/* ─── Autoplay Toggle ─── */
+.btn-toggle {
+  background: #2a2a1a;
+  color: #8a8a6a;
+  border: 1px solid #3a3a2a;
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-toggle.active {
+  background: #3a4a2a;
+  color: #b89b4a;
+  border-color: #5a6a3a;
+}
+
+.checkbox-group {
+  text-align: left;
+}
+.checkbox-group label {
+  color: #8a8a6a;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* ─── Ammo Display ─── */
+.ammo-section {
+  margin-top: 8px;
+  border-top: 1px solid #3a3a2a;
+  padding-top: 6px;
+}
+.ammo-header {
+  color: #8a8a6a;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.ammo-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ammo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+.ammo-gun {
+  width: 80px;
+  color: #8a8a6a;
+  text-align: right;
+  flex-shrink: 0;
+}
+.ammo-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: #2a2a1a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ammo-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+.ammo-ok { background: #4a8a4a; }
+.ammo-low { background: #b89b4a; }
+.ammo-critical { background: #c04030; }
+.ammo-count {
+  width: 20px;
+  color: #6a6a4a;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── Modifier Badges ─── */
+.modifier {
+  display: inline;
+  font-size: 0.8em;
+  color: #b89b4a;
+  margin-left: 2px;
+}
+
+/* ─── Expandable Table Lookup ─── */
+details.table-lookup {
+  margin-top: 4px;
+}
+details.table-lookup summary {
+  cursor: pointer;
+  color: #6a6a4a;
+  font-size: 0.8rem;
+}
+details.table-lookup summary:hover { color: #b89b4a; }
+.lookup-table {
+  width: 100%;
+  font-size: 0.75rem;
+  color: #8a8a6a;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+.lookup-table td {
+  padding: 1px 6px;
+  border-bottom: 1px solid #2a2a1a;
+}
+
+/* ═══ Roll Panel ═══ */
+
+#roll-panel {
+  border: 2px solid var(--accent);
+  background: var(--bg-panel);
+  margin-bottom: 8px;
+  padding: 12px;
+  border-radius: 6px;
+  animation: rollPanelAppear 0.3s ease;
+}
+
+@keyframes rollPanelAppear {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.roll-prompt {
+  margin-bottom: 10px;
+}
+
+.roll-purpose {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--accent);
+  font-family: 'Georgia', serif;
+  margin-bottom: 4px;
+}
+
+.roll-description {
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.roll-modifier {
+  color: var(--warn);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.roll-table-display {
+  max-height: none;
+  overflow-y: visible;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.roll-lookup-table {
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--text);
+  border-collapse: collapse;
+}
+
+.roll-lookup-table thead th {
+  background: var(--bg-header);
+  color: var(--text-bright);
+  padding: 4px 8px;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.roll-lookup-table tbody tr {
+  transition: background 0.2s;
+}
+
+.roll-lookup-table tbody tr.clickable-row {
+  cursor: pointer;
+}
+
+.roll-lookup-table tbody tr.clickable-row:hover {
+  background: rgba(184, 155, 74, 0.2);
+  border-left: 3px solid var(--accent);
+}
+
+.roll-lookup-table tbody tr.greyed-out-row {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.roll-lookup-table tbody tr:hover {
+  background: rgba(184, 155, 74, 0.1);
+}
+
+.roll-lookup-table tbody tr.highlighted {
+  background: rgba(184, 155, 74, 0.3) !important;
+  border-left: 3px solid var(--accent);
+  animation: highlightPulse 0.5s ease;
+}
+
+@keyframes highlightPulse {
+  0% { background: rgba(184, 155, 74, 0.1); }
+  50% { background: rgba(184, 155, 74, 0.5); }
+  100% { background: rgba(184, 155, 74, 0.3); }
+}
+
+.roll-lookup-table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid #2a2a1a;
+}
+
+.roll-lookup-table td.roll-value {
+  font-weight: bold;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.roll-input-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg-dark);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.roll-manual {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.roll-manual label {
+  color: var(--text);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.roll-input-field {
+  width: 5em;
+  padding: 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: monospace;
+  text-align: center;
+}
+
+.roll-input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 4px rgba(184, 155, 74, 0.3);
+}
+
+.roll-input-field.invalid {
+  border-color: var(--bad);
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.btn-roll-submit {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+}
+
+.roll-divider {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.btn-roll-auto {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  background: var(--olive);
+  border: 1px solid var(--accent-dim);
+  color: var(--text-bright);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.btn-roll-auto:hover {
+  background: var(--accent-dim);
 }

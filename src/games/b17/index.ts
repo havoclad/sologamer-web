@@ -9,6 +9,7 @@ import { B17_PHASES, type B17Phase } from './phases.js';
 import type {
   B17GameState, CampaignState, AircraftState, CrewMember, CrewPosition,
 } from './types.js';
+import { DEFAULT_AMMO } from './types.js';
 
 const CREW_POSITIONS: CrewPosition[] = [
   'pilot', 'copilot', 'navigator', 'bombardier',
@@ -30,6 +31,7 @@ function createDefaultAircraft(): AircraftState {
     wingSurfaceDamage: { left: 0, right: 0 },
     controlDamage: { rudder: false, elevator: false, ailerons: false },
     fireExtinguishersUsed: 0,
+    ammo: { ...DEFAULT_AMMO },
   };
 }
 

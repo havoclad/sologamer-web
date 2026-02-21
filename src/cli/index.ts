@@ -393,7 +393,7 @@ function flyMission(
       }
 
       if (fighters.length === 0) {
-        good('  All fighters driven off by escort!');
+        good('  All fighters driven off by fighter cover!');
         continue;
       }
 

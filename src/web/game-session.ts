@@ -1,8 +1,9 @@
 /**
  * Game Session — wraps the B-17 engine for step-by-step web play.
- * 
- * Runs the full mission eagerly but captures a rich event log with
- * table/roll details. The frontend steps through events one at a time.
+ *
+ * Uses a generator-based architecture: the mission execution yields
+ * PendingRoll objects at each table lookup. The player provides a roll
+ * value (manual or auto-generated), and the generator resumes.
  */
 
 import { createRNG, type RNG } from '../engine/rng.js';
@@ -10,19 +11,20 @@ import { TableStore } from '../engine/tables.js';
 import { b17Module, createInitialB17State } from '../games/b17/index.js';
 import type {
   B17GameState, CrewMember, CrewPosition, AircraftState,
-  WoundSeverity, MissionState,
+  WoundSeverity, MissionState, AmmoState,
 } from '../games/b17/types.js';
+import { DEFAULT_AMMO } from '../games/b17/types.js';
 import type { B17Phase } from '../games/b17/phases.js';
 import {
-  setupMission, rollWeather, getZoneInfo, getTargetZone,
-  type MissionSetupResult, type TargetInfo,
+  getZoneInfo, getTargetZone,
+  type TargetInfo, type ZoneInfo,
 } from '../games/b17/rules/mission-setup.js';
 import {
-  rollFighterCover, hasFighterCover, turnsInZone, getFighterWaveModifier,
+  hasFighterCover, turnsInZone, getFighterWaveModifier,
   mustAbort, enginesOut, type FighterCoverLevel,
 } from '../games/b17/rules/zone-movement.js';
 import {
-  rollFighterWaves, rollAttackingFightersWithReroll, addLeadTailExtraFighter,
+  addLeadTailExtraFighter,
   type Fighter,
 } from '../games/b17/rules/fighter-encounters.js';
 import {
@@ -37,7 +39,19 @@ import {
   type ShellHitLocation, type DamageResult,
 } from '../games/b17/rules/damage.js';
 
+// ─── Pluralization helper ───
+
+function plural(count: number, singular: string, pluralForm?: string): string {
+  if (count === 1) return `1 ${singular}`;
+  return `${count} ${pluralForm ?? singular + 's'}`;
+}
+
 // ─── Rich event types for the frontend ───
+
+export interface RollModifier {
+  source: string;
+  value: number;
+}
 
 export interface RollDetail {
   table: string;
@@ -46,8 +60,11 @@ export interface RollDetail {
   rolled: number;
   modifier?: number;
   modifiedRoll?: number;
+  modifiers?: RollModifier[];
   result: string;
   description?: string;
+  /** Full table data for expandable lookup */
+  tableData?: Record<string, string>;
 }
 
 export interface GameEvent {
@@ -65,6 +82,18 @@ export interface GameEvent {
     aircraft: AircraftState;
     mission: Partial<MissionState> | null;
   };
+}
+
+/** Pending roll — the engine is waiting for the player to provide a dice result */
+export interface PendingRoll {
+  id: number;
+  tableId: string;
+  tableName: string;
+  diceType: string;       // '1d6', '2d6', 'd6d6'
+  purpose: string;        // Human-readable: "Target for Mission 1"
+  modifier: number;
+  /** Full table rows for display */
+  tableRows: Array<{ roll: string; columns: Record<string, string> }>;
 }
 
 // ─── Crew name generation ───
@@ -125,8 +154,85 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     engines: [...ac.engines] as AircraftState['engines'],
     wingSurfaceDamage: { ...ac.wingSurfaceDamage },
     controlDamage: { ...ac.controlDamage },
+    ammo: { ...ac.ammo },
   };
 }
+
+// ─── Normalize dice type from JSON format ───
+function normalizeDiceType(rolltype: string): string {
+  switch (rolltype) {
+    case 'd6': return '1d6';
+    case '1d6': return '1d6';
+    case '2d6': return '2d6';
+    case 'd6d6': return 'd6d6';
+    default: return rolltype;
+  }
+}
+
+/** Build display rows for M-4 filtered by a specific cover level */
+function buildM4Rows(tables: TableStore, coverLevel: string): PendingRoll['tableRows'] {
+  const table = tables.getRoll('M-4');
+  if (!table?.raw?.rolls) return [];
+  const rows: PendingRoll['tableRows'] = [];
+  for (const [key, entry] of Object.entries(table.raw.rolls as Record<string, any>)) {
+    const levelData = entry[coverLevel];
+    if (levelData) {
+      rows.push({ roll: key, columns: { result: String(levelData.result ?? ''), description: String(levelData.description ?? '') } });
+    }
+  }
+  return rows;
+}
+
+/** Build display rows for O-3 filtered by a specific flak level */
+function buildO3Rows(tables: TableStore, flakLevel: string): PendingRoll['tableRows'] {
+  const table = tables.getRoll('O-3');
+  if (!table?.raw?.rolls) return [];
+  const rows: PendingRoll['tableRows'] = [];
+  for (const [key, entry] of Object.entries(table.raw.rolls as Record<string, any>)) {
+    const levelData = entry[flakLevel];
+    if (levelData) {
+      const hits = parseInt(levelData.flak_hits ?? '0', 10);
+      rows.push({ roll: key, columns: { result: hits > 0 ? 'Hit' : 'Miss' } });
+    }
+  }
+  return rows;
+}
+
+/** Generate a random roll value for a given dice type */
+function autoRoll(diceType: string, rng: RNG): number {
+  switch (diceType) {
+    case '2d6': return rng.twod6();
+    case 'd6d6': return rng.d6d6();
+    default: return rng.d6();
+  }
+}
+
+// ─── Fixed RNG for player-provided rolls ───
+
+import type { RNGState } from '../engine/rng.js';
+
+/**
+ * Create an RNG that returns a fixed value for the first random call,
+ * then delegates to the fallback RNG for subsequent calls.
+ * This lets us pass a player-provided roll value to existing helper functions.
+ */
+function createFixedRng(value: number, fallback: RNG): RNG {
+  let used = false;
+  return {
+    next() { return fallback.next(); },
+    int(min: number, max: number) { if (!used) { used = true; return value; } return fallback.int(min, max); },
+    roll(count: number, sides: number) { if (!used) { used = true; return value; } return fallback.roll(count, sides); },
+    d6() { if (!used) { used = true; return value; } return fallback.d6(); },
+    twod6() { if (!used) { used = true; return value; } return fallback.twod6(); },
+    d6d6() { if (!used) { used = true; return value; } return fallback.d6d6(); },
+    percentile() { return fallback.percentile(); },
+    getState() { return fallback.getState(); },
+    setState(s: RNGState) { fallback.setState(s); },
+  };
+}
+
+// ─── Yield type for the mission generator ───
+type MissionYield = { type: 'events'; events: GameEvent[] } | { type: 'pending'; roll: PendingRoll; events: GameEvent[] };
 
 // ─── Session ───
 
@@ -138,6 +244,15 @@ export class GameSession {
   private eventId = 0;
   private seed: number;
   private missionInProgress = false;
+  private autoplay = false;
+  private pendingRollId = 0;
+
+  /** Generator for step-by-step mission execution */
+  private missionGen: Generator<MissionYield, void, number | undefined> | null = null;
+  /** Current pending roll waiting for player input */
+  private currentPendingRoll: PendingRoll | null = null;
+  /** Events buffered since last yield */
+  private eventBuffer: GameEvent[] = [];
 
   constructor(seed?: number, bomberName?: string) {
     this.seed = seed ?? Date.now();
@@ -152,16 +267,13 @@ export class GameSession {
   }
 
   getSeed(): number { return this.seed; }
-
   getState(): B17GameState { return this.state; }
-
   getEvents(): GameEvent[] { return this.events; }
-
-  getEventsFrom(fromId: number): GameEvent[] {
-    return this.events.filter(e => e.id >= fromId);
-  }
-
+  getEventsFrom(fromId: number): GameEvent[] { return this.events.filter(e => e.id >= fromId); }
   isMissionInProgress(): boolean { return this.missionInProgress; }
+  isAutoplay(): boolean { return this.autoplay; }
+  setAutoplay(val: boolean): void { this.autoplay = val; }
+  getCurrentPendingRoll(): PendingRoll | null { return this.currentPendingRoll; }
 
   private emit(
     phase: string, message: string, category: GameEvent['category'],
@@ -181,27 +293,106 @@ export class GameSession {
       };
     }
     this.events.push(event);
+    this.eventBuffer.push(event);
     return event;
   }
 
-  /** Run next step — for now runs a full mission in one go and returns all events */
-  runMission(): { events: GameEvent[]; complete: boolean } {
-    if (this.missionInProgress) {
-      return { events: [], complete: false };
-    }
-
-    const startId = this.eventId;
-    this.missionInProgress = true;
-    this._executeMission();
-    this.missionInProgress = false;
-
+  /** Create a PendingRoll for a table lookup */
+  private createPendingRoll(tableId: string, purpose: string, modifier = 0): PendingRoll {
+    const tableDisplay = this.tables.getTableDisplayData(tableId);
+    const table = this.tables.getRoll(tableId);
     return {
-      events: this.events.filter(e => e.id >= startId),
-      complete: true,
+      id: this.pendingRollId++,
+      tableId,
+      tableName: tableDisplay?.title ?? tableId,
+      diceType: normalizeDiceType(tableDisplay?.rolltype ?? table?.rolltype ?? '1d6'),
+      purpose,
+      modifier,
+      tableRows: tableDisplay?.rows ?? [],
     };
   }
 
-  private _executeMission(): void {
+  /** Start a new mission — returns first pending roll or all events if autoplay */
+  startMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+    if (this.missionInProgress) {
+      return { events: [], pendingRoll: this.currentPendingRoll, complete: false };
+    }
+
+    this.missionInProgress = true;
+    this.eventBuffer = [];
+    this.missionGen = this._executeMission();
+
+    return this._advanceMission();
+  }
+
+  /** Submit a roll value and advance to next step */
+  submitRoll(value: number): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+    if (!this.missionGen || !this.currentPendingRoll) {
+      return { events: [], pendingRoll: null, complete: true };
+    }
+
+    this.eventBuffer = [];
+    this.currentPendingRoll = null;
+
+    const result = this.missionGen.next(value);
+    return this._processGeneratorResult(result);
+  }
+
+  /** Auto-roll and advance (for autoplay mode) */
+  autoStep(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+    if (!this.missionGen || !this.currentPendingRoll) {
+      return { events: [], pendingRoll: null, complete: true };
+    }
+
+    const diceType = this.currentPendingRoll.diceType;
+    const rollValue = autoRoll(diceType, this.rng);
+    return this.submitRoll(rollValue);
+  }
+
+  /** Run entire mission eagerly (for backwards compat / autoplay) */
+  runMission(): { events: GameEvent[]; complete: boolean } {
+    const startResult = this.startMission();
+    const allEvents = [...startResult.events];
+
+    while (startResult.pendingRoll || this.currentPendingRoll) {
+      const stepResult = this.autoStep();
+      allEvents.push(...stepResult.events);
+      if (stepResult.complete) break;
+    }
+
+    return { events: allEvents, complete: true };
+  }
+
+  private _advanceMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+    if (!this.missionGen) return { events: [], pendingRoll: null, complete: true };
+
+    const result = this.missionGen.next(undefined);
+    return this._processGeneratorResult(result);
+  }
+
+  private _processGeneratorResult(result: IteratorResult<MissionYield, void>): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+    if (result.done) {
+      this.missionGen = null;
+      this.currentPendingRoll = null;
+      this.missionInProgress = false;
+      return { events: this.eventBuffer, pendingRoll: null, complete: true };
+    }
+
+    const yielded = result.value;
+    if (yielded.type === 'pending') {
+      this.currentPendingRoll = yielded.roll;
+      return { events: yielded.events, pendingRoll: yielded.roll, complete: false };
+    }
+
+    // type === 'events' — shouldn't happen with current design but handle it
+    return { events: yielded.events, pendingRoll: null, complete: false };
+  }
+
+  /**
+   * Mission generator — yields PendingRoll at each table lookup.
+   * Receives the player's roll value via generator.next(value).
+   */
+  private *_executeMission(): Generator<MissionYield, void, number | undefined> {
     const missionNumber = this.state.campaign.missionsCompleted + 1;
     const rng = this.rng;
     const tables = this.tables;
@@ -218,75 +409,131 @@ export class GameSession {
     // ═══ SETUP ═══
     this.emit('SETUP', `Mission #${missionNumber} begins`, 'setup', 'info', undefined, undefined, undefined, true);
 
-    let setup: MissionSetupResult;
-    try {
-      setup = setupMission(missionNumber, rng, tables);
-    } catch (e) {
-      this.emit('SETUP', `Failed to set up mission: ${e}`, 'system', 'critical');
+    // ── Target selection ──
+    let targetTableName: string;
+    let targetTableDesc: string;
+    if (missionNumber <= 5) {
+      targetTableName = 'G-1';
+      targetTableDesc = `Missions 1-5`;
+    } else if (missionNumber <= 10) {
+      targetTableName = 'G-2';
+      targetTableDesc = `Missions 6-10`;
+    } else {
+      targetTableName = 'G-3';
+      targetTableDesc = `Missions 11-25`;
+    }
+
+    // Yield pending roll for target selection
+    this.eventBuffer = [];
+    const targetPending = this.createPendingRoll(targetTableName, `Target for Mission ${missionNumber}`);
+    const targetRollValue: number = (yield { type: 'pending', roll: targetPending, events: this.eventBuffer }) ?? autoRoll(targetPending.diceType, rng);
+    this.eventBuffer = [];
+
+    const targetResult = tables.lookupWithValue(targetTableName, targetRollValue);
+    if (!targetResult) {
+      this.emit('SETUP', `Failed to look up target on ${targetTableName}`, 'system', 'critical');
       return;
     }
 
-    const targetZone = setup.targetZone;
-    const squadronMod = setup.squadronPosition?.b1b2Modifier ?? 0;
+    const target: TargetInfo = {
+      name: targetResult.entry.Target as string,
+      type: targetResult.entry.Type as string,
+    };
 
-    const formLabel = setup.formationPosition === 'lead' ? 'Lead Bomber'
-      : setup.formationPosition === 'tail' ? 'Tail Bomber' : 'Middle';
+    let targetZone: number;
+    try {
+      targetZone = getTargetZone(target.name, tables);
+    } catch {
+      targetZone = 5; // fallback
+    }
 
-    this.emit('SETUP', `Target: ${setup.target.name} (${setup.target.type})`, 'setup', 'info',
+    this.emit('SETUP', `Target: ${target.name} (${target.type})`, 'setup', 'info',
       undefined, undefined, [{
-        table: missionNumber <= 5 ? 'G-1' : missionNumber <= 10 ? 'G-2' : 'G-3',
-        rollType: '2d6',
-        rolled: 0,
-        result: setup.target.name,
-        description: `Target selection for missions ${missionNumber <= 5 ? '1-5' : missionNumber <= 10 ? '6-10' : '11-25'}`,
+        table: targetTableName, tableTitle: targetTableDesc,
+        rollType: normalizeDiceType(targetPending.diceType),
+        rolled: targetRollValue, result: `${target.name} (${target.type})`,
+        description: `Target selection for ${targetTableDesc}`,
       }]);
+
+    // ── Formation position (G-4) ──
+    const formPending = this.createPendingRoll('G-4', 'Formation position within squadron');
+    const formRollValue: number = (yield { type: 'pending', roll: formPending, events: this.eventBuffer }) ?? autoRoll(formPending.diceType, rng);
+    this.eventBuffer = [];
+
+    const formResult = tables.lookupWithValue('G-4', formRollValue);
+    let formationPosition: 'lead' | 'middle' | 'tail' = 'middle';
+    let extraFighterPerWave = false;
+    if (formResult) {
+      const pos = formResult.entry.formation_position as string;
+      if (pos === 'Lead Bomber') { formationPosition = 'lead'; extraFighterPerWave = true; }
+      else if (pos === 'Tail Bomber') { formationPosition = 'tail'; extraFighterPerWave = true; }
+    }
+
+    const formLabel = formationPosition === 'lead' ? 'Lead Bomber'
+      : formationPosition === 'tail' ? 'Tail Bomber' : 'Middle';
 
     this.emit('SETUP', `Formation: ${formLabel}`, 'setup', 'info',
       undefined, undefined, [{
-        table: 'G-4', rollType: '2d6', rolled: 0, result: formLabel,
+        table: 'G-4', rollType: '2d6', rolled: formRollValue, result: formLabel,
         description: 'Formation position within squadron',
       }]);
 
-    if (setup.squadronPosition) {
-      const sqLabel = setup.squadronPosition.position === 'high' ? 'High'
-        : setup.squadronPosition.position === 'low' ? 'Low' : 'Middle';
-      this.emit('SETUP', `Squadron: ${sqLabel} (B-1/B-2 mod: ${squadronMod >= 0 ? '+' : ''}${squadronMod})`, 'setup', 'info',
-        undefined, undefined, [{
-          table: 'G-4a', rollType: '1d6', rolled: 0, result: sqLabel,
-          description: 'Squadron position (missions 6+)',
-        }]);
+    // ── Squadron position (G-4a, missions 6+ only) ──
+    let squadronMod = 0;
+    let squadronPosition: { position: string; b1b2Modifier: number } | null = null;
+
+    if (missionNumber > 5) {
+      const sqPending = this.createPendingRoll('G-4a', 'Squadron position (High/Middle/Low)');
+      const sqRollValue: number = (yield { type: 'pending', roll: sqPending, events: this.eventBuffer }) ?? autoRoll(sqPending.diceType, rng);
+      this.eventBuffer = [];
+
+      const sqResult = tables.lookupWithValue('G-4a', sqRollValue);
+      if (sqResult) {
+        const pos = sqResult.entry.squadron_position as string;
+        if (pos === 'High') { squadronPosition = { position: 'high', b1b2Modifier: 0 }; }
+        else if (pos === 'Low') { squadronPosition = { position: 'low', b1b2Modifier: 1 }; }
+        else { squadronPosition = { position: 'middle', b1b2Modifier: -1 }; }
+        squadronMod = squadronPosition.b1b2Modifier;
+
+        const sqLabel = pos;
+        this.emit('SETUP', `Squadron: ${sqLabel} (B-1/B-2 mod: ${squadronMod >= 0 ? '+' : ''}${squadronMod})`, 'setup', 'info',
+          undefined, undefined, [{
+            table: 'G-4a', rollType: '1d6', rolled: sqRollValue, result: sqLabel,
+            description: 'Squadron position (missions 6+)',
+          }]);
+      }
     }
 
-    if (setup.extraFighterPerWave) {
+    if (extraFighterPerWave) {
       this.emit('SETUP', `${formLabel} position: +1 fighter per wave!`, 'setup', 'warn');
     }
 
     this.emit('SETUP', `Target zone: ${targetZone}`, 'setup', 'info');
 
-    // Initialize mission
+    // Initialize mission state
     const mission: MissionState = {
-      missionNumber, target: setup.target.name, zone: 1,
-      direction: 'outbound', formation: setup.squadronPosition?.position ?? 'lead',
-      squadron: setup.squadronPosition?.position ?? 'lead',
+      missionNumber, target: target.name, zone: 1,
+      direction: 'outbound', formation: squadronPosition?.position as any ?? 'lead',
+      squadron: squadronPosition?.position as any ?? 'lead',
       weather: 'clear', outOfFormation: false, altitude: 20000,
       bombsAboard: true, bombsDropped: false, aborted: false,
       evasiveAction: false, landingModifiers: 0,
     };
     this.state.mission = mission;
+    this.state.campaign.aircraft.ammo = { ...DEFAULT_AMMO };
 
     // Crew roster event
     this.emit('SETUP', 'Crew manifest', 'setup', 'info', undefined, undefined, undefined, true);
 
     // ═══ ZONE LOOP ═══
     let destroyed = false;
-    let landed = false;
 
     // Outbound
-    for (let z = 2; z <= targetZone && !landed && !destroyed; z++) {
+    for (let z = 2; z <= targetZone && !destroyed; z++) {
       mission.zone = z;
       mission.direction = 'outbound';
       const isTarget = z === targetZone;
-      const zoneInfo = getZoneInfo(setup.target.name, z, tables);
+      const zoneInfo = getZoneInfo(target.name, z, tables);
       const overText = zoneInfo?.over?.length ? ` (over ${zoneInfo.over.join(', ')})` : '';
 
       this.emit('ZONE', `Entering Zone ${z}${isTarget ? ' — TARGET' : ''} outbound${overText}`,
@@ -294,79 +541,159 @@ export class GameSession {
 
       // Weather at target
       if (isTarget) {
-        const weather = rollWeather(rng, tables);
-        mission.weather = weather.weather;
-        const wsev = weather.weather === 'clear' ? 'good' : weather.weather === 'poor' ? 'warn' : 'bad';
-        this.emit('WEATHER', `Weather over target: ${weather.weather}`, 'movement', wsev as any,
-          z, 'outbound', [{
-            table: 'O-1', rollType: '1d6', rolled: 0, result: weather.weather,
-            description: 'Weather determination',
-          }]);
+        const weatherPending = this.createPendingRoll('O-1', `Weather over target (${target.name})`);
+        const weatherRoll: number = (yield { type: 'pending', roll: weatherPending, events: this.eventBuffer }) ?? autoRoll(weatherPending.diceType, rng);
+        this.eventBuffer = [];
+
+        const weatherResult = tables.lookupWithValue('O-1', weatherRoll);
+        if (weatherResult) {
+          const weatherStr = weatherResult.entry.weather as string;
+          mission.weather = weatherStr === 'Bad' ? 'overcast' : weatherStr === 'Poor' ? 'poor' : 'clear';
+          const wsev = mission.weather === 'clear' ? 'good' : mission.weather === 'poor' ? 'warn' : 'bad';
+          this.emit('WEATHER', `Weather over target: ${weatherStr}`, 'movement', wsev as any,
+            z, 'outbound', [{
+              table: 'O-1', rollType: '2d6', rolled: weatherRoll, result: weatherStr,
+              description: 'Weather determination',
+            }]);
+        }
       }
 
       // Fighter cover
       let coverLevel: FighterCoverLevel | null = null;
       if (hasFighterCover(z)) {
-        coverLevel = rollFighterCover(rng, tables);
-        const csev = coverLevel === 'Good' ? 'good' : coverLevel === 'Fair' ? 'info' : 'warn';
-        this.emit('COVER', `Fighter escort: ${coverLevel}`, 'combat', csev as any,
-          z, 'outbound', [{
-            table: 'G-5', rollType: '1d6', rolled: 0, result: coverLevel,
-            description: 'Allied fighter cover level',
-          }]);
+        if (missionNumber <= 5) {
+          coverLevel = 'Good';
+          this.emit('COVER', `Fighter cover: Good (missions 1–5: always Good)`, 'combat', 'good',
+            z, 'outbound', [{
+              table: 'G-5', rollType: '—', rolled: 0, result: 'Good',
+              description: 'Missions 1–5: always Good fighter cover',
+            }]);
+        } else {
+          const coverPending = this.createPendingRoll('G-5', `Fighter cover level (Zone ${z})`);
+          const coverRoll: number = (yield { type: 'pending', roll: coverPending, events: this.eventBuffer }) ?? autoRoll(coverPending.diceType, rng);
+          this.eventBuffer = [];
+
+          const coverResult = tables.lookupWithValue('G-5', coverRoll);
+          if (coverResult) {
+            coverLevel = coverResult.entry.fighter_cover as FighterCoverLevel;
+            const csev = coverLevel === 'Good' ? 'good' : coverLevel === 'Fair' ? 'info' : 'warn';
+            this.emit('COVER', `Fighter cover: ${coverLevel}`, 'combat', csev as any,
+              z, 'outbound', [{
+                table: 'G-5', tableTitle: 'Fighter Cover', rollType: '1d6', rolled: coverRoll, result: coverLevel,
+                description: 'Allied fighter cover level',
+              }]);
+          }
+        }
       } else {
         this.emit('COVER', 'No fighter cover in this zone', 'combat', 'warn', z, 'outbound');
       }
 
       // Fighter waves
       const waveMod = getFighterWaveModifier(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-      const waveResult = rollFighterWaves(isTarget, waveMod, rng, tables);
       const waveTable = isTarget ? 'B-2' : 'B-1';
+      const waveTableData = tables.getRoll(waveTable);
+      const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
 
-      if (waveResult.waveCount === 0) {
+      const wavePending = this.createPendingRoll(waveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''})`, waveMod);
+      const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: this.eventBuffer }) ?? autoRoll(waveDiceType, rng);
+      this.eventBuffer = [];
+
+      const waveResult = tables.lookupWithValue(waveTable, waveRoll, waveMod);
+      const waveCount = waveResult ? (waveResult.entry.fighter_waves as number ?? 0) : 0;
+
+      if (waveCount === 0) {
         this.emit('COMBAT', 'No enemy fighters encountered', 'combat', 'good', z, 'outbound',
-          [{ table: waveTable, rollType: '2d6', rolled: 0, modifier: waveMod, result: '0 waves' }]);
+          [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }]);
       } else {
-        this.emit('COMBAT', `${waveResult.waveCount} fighter wave(s)!`, 'combat', 'bad', z, 'outbound',
-          [{ table: waveTable, rollType: '2d6', rolled: 0, modifier: waveMod, result: `${waveResult.waveCount} waves` }]);
+        this.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', z, 'outbound',
+          [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
       }
 
-      // Process waves
-      for (let w = 1; w <= waveResult.waveCount && !destroyed; w++) {
+      // Process fighter waves
+      for (let w = 1; w <= waveCount && !destroyed; w++) {
         this.emit('WAVE', `Fighter Wave ${w}`, 'combat', 'bad', z, 'outbound');
 
-        const attackResult = rollAttackingFightersWithReroll(rng, tables, mission.outOfFormation, nextFighterId);
-        nextFighterId += attackResult.fighters.length + 1;
+        // Roll attacking fighters on B-3
+        const atkPending = this.createPendingRoll('B-3', `Attacking fighters (Wave ${w}, Zone ${z})`);
+        const atkRoll: number = (yield { type: 'pending', roll: atkPending, events: this.eventBuffer }) ?? autoRoll(atkPending.diceType, rng);
+        this.eventBuffer = [];
 
-        let fighters = attackResult.fighters;
-        if (fighters.length === 0) {
-          this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
-            [{ table: 'B-3', rollType: 'd6d6', rolled: attackResult.rolls[0] ?? 0, result: 'No attackers' }]);
+        const atkResult = tables.lookupWithValue('B-3', atkRoll);
+        let fighters: Fighter[] = [];
+
+        if (atkResult) {
+          const fighterData = atkResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
+          if (fighterData && fighterData.length > 0) {
+            fighters = fighterData.map(f => ({
+              id: nextFighterId++,
+              type: f.type as any,
+              position: f.position,
+              damage: [],
+              attacksMade: 0,
+              scoredHit: false,
+            }));
+          }
+
+          // Handle "No Attackers" with out-of-formation reroll
+          if (fighters.length === 0 && !mission.outOfFormation) {
+            this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
+              [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }]);
+            continue;
+          } else if (fighters.length === 0 && mission.outOfFormation) {
+            // Reroll when out of formation
+            this.emit('COMBAT', 'No attackers rolled, but out of formation — rerolling', 'combat', 'warn', z, 'outbound');
+            const rerollPending = this.createPendingRoll('B-3', `Attacking fighters reroll (out of formation)`);
+            const reroll: number = (yield { type: 'pending', roll: rerollPending, events: this.eventBuffer }) ?? autoRoll(rerollPending.diceType, rng);
+            this.eventBuffer = [];
+
+            const rerollResult = tables.lookupWithValue('B-3', reroll);
+            if (rerollResult) {
+              const reFighterData = rerollResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
+              if (reFighterData && reFighterData.length > 0) {
+                fighters = reFighterData.map(f => ({
+                  id: nextFighterId++, type: f.type as any, position: f.position,
+                  damage: [], attacksMade: 0, scoredHit: false,
+                }));
+              }
+            }
+            if (fighters.length === 0) {
+              this.emit('COMBAT', 'Reroll: still no attackers', 'combat', 'good', z, 'outbound');
+              continue;
+            }
+          }
+        } else {
+          this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound');
           continue;
         }
 
-        if (setup.extraFighterPerWave && !mission.outOfFormation) {
+        if (extraFighterPerWave && !mission.outOfFormation) {
           fighters = addLeadTailExtraFighter(fighters, nextFighterId++);
         }
 
         // Describe fighters
         const fDescs = fighters.map(f => `${f.type} at ${f.position}`);
-        this.emit('COMBAT', `${fighters.length} fighter(s): ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound',
-          attackResult.rolls.map((r, i) => ({
-            table: 'B-3', rollType: 'd6d6', rolled: r,
-            result: i < fighters.length ? `${fighters[i].type} at ${fighters[i].position}` : 'reroll/extra',
-          })));
+        this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
 
-        // Fighter cover defense
+        // Fighter cover defense (M-4)
         if (coverLevel && hasFighterCover(z)) {
-          const coverResult = rollFighterCoverDefense(coverLevel, rng, tables, 0);
+          const m4RollValue: number = yield* this._yieldCombatRoll(
+            'M-4', 'Fighter Cover Defense',
+            `Friendly fighters intercept — cover level: ${coverLevel}`,
+            '1d6',
+            buildM4Rows(tables, coverLevel),
+          );
+
+          const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
           if (coverResult.initialDrivenOff > 0) {
             const { remaining, removed } = removeDrivenOffFighters(fighters, coverResult.initialDrivenOff);
             fighters = remaining;
             if (removed.length > 0) {
               this.emit('COMBAT', `Friendly fighters drive off ${removed.length} enemy!`, 'combat', 'good', z, 'outbound',
-                [{ table: 'M-4', rollType: '1d6', rolled: 0, result: `${coverResult.initialDrivenOff} driven off` }]);
+                [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${coverResult.initialDrivenOff} driven off (${coverLevel} cover)` }]);
             }
+          } else {
+            this.emit('COMBAT', `Friendly fighters fail to intercept`, 'combat', 'warn', z, 'outbound',
+              [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `0 driven off (${coverLevel} cover)` }]);
           }
         }
 
@@ -375,7 +702,7 @@ export class GameSession {
           continue;
         }
 
-        // Combat rounds
+        // Combat rounds — yield PendingRoll for EVERY dice roll
         let activeFighters = [...fighters];
         let attackRound = 0;
 
@@ -385,7 +712,7 @@ export class GameSession {
             this.emit('COMBAT', `Successive attack round ${attackRound}`, 'combat', 'warn', z, 'outbound');
           }
 
-          // Defensive fire
+          // Defensive fire — yield for each gun firing
           for (const fighter of activeFighters) {
             const fieldOfFire = getFieldOfFire(fighter.position, tables);
             for (const [gun, hitReq] of fieldOfFire) {
@@ -393,10 +720,36 @@ export class GameSession {
               if (!crewPos) continue;
               const cm = getCrewByPosition(this.state.campaign.crew, crewPos);
               if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') continue;
+              const ammoKey = gun as keyof AmmoState;
+              if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
+              this.state.campaign.aircraft.ammo[ammoKey]--;
 
-              const fr = resolveDefensiveFire(hitReq, rng, false, mission.evasiveAction, false, cm.frostbite, false);
+              // Yield for defensive fire roll
+              const defRollValue: number = yield* this._yieldCombatRoll(
+                'M-1', 'Defensive Fire',
+                `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.type} at ${fighter.position} — need ${hitReq}+ to hit`,
+                '1d6',
+                [
+                  ...(hitReq > 1 ? [{ roll: `1-${hitReq - 1}`, columns: { result: 'Miss' } }] : []),
+                  { roll: `${hitReq}-6`, columns: { result: 'Hit' } },
+                ],
+              );
+
+              const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
               if (fr.hit) {
-                const dmg = rollFighterDamage(rng, tables, isTwinGunMount(gun));
+                // Yield for fighter damage roll
+                const dmgRollValue: number = yield* this._yieldCombatRoll(
+                  'M-2', 'Fighter Damage',
+                  `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
+                  '1d6',
+                  [
+                    { roll: '1-3', columns: { result: 'FCA — continues attack' } },
+                    { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
+                    { roll: '6', columns: { result: 'Destroyed' } },
+                  ],
+                );
+
+                const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
                 const status = applyFighterDamage(fighter, dmg);
 
                 if (status.status === 'destroyed') {
@@ -404,25 +757,25 @@ export class GameSession {
                   cm.kills++;
                   this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', z, 'outbound',
                     [
-                      { table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
-                      { table: 'M-2', rollType: '2d6', rolled: 0, result: 'Destroyed', description: 'Fighter damage result' },
+                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
+                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed', description: 'Fighter damage result' },
                     ], true);
                 } else if (status.status === 'breaks_off') {
                   this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', z, 'outbound',
                     [
-                      { table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Hit (need ${hitReq}+)` },
-                      { table: 'M-2', rollType: '2d6', rolled: 0, result: 'Breaks off' },
+                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' },
                     ]);
                 } else {
                   this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', z, 'outbound',
                     [
-                      { table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Hit (need ${hitReq}+)` },
-                      { table: 'M-2', rollType: '2d6', rolled: 0, result: 'Continues attack' },
+                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Continues attack' },
                     ]);
                 }
               } else {
                 this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.position}... miss`, 'combat', 'info', z, 'outbound',
-                  [{ table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }]);
+                  [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }]);
               }
             }
           }
@@ -441,54 +794,81 @@ export class GameSession {
             break;
           }
 
-          // German offensive fire
+          // German offensive fire — yield for each fighter attack
           const engineMod = enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0;
           const evasiveMod = mission.evasiveAction ? -1 : 0;
 
           for (const fighter of activeFighters) {
-            const offResult = resolveGermanOffensiveFire(fighter, rng, tables, engineMod, evasiveMod);
+            // Yield for German offensive fire roll
+            const offRollValue: number = yield* this._yieldCombatRoll(
+              'M-3', 'German Offensive Fire',
+              `${fighter.type} at ${fighter.position} attacks your B-17`,
+              '1d6',
+              [
+                { roll: '1-5', columns: { result: 'Depends on position/type' } },
+                { roll: '6', columns: { result: 'Always hits' } },
+              ],
+            );
+
+            const offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables, engineMod, evasiveMod);
             fighter.attacksMade++;
 
             if (offResult.hit) {
               fighter.scoredHit = true;
               this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — HIT!`, 'combat', 'bad', z, 'outbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offResult.roll, result: 'Hit', description: 'German offensive fire' }]);
+                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit', description: 'German offensive fire' }]);
+
+              // Yield for shell hits roll
+              const shellRollValue: number = yield* this._yieldCombatRoll(
+                'B-4', 'Shell Hits',
+                `Number of shell hits from ${fighter.type}`,
+                '2d6',
+                (tables.getTableDisplayData('B-4')?.rows ?? []),
+              );
 
               let shellHits: number;
-              try { shellHits = rollShellHits(fighter, rng, tables); } catch { shellHits = rng.int(1, 3); }
+              try { shellHits = rollShellHits(fighter, createFixedRng(shellRollValue, rng), tables); } catch { shellHits = rng.int(1, 3); }
 
-              this.emit('DAMAGE', `${shellHits} shell hit(s)!`, 'damage', 'bad', z, 'outbound',
-                [{ table: 'B-4', rollType: '1d6', rolled: 0, result: `${shellHits} shells` }]);
+              this.emit('DAMAGE', `${plural(shellHits, 'shell hit')}!`, 'damage', 'bad', z, 'outbound',
+                [{ table: 'B-4', rollType: '2d6', rolled: shellRollValue, result: `${shellHits} shells` }]);
 
               for (let s = 0; s < shellHits; s++) {
+                // Yield for hit location roll
+                const hitLocRollValue: number = yield* this._yieldCombatRoll(
+                  'B-5', 'Hit Location',
+                  `Where does shell ${s + 1} hit?`,
+                  '2d6',
+                  (tables.getTableDisplayData('B-5')?.rows ?? []),
+                );
+
                 let hitLoc: ShellHitLocation;
-                try { hitLoc = rollHitLocation(fighter.position, rng, tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
+                try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
 
                 if (hitLoc.isSuperificial) {
                   this.emit('DAMAGE', `Shell ${s + 1}: Superficial damage`, 'damage', 'info', z, 'outbound',
-                    [{ table: 'B-5', rollType: '1d6', rolled: 0, result: 'Superficial' }]);
+                    [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }]);
                   continue;
                 }
 
                 if (hitLoc.isWalkingHits) {
                   this.emit('DAMAGE', `Shell ${s + 1}: Walking hits along fuselage!`, 'damage', 'critical', z, 'outbound',
-                    [{ table: 'B-5', rollType: '1d6', rolled: 0, result: 'Walking hits' }]);
+                    [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Walking hits' }]);
                   for (const compt of WALKING_HIT_COMPARTMENTS) {
-                    this._resolveCompartmentHit(compt.location, compt.damageTable, z, 'outbound');
+                    yield* this._resolveCompartmentHitGen(compt.location, compt.damageTable, z, 'outbound');
                   }
                   continue;
                 }
 
                 this.emit('DAMAGE', `Shell ${s + 1}: Hit to ${hitLoc.location}`, 'damage', 'warn', z, 'outbound',
-                  [{ table: 'B-5', rollType: '1d6', rolled: 0, result: hitLoc.location }]);
+                  [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: hitLoc.location as string }]);
 
                 if (hitLoc.damageTable) {
-                  this._resolveCompartmentHit(hitLoc.location, hitLoc.damageTable, z, 'outbound');
+                  yield* this._resolveCompartmentHitGen(hitLoc.location as string, hitLoc.damageTable, z, 'outbound');
                 }
               }
             } else {
               this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — miss`, 'combat', 'info', z, 'outbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offResult.roll, result: 'Miss' }]);
+                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
             }
           }
 
@@ -524,82 +904,124 @@ export class GameSession {
 
       // Target zone bomb run
       if (isTarget && !destroyed && !mission.aborted) {
-        if (mission.bombsAboard) {
-          this.emit('BOMB_RUN', `Bombs away over ${setup.target.name}!`, 'bombing', 'good', z, 'outbound', undefined, true);
-          mission.bombsAboard = false;
-          mission.bombsDropped = true;
-        } else {
-          this.emit('BOMB_RUN', 'No bombs to drop — already jettisoned', 'bombing', 'warn', z, 'outbound');
-        }
+        yield* this._executeBombRun(target, z, mission);
         this.emit('TURN', 'Turning for home', 'movement', 'info', z, 'outbound');
       }
     }
 
     // ═══ INBOUND ═══
     if (!destroyed) {
-      for (let z = targetZone - 1; z >= 2 && !destroyed; z--) {
+      // Per Rule 5.2.e: After bombing run, resolve combat again in the target zone (inbound),
+      // then proceed through remaining zones back to base.
+      for (let z = targetZone; z >= 2 && !destroyed; z--) {
         mission.zone = z;
         mission.direction = 'inbound';
-        const zoneInfo = getZoneInfo(setup.target.name, z, tables);
+        const isTarget = z === targetZone;
+        const zoneInfo = getZoneInfo(target.name, z, tables);
         const overText = zoneInfo?.over?.length ? ` (over ${zoneInfo.over.join(', ')})` : '';
 
-        this.emit('ZONE', `Entering Zone ${z} inbound${overText}`, 'movement', 'info', z, 'inbound', undefined, true);
+        this.emit('ZONE', `Entering Zone ${z}${isTarget ? ' — TARGET' : ''} inbound${overText}`, 'movement', 'info', z, 'inbound', undefined, true);
 
         // Fighter cover
         let coverLevel: FighterCoverLevel | null = null;
         if (hasFighterCover(z)) {
-          coverLevel = rollFighterCover(rng, tables);
-          this.emit('COVER', `Fighter escort: ${coverLevel}`, 'combat',
-            coverLevel === 'Good' ? 'good' : 'info', z, 'inbound',
-            [{ table: 'G-5', rollType: '1d6', rolled: 0, result: coverLevel }]);
+          if (missionNumber <= 5) {
+            coverLevel = 'Good';
+            this.emit('COVER', `Fighter cover: Good (missions 1–5: always Good)`, 'combat', 'good', z, 'inbound',
+              [{ table: 'G-5', rollType: '—', rolled: 0, result: 'Good', description: 'Missions 1–5: always Good fighter cover' }]);
+          } else {
+            const coverPending = this.createPendingRoll('G-5', `Fighter cover level (Zone ${z} inbound)`);
+            const coverRoll: number = (yield { type: 'pending', roll: coverPending, events: this.eventBuffer }) ?? autoRoll(coverPending.diceType, rng);
+            this.eventBuffer = [];
+
+            const coverResult = tables.lookupWithValue('G-5', coverRoll);
+            if (coverResult) {
+              coverLevel = coverResult.entry.fighter_cover as FighterCoverLevel;
+              this.emit('COVER', `Fighter cover: ${coverLevel}`, 'combat',
+                coverLevel === 'Good' ? 'good' : 'info', z, 'inbound',
+                [{ table: 'G-5', tableTitle: 'Fighter Cover', rollType: '1d6', rolled: coverRoll, result: coverLevel }]);
+            }
+          }
         }
 
-        // Fighter waves
+        // Fighter waves — use B-2 for target zone, B-1 for non-target zones
+        const inboundWaveTable = isTarget ? 'B-2' : 'B-1';
         const waveMod = getFighterWaveModifier(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-        const waveResult = rollFighterWaves(false, waveMod, rng, tables);
+        const waveTableData = tables.getRoll(inboundWaveTable);
+        const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
 
-        if (waveResult.waveCount === 0) {
+        const wavePending = this.createPendingRoll(inboundWaveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''} inbound)`, waveMod);
+        const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: this.eventBuffer }) ?? autoRoll(waveDiceType, rng);
+        this.eventBuffer = [];
+
+        const waveResult = tables.lookupWithValue(inboundWaveTable, waveRoll, waveMod);
+        const waveCount = waveResult ? (waveResult.entry.fighter_waves as number ?? 0) : 0;
+
+        if (waveCount === 0) {
           this.emit('COMBAT', 'No enemy fighters', 'combat', 'good', z, 'inbound',
-            [{ table: 'B-1', rollType: '2d6', rolled: 0, modifier: waveMod, result: '0 waves' }]);
+            [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }]);
           continue;
         }
 
-        this.emit('COMBAT', `${waveResult.waveCount} fighter wave(s)!`, 'combat', 'bad', z, 'inbound',
-          [{ table: 'B-1', rollType: '2d6', rolled: 0, modifier: waveMod, result: `${waveResult.waveCount} waves` }]);
+        this.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', z, 'inbound',
+          [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
 
-        // Simplified inbound combat (same structure, less verbose)
-        for (let w = 1; w <= waveResult.waveCount && !destroyed; w++) {
+        // Inbound combat (simplified — same logic as outbound)
+        for (let w = 1; w <= waveCount && !destroyed; w++) {
           this.emit('WAVE', `Fighter Wave ${w}`, 'combat', 'bad', z, 'inbound');
 
-          const attackResult = rollAttackingFightersWithReroll(rng, tables, mission.outOfFormation, nextFighterId);
-          nextFighterId += attackResult.fighters.length + 1;
-          let fighters = attackResult.fighters;
+          const atkPending = this.createPendingRoll('B-3', `Attacking fighters (Wave ${w}, Zone ${z} inbound)`);
+          const atkRoll: number = (yield { type: 'pending', roll: atkPending, events: this.eventBuffer }) ?? autoRoll(atkPending.diceType, rng);
+          this.eventBuffer = [];
+
+          const atkResult = tables.lookupWithValue('B-3', atkRoll);
+          let fighters: Fighter[] = [];
+
+          if (atkResult) {
+            const fighterData = atkResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
+            if (fighterData && fighterData.length > 0) {
+              fighters = fighterData.map(f => ({
+                id: nextFighterId++, type: f.type as any, position: f.position,
+                damage: [], attacksMade: 0, scoredHit: false,
+              }));
+            }
+          }
 
           if (fighters.length === 0) {
             this.emit('COMBAT', 'Fighters driven off by formation', 'combat', 'good', z, 'inbound');
             continue;
           }
 
-          if (setup.extraFighterPerWave && !mission.outOfFormation) {
+          if (extraFighterPerWave && !mission.outOfFormation) {
             fighters = addLeadTailExtraFighter(fighters, nextFighterId++);
           }
 
-          // Fighter cover defense
+          // Fighter cover defense (M-4)
           if (coverLevel && hasFighterCover(z)) {
-            const coverResult = rollFighterCoverDefense(coverLevel, rng, tables, 0);
+            const m4RollValue: number = yield* this._yieldCombatRoll(
+              'M-4', 'Fighter Cover Defense',
+              `Friendly fighters intercept — cover level: ${coverLevel}`,
+              '1d6',
+              buildM4Rows(tables, coverLevel),
+            );
+
+            const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
             if (coverResult.initialDrivenOff > 0) {
-              const { remaining } = removeDrivenOffFighters(fighters, coverResult.initialDrivenOff);
+              const { remaining, removed } = removeDrivenOffFighters(fighters, coverResult.initialDrivenOff);
               fighters = remaining;
+              if (removed.length > 0) {
+                this.emit('COMBAT', `Friendly fighters drive off ${removed.length} enemy!`, 'combat', 'good', z, 'inbound',
+                  [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${coverResult.initialDrivenOff} driven off (${coverLevel} cover)` }]);
+              }
             }
           }
 
           if (fighters.length === 0) { continue; }
 
-          this.emit('COMBAT', `${fighters.length} fighter(s) attacking`, 'combat', 'warn', z, 'inbound');
+          this.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound');
 
-          // Quick combat
+          // Combat — yield for each roll
           for (const fighter of fighters) {
-            // Defensive fire
             const fieldOfFire = getFieldOfFire(fighter.position, tables);
             let shotDown = false;
             for (const [gun, hitReq] of fieldOfFire) {
@@ -607,28 +1029,65 @@ export class GameSession {
               if (!crewPos) continue;
               const cm = getCrewByPosition(this.state.campaign.crew, crewPos);
               if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') continue;
-              const fr = resolveDefensiveFire(hitReq, rng, false, mission.evasiveAction, false, cm.frostbite, false);
+              const ammoKey = gun as keyof AmmoState;
+              if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
+              this.state.campaign.aircraft.ammo[ammoKey]--;
+
+              // Yield for defensive fire roll
+              const defRollValue: number = yield* this._yieldCombatRoll(
+                'M-1', 'Defensive Fire',
+                `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.type} at ${fighter.position} — need ${hitReq}+ to hit`,
+                '1d6',
+                [
+                  ...(hitReq > 1 ? [{ roll: `1-${hitReq - 1}`, columns: { result: 'Miss' } }] : []),
+                  { roll: `${hitReq}-6`, columns: { result: 'Hit' } },
+                ],
+              );
+
+              const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
               if (fr.hit) {
-                const dmg = rollFighterDamage(rng, tables, isTwinGunMount(gun));
+                // Yield for fighter damage roll
+                const dmgRollValue: number = yield* this._yieldCombatRoll(
+                  'M-2', 'Fighter Damage',
+                  `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
+                  '1d6',
+                  [
+                    { roll: '1-3', columns: { result: 'FCA — continues attack' } },
+                    { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
+                    { roll: '6', columns: { result: 'Destroyed' } },
+                  ],
+                );
+
+                const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
                 const status = applyFighterDamage(fighter, dmg);
                 if (status.status === 'destroyed') {
                   fightersDestroyed++; cm.kills++;
                   this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', z, 'inbound',
-                    [{ table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Hit (need ${hitReq}+)` },
-                     { table: 'M-2', rollType: '2d6', rolled: 0, result: 'Destroyed' }], true);
+                    [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+                     { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed' }], true);
                   shotDown = true; break;
                 } else if (status.status === 'breaks_off') {
                   this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} breaks off`, 'combat', 'good', z, 'inbound',
-                    [{ table: 'M-1', rollType: '1d6', rolled: fr.roll, result: `Hit` },
-                     { table: 'M-2', rollType: '2d6', rolled: 0, result: 'Breaks off' }]);
+                    [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit` },
+                     { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' }]);
                   shotDown = true; break;
                 }
               }
             }
             if (shotDown) continue;
 
-            // German fire
-            const offResult = resolveGermanOffensiveFire(fighter, rng, tables,
+            // German fire — yield for attack roll
+            const offRollValue: number = yield* this._yieldCombatRoll(
+              'M-3', 'German Offensive Fire',
+              `${fighter.type} at ${fighter.position} attacks your B-17`,
+              '1d6',
+              [
+                { roll: '1-5', columns: { result: 'Depends on position/type' } },
+                { roll: '6', columns: { result: 'Always hits' } },
+              ],
+            );
+
+            const offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables,
               enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0,
               mission.evasiveAction ? -1 : 0);
             fighter.attacksMade++;
@@ -636,22 +1095,40 @@ export class GameSession {
             if (offResult.hit) {
               fighter.scoredHit = true;
               this.emit('COMBAT', `${fighter.type} at ${fighter.position} — HIT!`, 'combat', 'bad', z, 'inbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offResult.roll, result: 'Hit' }]);
+                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit' }]);
+
+              // Yield for shell hits
+              const shellRollValue: number = yield* this._yieldCombatRoll(
+                'B-4', 'Shell Hits',
+                `Number of shell hits from ${fighter.type}`,
+                '2d6',
+                (tables.getTableDisplayData('B-4')?.rows ?? []),
+              );
+
               let shellHits: number;
-              try { shellHits = rollShellHits(fighter, rng, tables); } catch { shellHits = rng.int(1, 2); }
+              try { shellHits = rollShellHits(fighter, createFixedRng(shellRollValue, rng), tables); } catch { shellHits = rng.int(1, 2); }
+
               for (let s = 0; s < shellHits; s++) {
+                // Yield for hit location
+                const hitLocRollValue: number = yield* this._yieldCombatRoll(
+                  'B-5', 'Hit Location',
+                  `Where does shell ${s + 1} hit?`,
+                  '2d6',
+                  (tables.getTableDisplayData('B-5')?.rows ?? []),
+                );
+
                 let hitLoc: ShellHitLocation;
-                try { hitLoc = rollHitLocation(fighter.position, rng, tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
+                try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
                 if (hitLoc.isSuperificial) { this.emit('DAMAGE', 'Superficial damage', 'damage', 'info', z, 'inbound'); continue; }
                 this.emit('DAMAGE', `Hit to ${hitLoc.location}`, 'damage', 'warn', z, 'inbound',
-                  [{ table: 'B-5', rollType: '1d6', rolled: 0, result: hitLoc.location }]);
+                  [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: hitLoc.location as string }]);
                 if (hitLoc.damageTable) {
-                  this._resolveCompartmentHit(hitLoc.location, hitLoc.damageTable, z, 'inbound');
+                  yield* this._resolveCompartmentHitGen(hitLoc.location as string, hitLoc.damageTable, z, 'inbound');
                 }
               }
             } else {
               this.emit('COMBAT', `${fighter.type} at ${fighter.position} — miss`, 'combat', 'info', z, 'inbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offResult.roll, result: 'Miss' }]);
+                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
             }
           }
 
@@ -667,19 +1144,36 @@ export class GameSession {
     if (!destroyed) {
       this.emit('LANDING', `${this.state.campaign.planeName} approaches the airfield...`, 'landing', 'info', 1, 'inbound');
 
-      const landingRoll = rng.twod6();
-      const landingMod = mission.landingModifiers + (countEnginesOut(this.state.campaign.aircraft) >= 3 ? -3 : 0);
+      // Landing roll — not on G-8 (which is water bailout), use 2d6
+      const landingPending: PendingRoll = {
+        id: this.pendingRollId++,
+        tableId: 'LANDING',
+        tableName: 'Landing',
+        diceType: '2d6',
+        purpose: 'Landing attempt',
+        modifier: mission.landingModifiers + (countEnginesOut(this.state.campaign.aircraft) >= 3 ? -3 : 0),
+        tableRows: [
+          { roll: '2-4', columns: { result: 'Crash landing' } },
+          { roll: '5-7', columns: { result: 'Rough landing — minor damage' } },
+          { roll: '8-12', columns: { result: 'Safe landing' } },
+        ],
+      };
+
+      const landingRoll: number = (yield { type: 'pending', roll: landingPending, events: this.eventBuffer }) ?? autoRoll('2d6', rng);
+      this.eventBuffer = [];
+
+      const landingMod = landingPending.modifier;
       const modifiedLanding = landingRoll + landingMod;
 
-      if (modifiedLanding >= 5) {
+      if (modifiedLanding >= 8) {
         this.emit('LANDING', 'Safe landing!', 'landing', 'good', 1, 'inbound',
-          [{ table: 'G-8', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Safe landing' }], true);
-      } else if (modifiedLanding >= 2) {
+          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Safe landing' }], true);
+      } else if (modifiedLanding >= 5) {
         this.emit('LANDING', 'Rough landing — minor damage', 'landing', 'warn', 1, 'inbound',
-          [{ table: 'G-8', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Rough landing' }], true);
+          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Rough landing' }], true);
       } else {
         this.emit('LANDING', 'Crash landing!', 'landing', 'bad', 1, 'inbound',
-          [{ table: 'G-8', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
+          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
         for (const crew of this.state.campaign.crew) {
           if (crew.status === 'active' && rng.d6() <= 2) {
             crew.wounds = accumulateWound(crew.wounds, 'light');
@@ -715,12 +1209,281 @@ export class GameSession {
     }
 
     const survived = !destroyed;
-    this.emit('DEBRIEF', `Mission #${missionNumber} to ${setup.target.name}: ${survived ? 'SURVIVED' : 'LOST'}`, 'debrief',
+    this.emit('DEBRIEF', `Mission #${missionNumber} to ${target.name}: ${survived ? 'SURVIVED' : 'LOST'}`, 'debrief',
       survived ? 'good' : 'critical', undefined, undefined,
       [{ table: '', rollType: '', rolled: 0, result: survived ? 'Survived' : 'Lost', description: `Fighters destroyed: ${fightersDestroyed}` }], true);
 
     this.state.mission = null;
     this.missionInProgress = false;
+  }
+
+  // ─── Area-to-damage-table mapping for flak hits ───
+  private static readonly FLAK_AREA_DAMAGE_TABLE: Record<string, string> = {
+    'Nose': 'P-1',
+    'Pilot Compartment': 'P-2',
+    'Bomb Bay': 'P-3',
+    'Radio Room': 'P-4',
+    'Waist': 'P-5',
+    'Tail': 'P-6',
+    'Port Wing': 'BL-1',
+    'Starboard Wing': 'BL-1',
+  };
+
+  /**
+   * Bomb run generator — handles the full bombing sequence:
+   * O-2 (Flak over target) → O-3 (Flak to hit) → O-4 (shell hits) → O-5 (area affected)
+   * → damage resolution → O-6 (Bomb run on/off target) → O-7 (Bombing accuracy)
+   */
+  private *_executeBombRun(
+    target: TargetInfo, zone: number, mission: MissionState,
+  ): Generator<MissionYield, void, number | undefined> {
+    const rng = this.rng;
+    const tables = this.tables;
+
+    if (!mission.bombsAboard) {
+      this.emit('BOMB_RUN', 'No bombs to drop — already jettisoned', 'bombing', 'warn', zone, 'outbound');
+      return;
+    }
+
+    this.emit('BOMB_RUN', `Beginning bomb run over ${target.name}!`, 'bombing', 'info', zone, 'outbound');
+
+    // ── O-2: Flak over target ──
+    const flakPending = this.createPendingRoll('O-2', `Flak over target (${target.name})`);
+    const flakRoll: number = (yield { type: 'pending', roll: flakPending, events: this.eventBuffer }) ?? autoRoll(flakPending.diceType, rng);
+    this.eventBuffer = [];
+
+    const flakResult = tables.lookupWithValue('O-2', flakRoll);
+    const flakLevel = flakResult?.entry?.Flak as string ?? 'No flak';
+
+    const flakSev = flakLevel === 'No flak' ? 'good' : flakLevel === 'Light flak' ? 'warn' : 'bad';
+    this.emit('BOMB_RUN', `Flak: ${flakLevel}`, 'bombing', flakSev as any, zone, 'outbound',
+      [{ table: 'O-2', rollType: '1d6', rolled: flakRoll, result: flakLevel, description: 'Flak over target' }]);
+
+    // ── O-3: Flak to hit B-17 (3 rolls if flak present) ──
+    let totalFlakHits = 0;
+    if (flakLevel !== 'No flak') {
+      for (let burst = 1; burst <= 3; burst++) {
+        const hitRoll: number = yield* this._yieldCombatRoll(
+          'O-3', 'Flak to Hit B-17',
+          `Flak burst ${burst}/3 — does it hit? (${flakLevel})`,
+          '2d6',
+          buildO3Rows(tables, flakLevel),
+        );
+        this.eventBuffer = [];
+
+        const hitResult = tables.lookupWithValue('O-3', hitRoll);
+        // O-3 has nested results by flak level
+        let flakHit = false;
+        if (hitResult?.entry) {
+          const levelData = hitResult.entry[flakLevel] as Record<string, any> | undefined;
+          if (levelData) {
+            flakHit = parseInt(levelData.flak_hits as string ?? '0', 10) > 0;
+          }
+        }
+
+        if (flakHit) {
+          totalFlakHits++;
+          this.emit('BOMB_RUN', `Flak burst ${burst}: HIT!`, 'damage', 'bad', zone, 'outbound',
+            [{ table: 'O-3', rollType: '2d6', rolled: hitRoll, result: 'Hit', description: `${flakLevel} burst ${burst}` }]);
+        } else {
+          this.emit('BOMB_RUN', `Flak burst ${burst}: Miss`, 'bombing', 'info', zone, 'outbound',
+            [{ table: 'O-3', rollType: '2d6', rolled: hitRoll, result: 'Miss', description: `${flakLevel} burst ${burst}` }]);
+        }
+      }
+    }
+
+    // ── O-4: Effect of flak hits (shell count per hit) ──
+    if (totalFlakHits > 0) {
+      this.emit('BOMB_RUN', `${plural(totalFlakHits, 'flak hit')} on the B-17!`, 'damage', 'bad', zone, 'outbound');
+
+      for (let h = 1; h <= totalFlakHits; h++) {
+        const shellPending = this.createPendingRoll('O-4', `Shell hits from flak hit ${h}`);
+        const shellRoll: number = (yield { type: 'pending', roll: shellPending, events: this.eventBuffer }) ?? autoRoll(shellPending.diceType, rng);
+        this.eventBuffer = [];
+
+        const shellResult = tables.lookupWithValue('O-4', shellRoll);
+        const shellHits = shellResult ? parseInt(shellResult.entry.shell_hits as string ?? '1', 10) : 1;
+
+        this.emit('BOMB_RUN', `Flak hit ${h}: ${plural(shellHits, 'shell hit')}`, 'damage', 'bad', zone, 'outbound',
+          [{ table: 'O-4', rollType: '2d6', rolled: shellRoll, result: `${shellHits} shells`, description: 'Effect of flak hits' }]);
+
+        // ── O-5: Area affected by each shell hit ──
+        for (let s = 1; s <= shellHits; s++) {
+          const areaPending = this.createPendingRoll('O-5', `Where does flak shell ${s} hit?`);
+          const areaRoll: number = (yield { type: 'pending', roll: areaPending, events: this.eventBuffer }) ?? autoRoll(areaPending.diceType, rng);
+          this.eventBuffer = [];
+
+          const areaResult = tables.lookupWithValue('O-5', areaRoll);
+          const area = areaResult?.entry?.area_affected as string ?? 'Superficial';
+
+          this.emit('DAMAGE', `Flak shell ${s}: Hit to ${area}`, 'damage', 'warn', zone, 'outbound',
+            [{ table: 'O-5', rollType: '2d6', rolled: areaRoll, result: area, description: 'Area affected by flak' }]);
+
+          // Resolve damage on the appropriate compartment table
+          const dmgTable = GameSession.FLAK_AREA_DAMAGE_TABLE[area];
+          if (dmgTable) {
+            yield* this._resolveCompartmentHitGen(area, dmgTable, zone, 'outbound');
+          }
+        }
+      }
+
+      // Check if aircraft destroyed
+      if (countEnginesOut(this.state.campaign.aircraft) >= 4) {
+        this.emit('DAMAGE', 'ALL ENGINES OUT! Going down!', 'damage', 'critical', zone, 'outbound', undefined, true);
+        return;
+      }
+    }
+
+    // ── O-6: Bomb run on/off target ──
+    const bombRunPending = this.createPendingRoll('O-6', `Bomb run — on or off target?`);
+    const bombRunRoll: number = (yield { type: 'pending', roll: bombRunPending, events: this.eventBuffer }) ?? autoRoll(bombRunPending.diceType, rng);
+    this.eventBuffer = [];
+
+    const bombRunResult = tables.lookupWithValue('O-6', bombRunRoll);
+    const onTarget = bombRunResult?.entry?.bomb_run_on_target as string ?? 'Off';
+    const onOff = onTarget === 'On' ? 'ON target' : 'OFF target';
+
+    this.emit('BOMB_RUN', `Bomb run: ${onOff}!`, 'bombing', onTarget === 'On' ? 'good' : 'warn', zone, 'outbound',
+      [{ table: 'O-6', rollType: '1d6', rolled: bombRunRoll, result: onOff, description: 'Bomb run accuracy' }]);
+
+    // ── O-7: Bombing accuracy ──
+    const accuracyPending = this.createPendingRoll('O-7', `Bombing accuracy (${onOff})`);
+    const accuracyRoll: number = (yield { type: 'pending', roll: accuracyPending, events: this.eventBuffer }) ?? autoRoll(accuracyPending.diceType, rng);
+    this.eventBuffer = [];
+
+    const accuracyResult = tables.lookupWithValue('O-7', accuracyRoll);
+    let accuracy = 0;
+    if (accuracyResult?.entry) {
+      const accData = accuracyResult.entry[onTarget] as Record<string, any> | undefined;
+      if (accData) {
+        accuracy = parseInt(accData.bombing_accuracy as string ?? '0', 10);
+      } else {
+        accuracy = parseInt(accuracyResult.entry.bombing_accuracy as string ?? '0', 10);
+      }
+    }
+
+    mission.bombsAboard = false;
+    mission.bombsDropped = true;
+
+    this.emit('BOMB_RUN', `Bombs away over ${target.name}! Accuracy: ${accuracy}%`, 'bombing',
+      accuracy >= 30 ? 'good' : accuracy > 0 ? 'warn' : 'bad', zone, 'outbound',
+      [{ table: 'O-7', rollType: '2d6', rolled: accuracyRoll, result: `${accuracy}% accuracy`, description: `Bombing accuracy (${onOff})` }], true);
+  }
+
+  /** Yield a PendingRoll for a combat dice roll and return the player's value */
+  private *_yieldCombatRoll(
+    tableId: string, tableName: string, purpose: string, diceType: string,
+    tableRows: PendingRoll['tableRows'] = [], modifier = 0,
+  ): Generator<MissionYield, number, number | undefined> {
+    this.eventBuffer = [];
+    const pending: PendingRoll = {
+      id: this.pendingRollId++,
+      tableId, tableName, diceType, purpose, modifier, tableRows,
+    };
+    const value: number = (yield { type: 'pending', roll: pending, events: this.eventBuffer }) ?? autoRoll(diceType, this.rng);
+    this.eventBuffer = [];
+    return value;
+  }
+
+  /** Generator version of _resolveCompartmentHit — yields PendingRolls for damage and wound rolls */
+  private *_resolveCompartmentHitGen(
+    location: string, damageTable: string,
+    zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, void, number | undefined> {
+    const rng = this.rng;
+    const tables = this.tables;
+
+    // Yield for compartment damage roll
+    const dmgTableDisplay = tables.getTableDisplayData(damageTable);
+    const dmgDiceType = normalizeDiceType(dmgTableDisplay?.rolltype ?? '1d6');
+    const dmgRollValue: number = yield* this._yieldCombatRoll(
+      damageTable, dmgTableDisplay?.title ?? damageTable,
+      `Damage to ${location}`, dmgDiceType,
+      dmgTableDisplay?.rows ?? [],
+    );
+
+    let dmg: DamageResult;
+    try {
+      dmg = rollCompartmentDamage(damageTable, createFixedRng(dmgRollValue, rng), tables);
+    } catch {
+      dmg = { result: 'Superficial', description: 'No effect', effects: [{ type: 'superficial' }] };
+    }
+
+    for (const effect of dmg.effects) {
+      switch (effect.type) {
+        case 'superficial':
+          this.emit('DAMAGE', `${location}: Superficial — no effect`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Superficial' }]);
+          break;
+        case 'crew_wound': {
+          const pos = effect.position as CrewPosition;
+          const crew = getCrewByPosition(this.state.campaign.crew, pos);
+          if (crew && crew.wounds !== 'kia') {
+            // Yield for wound severity roll
+            const woundRollValue: number = yield* this._yieldCombatRoll(
+              'BL-4', 'Wound Severity',
+              `Wound severity for ${crew.name} (${POSITION_LABELS[pos]})`, '1d6',
+              [
+                { roll: '1-3', columns: { result: 'Light wound' } },
+                { roll: '4-5', columns: { result: 'Serious wound' } },
+                { roll: '6', columns: { result: 'KIA' } },
+              ],
+            );
+
+            let severity: WoundSeverity;
+            try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
+            crew.wounds = accumulateWound(crew.wounds, severity);
+            if (severity === 'kia') crew.status = 'kia';
+            const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
+            this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+              [
+                { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Crew wound', description: `${location} damage` },
+                { table: 'BL-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
+              ], true);
+            if (countEnginesOut(this.state.campaign.aircraft) >= 2 && this.state.mission) {
+              this.state.mission.outOfFormation = true;
+            }
+          }
+          break;
+        }
+        case 'engine_damage': {
+          const engIdx = effect.engine ?? rng.int(0, 3);
+          if (this.state.campaign.aircraft.engines[engIdx] !== 'out') {
+            this.state.campaign.aircraft.engines[engIdx] = 'out';
+            this.emit('DAMAGE', `Engine #${engIdx + 1} knocked out!`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Engine #${engIdx + 1} out` }], true);
+            const out = countEnginesOut(this.state.campaign.aircraft);
+            if (out >= 2 && this.state.mission) {
+              this.state.mission.outOfFormation = true;
+              this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
+            }
+          }
+          break;
+        }
+        case 'fire':
+          this.emit('DAMAGE', `FIRE in ${location}!`, 'damage', 'critical', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Fire' }], true);
+          break;
+        case 'oxygen_hit':
+          this.state.campaign.aircraft.oxygenOut = true;
+          this.emit('DAMAGE', `Oxygen system damaged`, 'damage', 'warn', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Oxygen hit' }]);
+          break;
+        case 'control_damage':
+          this.emit('DAMAGE', `Control surface damage`, 'damage', 'bad', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control damage' }]);
+          if (this.state.mission) this.state.mission.landingModifiers -= 1;
+          break;
+        case 'destroyed':
+          this.emit('DAMAGE', `CATASTROPHIC DAMAGE — aircraft destroyed!`, 'damage', 'critical', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Destroyed' }], true);
+          break;
+        default:
+          this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+          break;
+      }
+    }
   }
 
   private _resolveCompartmentHit(
@@ -754,7 +1517,7 @@ export class GameSession {
             this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
               [
                 { table: damageTable, rollType: '1d6', rolled: 0, result: 'Crew wound', description: `${location} damage` },
-                { table: 'G-9', rollType: '1d6', rolled: 0, result: severity, description: 'Wound severity' },
+                { table: 'G-9', rollType: '2d6', rolled: 0, result: severity, description: 'Wound severity' },
               ], true);
             if (countEnginesOut(this.state.campaign.aircraft) >= 2 && this.state.mission) {
               this.state.mission.outOfFormation = true;

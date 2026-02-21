@@ -110,6 +110,7 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     wingSurfaceDamage: { ...ac.wingSurfaceDamage },
     controlDamage: { ...ac.controlDamage },
     fireExtinguishersUsed: ac.fireExtinguishersUsed,
+    ammo: ac.ammo ? { ...ac.ammo } : { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
   };
 }
 
@@ -498,7 +499,7 @@ function resolveZoneCombat(
       continue;
     }
 
-    emit('COMBAT', `${waveCount} fighter wave(s)`);
+    emit('COMBAT', `${waveCount} fighter ${waveCount === 1 ? 'wave' : 'waves'}`);
 
     for (let wave = 0; wave < waveCount; wave++) {
       let fid = getNextFighterId();
@@ -543,13 +544,13 @@ function resolveZoneCombat(
         const removed = Math.min(coverRoll > 3 ? 1 : 0, activeFighters.length);
         if (removed > 0) {
           activeFighters = activeFighters.slice(removed);
-          emit('COMBAT', `Fighter cover drives off ${removed} fighter(s)`);
+          emit('COMBAT', `Fighter cover drives off ${removed} ${removed === 1 ? 'fighter' : 'fighters'}`);
         }
       }
 
       if (activeFighters.length === 0) continue;
 
-      emit('COMBAT', `${activeFighters.length} fighter(s) attacking`);
+      emit('COMBAT', `${activeFighters.length} ${activeFighters.length === 1 ? 'fighter' : 'fighters'} attacking`);
 
       // Simplified combat: each fighter attacks
       for (const fighter of activeFighters) {
