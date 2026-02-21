@@ -67,11 +67,11 @@
     },
     "23": {
       "fighters": [
-        {"type": "FW190", "position": "12 High", "count": 1},
-        {"type": "FW190", "position": "3 Level", "count": 1},
-        {"type": "FW190", "position": "3 High", "count": 1}
+        {"type": "Me109", "position": "12 High", "count": 1},
+        {"type": "Me109", "position": "3 Level", "count": 1},
+        {"type": "Me109", "position": "3 High", "count": 1}
       ],
-      "description": "Three 190's: 12 High, 3 Level, and 3 High"
+      "description": "Three 109's: 12 High, 3 Level, and 3 High"
     },
     "24": {
       "fighters": [
@@ -129,10 +129,10 @@
     },
     "35": {
       "fighters": [
-        {"type": "FW190", "position": "12 Level", "count": 1},
-        {"type": "FW190", "position": "1:30 Low", "count": 1}
+        {"type": "Me109", "position": "12 Level", "count": 1},
+        {"type": "Me109", "position": "1:30 Low", "count": 1}
       ],
-      "description": "Two 190's: 12 Level and 1:30 Low"
+      "description": "Two 109's: 12 Level and 1:30 Low"
     },
     "36": {
       "fighters": [],

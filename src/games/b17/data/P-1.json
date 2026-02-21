@@ -6,41 +6,42 @@
   "description": "Roll 2D per shell hit on Nose Compartment",
   "rolls": {
     "2": {
-      "result": "Starboard Cheek Gun",
-      "description": "Starboard cheek gun inoperable",
+      "result": "Norden Sight",
+      "description": "Bomb Run automatically Off Target. (May Abort mission)",
       "damage_effects": [
         {
-          "type": "gun_damage",
-          "position": "starboard_cheek",
-          "damage_type": "destroy"
+          "type": "equipment_damage",
+          "equipment": "norden_sight",
+          "effect": "bomb_run_off_target"
         }
       ]
     },
     "3": {
-      "result": "Bomb Controls",
-      "description": "Bomb controls inoperable. Can drop all bombs at once only",
-      "damage_effects": [
-        {
-          "type": "equipment_damage",
-          "equipment": "bomb_controls",
-          "modifier": 0
-        }
-      ]
+      "result": "Armament",
+      "description": "Roll 1D: 1,2 = Nose gun inoperable; 3,4 = Port cheek gun inoperable; 5,6 = Starboard cheek gun inoperable",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Nose gun inoperable",
+        "3-4": "Port cheek gun inoperable",
+        "5-6": "Starboard cheek gun inoperable"
+      }
     },
     "4": {
-      "result": "Bomb Release",
-      "description": "Bomb release mechanism inoperable. Bombs cannot be dropped"
+      "result": "Bombardier and Navigator",
+      "description": "Roll wound for each separately on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "targets": ["Bombardier", "Navigator"]
+      },
+      "notes": ["If Bombardier is KIA or seriously wounded, Bomb Run is automatically Off Target"]
     },
     "5": {
-      "result": "Nose Gun",
-      "description": "Nose gun inoperable",
-      "damage_effects": [
-        {
-          "type": "gun_damage",
-          "position": "nose",
-          "damage_type": "destroy"
-        }
-      ]
+      "result": "Navigator",
+      "description": "Roll for wound on Table BL-4",
+      "follow_up": {
+        "table": "BL-4",
+        "target": "Navigator"
+      }
     },
     "6": {
       "result": "Bombardier",
@@ -48,84 +49,55 @@
       "follow_up": {
         "table": "BL-4",
         "target": "Bombardier"
-      },
-      "damage_effects": [
-        {
-          "type": "crew_wound",
-          "position": "bombardier",
-          "severity": "light",
-          "location": "body"
-        }
-      ]
+      }
     },
     "7": {
       "result": "Superficial Damage",
-      "description": "No effect",
-      "damage_effects": [
-        {
-          "type": "structural_damage",
-          "compartment": "nose",
-          "damage_type": "superficial"
-        }
-      ]
+      "description": "No effect"
     },
     "8": {
-      "result": "Nose Gun",
-      "description": "Nose gun inoperable",
-      "damage_effects": [
-        {
-          "type": "gun_damage",
-          "position": "nose",
-          "damage_type": "destroy"
-        }
-      ]
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "9": {
-      "result": "Navigator",
-      "description": "Roll for wound on Table BL-4",
-      "follow_up": {
-        "table": "BL-4",
-        "target": "Navigator"
-      },
-      "damage_effects": [
-        {
-          "type": "crew_wound",
-          "position": "navigator",
-          "severity": "light",
-          "location": "body"
-        }
-      ]
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "10": {
-      "result": "Navigator's Equipment",
-      "description": "Roll 1D: 4-6 = Bomb Run -3; 1-3 = No effect",
+      "result": "Navigator's Equipment / Bomb Controls",
+      "description": "Roll 1D: 1-3 = Navigator's equipment inoperable; 4-6 = Bomb controls inoperable",
       "sub_roll": {
         "type": "1d6",
-        "1-3": "No effect",
-        "4-6": "Navigator's equipment damaged - Bomb Run on Table O-6 -3"
-      },
-      "notes": ["If Navigator is KIA or seriously wounded, this result becomes automatic Bomb Run -3"]
+        "1-3": "Navigator's equipment inoperable. If out of formation, B-17 must spend 2 turns in each future odd-numbered zone entered (roll twice for fighter waves)",
+        "4-6": "Bomb controls inoperable. Bombs must be dropped manually—Bomb Run roll on Table O-6 is -3"
+      }
     },
     "11": {
-      "result": "Windshield",
-      "description": "Windshield knocked out - pilot compartment heat out",
-      "effect": "pilot_copilot_heat_out",
+      "result": "Compartment Heat Out",
+      "description": "Roll 1D: 1,2 = Bombardier; 3,4 = Navigator; 5,6 = both out",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Bombardier heat out",
+        "3-4": "Navigator heat out",
+        "5-6": "Both Bombardier and Navigator heat out"
+      },
       "notes": ["See rules section Heat Out/Frostbite"]
     },
     "12": {
-      "result": "Port Cheek Gun",
-      "description": "Port cheek gun inoperable",
-      "damage_effects": [
-        {
-          "type": "gun_damage",
-          "position": "port_cheek",
-          "damage_type": "destroy"
-        }
-      ]
+      "result": "Oxygen Supply Hit",
+      "description": "Roll 1D: 1,2 = Bombardier; 3,4 = Navigator; 5 = both hit; 6 = Fire and all nose oxygen out",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Bombardier oxygen hit",
+        "3-4": "Navigator oxygen hit",
+        "5": "Both Bombardier and Navigator oxygen hit",
+        "6": "Fire and all nose oxygen out. Roll to extinguish fire on Table BL-3"
+      },
+      "notes": ["See rules section Oxygen Out"]
     }
   },
   "notes": [
-    "See rules sections for Oxygen Out, Heat Out/Frostbite, and Aborting the Mission",
-    "If Navigator is KIA or seriously wounded, roll of 10 automatically becomes Bomb Run -3"
+    "If Bombardier is KIA or seriously wounded, Bomb Run is automatically Off Target",
+    "See rules sections for Oxygen Out, Heat Out/Frostbite, and Aborting the Mission"
   ]
 }

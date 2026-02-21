@@ -10,7 +10,7 @@
      "If landing in France or Belgium, for each surviving crewman roll 1D: 1-5 = Captured; 6 = rescued by Underground and returned to England in time for next mission (Seriously wounded crewmen are automatically captured)",
      "If roll is 0 or less and bombs are still aboard, roll 1D: 1-5 = No effect; 6 = Explosion, B-17 and all remaining crewmen destroyed",
      "If the Pilot and Co-Pilot are dead or seriously wounded and another crewman is attempting to land the B-17, landing roll is -11",
-     "If landing with the radio out, landing roll is -6",
+     "If landing in water with the radio out and out of formation, landing roll is -6",
      "If landing with only 1 engine operating, landing roll is -3",
      "If landing with no engines operating, landing roll is -4",
      "Rescued crewmen who come down into water in Zones 6 or 7 are captured. Those coming down in Zones 2-5 are returned to England"

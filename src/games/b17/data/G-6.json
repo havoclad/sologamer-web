@@ -13,8 +13,12 @@
    ],
    "rolls": {
      "1": {
-        "bailout_result": "Crewman killed in accident",
-        "set": {"crewman_status": "KIA"}
+        "bailout_result": "Roll 1D: 1-5 = Bailout OK; 6 = Crewman killed in accident",
+        "sub_roll": {
+          "type": "1d6",
+          "1-5": "Bailout OK",
+          "6": "Crewman killed in accident"
+        }
      },
      "2-6": {
         "bailout_result": "Bailout OK",

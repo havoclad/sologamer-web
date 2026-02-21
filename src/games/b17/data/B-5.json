@@ -262,8 +262,8 @@
         },
         "12": {
           "location": "Walking Hits/Fuselage",
-          "type": "walking_hits_c",
-          "description": "1 shell hit in each: Nose, Wing (attacking side), Waist, Tail"
+          "type": "walking_hits_a",
+          "description": "1 shell hit in each: Nose, Pilot Compt, Bomb Bay, Radio Room, Waist, Tail"
         }
       }
     },

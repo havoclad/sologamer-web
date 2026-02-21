@@ -5,9 +5,17 @@
    "rolltype": "2d6",
    "determines": "bombing_accuracy",
    "rolls": {
-     "2,12": {
+     "2": {
         "On": { 
            "bombing_accuracy": "75"
+        },
+        "Off": { 
+           "bombing_accuracy": "10"
+        }
+     },
+     "12": {
+        "On": { 
+           "bombing_accuracy": "88+2D"
         },
         "Off": { 
            "bombing_accuracy": "10"

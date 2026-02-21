@@ -1,78 +1,76 @@
 {
   "Title": "P-3 BOMB BAY",
   "table_type": "roll",
-  "rolltype": "2d6", 
+  "rolltype": "2d6",
   "determines": "bomb_bay_damage",
   "description": "Roll 2D per shell hit on Bomb Bay",
   "rolls": {
     "2": {
-      "result": "Bomb Detonation",
-      "description": "Bomb explodes in bomb bay - B-17 and crew destroyed",
-      "effect": "destroyed",
-      "condition": "bombs_aboard"
+      "result": "Bomb Release Mechanism",
+      "description": "Drop bombs manually, Bomb Run on Table O-6 is -3",
+      "effect": "release_mechanism_out"
     },
     "3": {
-      "result": "Bomb Hit",
-      "description": "Roll 1D: 1-5 = bomb damaged but does not explode; 6 = bomb explodes, B-17 and crew destroyed",
+      "result": "Bombs",
+      "description": "If bombs already dropped—no effect. Otherwise roll 1D: 1-4 = no effect; 5,6 = bombs detonate—B-17 destroyed and entire crew KIA",
       "sub_roll": {
         "type": "1d6",
-        "1-5": "Bomb damaged but does not explode",
-        "6": "Bomb explodes - B-17 and crew destroyed"
+        "1-4": "No effect",
+        "5-6": "Bombs detonate—B-17 destroyed and entire crew KIA"
       },
       "condition": "bombs_aboard"
     },
     "4": {
       "result": "Rubber Rafts",
-      "description": "Rubber rafts damaged - landing in water roll -6",
-      "effect": "rafts_damaged"
+      "description": "If plane lands in water, roll on Table G-10 is -2",
+      "effect": "rafts_damaged",
+      "modifier": -2
     },
     "5": {
-      "result": "Superficial Damage", 
-      "description": "No effect"
+      "result": "Bomb Bay Doors",
+      "description": "Roll 1D: 1,2 = inoperable—no bomb drop; 3-6 = superficial damage—no effect",
+      "sub_roll": {
+        "type": "1d6",
+        "1-2": "Bomb bay doors inoperable—no bomb drop",
+        "3-6": "Superficial damage—no effect"
+      }
     },
     "6": {
-      "result": "Bomb Bay Doors",
-      "description": "Bomb bay doors inoperable - must jettison bombs or abort mission",
-      "effect": "doors_inoperable",
-      "notes": ["Mission may be aborted - see rules section Aborting the Mission"]
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "7": {
       "result": "Superficial Damage",
       "description": "No effect"
     },
     "8": {
-      "result": "Superficial Damage", 
+      "result": "Superficial Damage",
       "description": "No effect"
     },
     "9": {
-      "result": "Bomb Controls",
-      "description": "Bomb release mechanism inoperable - bombs cannot be dropped normally",
-      "effect": "release_mechanism_out"
+      "result": "Bombs",
+      "description": "See roll 3 above",
+      "see": "3",
+      "condition": "bombs_aboard"
     },
     "10": {
-      "result": "Bomb Sight",
-      "description": "Norden bombsight inoperable - Bomb Run automatically off target",
-      "effect": "bombsight_out",
-      "notes": ["Bomb Run automatically off target regardless of Table O-6 roll"]
+      "result": "Bomb Bay Doors",
+      "description": "See roll 5 above",
+      "see": "5"
     },
     "11": {
-      "result": "Ball Turret",
-      "description": "Ball turret guns inoperable"
+      "result": "Bombs",
+      "description": "See roll 3 above",
+      "see": "3",
+      "condition": "bombs_aboard"
     },
     "12": {
-      "result": "Ball Turret Mechanism", 
-      "description": "Ball turret mechanism inoperable - gunner trapped",
-      "effect": "ball_turret_trapped",
-      "notes": ["Gunner trapped in turret, may not fire guns, may not bailout", "If landing gear inoperable, gunner automatically KIA on landing"]
+      "result": "Control Cables",
+      "description": "See effect for roll of 12 on Pilot Compartment Table P-2",
+      "see": "P-2:12"
     }
   },
-  "condition_effects": {
-    "bombs_aboard": "Results 2 and 3 only apply if bombs are still aboard",
-    "no_bombs": "If no bombs aboard, treat results 2 and 3 as Superficial Damage"
-  },
   "notes": [
-    "Results 2 and 3 only apply if bombs are still aboard the aircraft",
-    "Rubber raft damage affects water landing survival",
-    "See rules section Aborting the Mission for bomb bay door damage"
+    "Bomb results (3, 9, 11) only apply if bombs are still aboard the aircraft"
   ]
 }

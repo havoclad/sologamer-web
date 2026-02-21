@@ -2,26 +2,31 @@
   "Title": "P-4 RADIO ROOM",
   "table_type": "roll",
   "rolltype": "2d6",
-  "determines": "radio_room_damage", 
+  "determines": "radio_room_damage",
   "description": "Roll 2D per shell hit on Radio Room",
   "rolls": {
     "2": {
-      "result": "Radio Equipment",
-      "description": "Radio equipment inoperable - no rescue if bailout over water",
-      "effect": "radio_out",
-      "notes": ["If crew bailout over water with radio out, all crew die"]
+      "result": "Compartment Heat",
+      "description": "Compartment heat system out",
+      "effect": "radio_room_heat_out",
+      "notes": ["See rules section Heat Out/Frostbite"]
     },
     "3": {
-      "result": "Radio Room Gun",
-      "description": "Radio room gun inoperable"
+      "result": "Intercom System Out",
+      "description": "See effect for roll of 4 on Instruments Table BL-2",
+      "see": "BL-2:4"
     },
     "4": {
-      "result": "Superficial Damage",
-      "description": "No effect"
+      "result": "Radio Out",
+      "description": "No Mayday. If out of formation when forced to land in water, roll on Table G-10 -6",
+      "effect": "radio_out",
+      "notes": ["Radio equipment and the intercom system are separate. The intercom must be hit to become inoperable"]
     },
     "5": {
-      "result": "Superficial Damage", 
-      "description": "No effect"
+      "result": "Radio Out",
+      "description": "No Mayday. If out of formation when forced to land in water, roll on Table G-10 -6",
+      "effect": "radio_out",
+      "see": "4"
     },
     "6": {
       "result": "Radio Operator",
@@ -36,46 +41,35 @@
       "description": "No effect"
     },
     "8": {
-      "result": "Radio Operator",
-      "description": "Roll for wound on Table BL-4", 
-      "follow_up": {
-        "table": "BL-4",
-        "target": "Radio Operator"
-      }
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "9": {
-      "result": "Oxygen Supply Hit",
-      "description": "Radio room oxygen out - drop to 10,000 feet",
-      "effect": "oxygen_out",
-      "notes": ["See rules sections Oxygen Out and Out of Formation"]
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "10": {
-      "result": "Radio Equipment",
-      "description": "Radio equipment inoperable - no rescue if bailout over water",
-      "effect": "radio_out",
-      "notes": ["If crew bailout over water with radio out, all crew die"]
+      "result": "Superficial Damage",
+      "description": "No effect"
     },
     "11": {
-      "result": "Suit Heater",
-      "description": "Radio operator's heat out",
-      "effect": "radio_operator_heat_out",
-      "notes": ["See rules section Heat Out/Frostbite"]
+      "result": "Oxygen Supply Hit",
+      "description": "Roll 1D: 1-5 = 1 oxygen hit; 6 = fire, and Radio Room oxygen system out. Roll to extinguish fire on Table BL-3",
+      "sub_roll": {
+        "type": "1d6",
+        "1-5": "Radio Operator oxygen hit",
+        "6": "Fire, and Radio Room oxygen system out. Roll to extinguish fire on Table BL-3"
+      },
+      "notes": ["See rules section Oxygen Out"]
     },
     "12": {
-      "result": "Ball Turret Power",
-      "description": "Ball turret power supply hit - turret mechanism inoperable",
-      "effect": "ball_turret_power_out",
-      "notes": ["Ball turret gunner trapped, may not fire guns, may not bailout", "If landing gear inoperable, gunner automatically KIA on landing"]
+      "result": "Control Cables",
+      "description": "See effect for roll of 12 on Pilot Compartment Table P-2",
+      "see": "P-2:12"
     }
   },
-  "critical_effects": {
-    "radio_out": "Affects survival chances if crew bailout over water",
-    "oxygen_out": "Forces B-17 out of formation and down to 10,000 feet",
-    "ball_turret_power": "Traps ball turret gunner with serious consequences"
-  },
   "notes": [
-    "Radio equipment damage is critical for water bailout survival",
-    "Radio operator must be in radio room for equipment to be considered operational",
-    "See rules sections for Oxygen Out, Heat Out/Frostbite, and Out of Formation"
+    "Radio equipment and the intercom system are separate",
+    "See rules sections for Oxygen Out, Heat Out/Frostbite"
   ]
 }

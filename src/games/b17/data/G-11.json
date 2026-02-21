@@ -358,12 +358,16 @@
               "over": [ "water" ]
            },
            "3": {
-              "B-1 Modifier": "-2",
+              "B-1 Modifier": "-1",
               "over": [ "water" ]
            },
            "4": {
-              "B-1 Modifier": "-2",
-              "over": [ "water" ]
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
+           },
+           "5": {
+              "B-1 Modifier": "0",
+              "over": [ "France" ]
            }
         }
      },
