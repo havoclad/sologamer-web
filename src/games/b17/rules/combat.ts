@@ -205,18 +205,16 @@ export function resolveGermanOffensiveFire(
   engineModifier: number,
   evasiveActionModifier: number,
 ): { roll: number; hit: boolean } {
-  const raw = (tables.get('M-3')?.raw as any)?.attack_position;
-  if (!raw) throw new Error('M-3 attack_position data not found');
+  const raw = (tables.get('M-3')?.raw as any)?.attack_positions;
+  if (!raw) throw new Error('M-3 attack_positions data not found');
 
   const attackGroup = getM3AttackGroup(fighter.position);
   const groupData = raw[attackGroup];
   if (!groupData) throw new Error(`M-3 attack group ${attackGroup} not found`);
 
-  // Get fighter type key for M-3 lookup
-  const typeKey = fighter.type === 'Me109' ? '109' :
-                  fighter.type === 'Me110' ? '110' : '190';
-  const hitNumbers: number[] = groupData[typeKey]?.hit_on;
-  if (!hitNumbers) throw new Error(`M-3 hit numbers for ${typeKey} at ${attackGroup} not found`);
+  // Look up hit numbers by attack position only (no fighter type)
+  const hitNumbers: number[] = groupData.hit_on;
+  if (!hitNumbers) throw new Error(`M-3 hit numbers for ${attackGroup} not found`);
 
   const roll = rng.d6();
 

@@ -258,7 +258,7 @@ export function getM3AttackGroup(position: AttackPosition): string {
   switch (clock) {
     case '12': return '12_high_level_low';
     case '10:30':
-    case '1:30': return '10:30_1:30_high_level_low';
+    case '1:30': return '1:30_10:30_high_level_low';
     case '3':
     case '9': return '3_9_high_level_low';
     case '6': return '6_high_level_low';

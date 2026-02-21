@@ -57,6 +57,7 @@ app.post('/api/game/start-mission', (_req, res) => {
     ok: true,
     events: result.events,
     pendingRoll: result.pendingRoll,
+    pendingChoice: result.pendingChoice,
     complete: result.complete,
     state: session.getState(),
   });
@@ -76,6 +77,27 @@ app.post('/api/game/submit-roll', (req, res) => {
     ok: true,
     events: result.events,
     pendingRoll: result.pendingRoll,
+    pendingChoice: result.pendingChoice,
+    complete: result.complete,
+    state: session.getState(),
+  });
+});
+
+/** Submit a choice selection — advances the mission */
+app.post('/api/game/submit-choice', (req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game.' });
+  }
+  const { selectedIds } = req.body ?? {};
+  if (!Array.isArray(selectedIds)) {
+    return res.status(400).json({ error: 'Missing selectedIds array.' });
+  }
+  const result = session.submitChoice(selectedIds.map(Number));
+  res.json({
+    ok: true,
+    events: result.events,
+    pendingRoll: result.pendingRoll,
+    pendingChoice: result.pendingChoice,
     complete: result.complete,
     state: session.getState(),
   });
@@ -91,6 +113,7 @@ app.post('/api/game/auto-step', (_req, res) => {
     ok: true,
     events: result.events,
     pendingRoll: result.pendingRoll,
+    pendingChoice: result.pendingChoice,
     complete: result.complete,
     state: session.getState(),
   });
@@ -136,6 +159,7 @@ app.get('/api/game/state', (_req, res) => {
     events: session.getEvents(),
     missionInProgress: session.isMissionInProgress(),
     pendingRoll: session.getCurrentPendingRoll(),
+    pendingChoice: session.getCurrentPendingChoice(),
     seed: session.getSeed(),
     bomberName: session.getState().campaign.planeName,
     autoplay: session.isAutoplay(),

@@ -25,6 +25,8 @@ import {
 } from '../games/b17/rules/zone-movement.js';
 import {
   addLeadTailExtraFighter,
+  canBeDrivenOffByCover,
+  getM3AttackGroup,
   type Fighter,
 } from '../games/b17/rules/fighter-encounters.js';
 import {
@@ -82,6 +84,17 @@ export interface GameEvent {
     aircraft: AircraftState;
     mission: Partial<MissionState> | null;
   };
+}
+
+/** Pending choice — the engine is waiting for the player to select items */
+export interface PendingChoice {
+  id: number;
+  type: 'choice';
+  purpose: string;        // Human-readable description
+  prompt: string;         // What the player should do
+  options: Array<{ id: number; label: string; disabled?: boolean; reason?: string }>;
+  minSelections: number;
+  maxSelections: number;
 }
 
 /** Pending roll — the engine is waiting for the player to provide a dice result */
@@ -183,6 +196,36 @@ function buildM4Rows(tables: TableStore, coverLevel: string): PendingRoll['table
   return rows;
 }
 
+/** Build display rows for M-3 based on fighter's attack position */
+function buildM3Rows(tables: TableStore, fighterPosition: string): PendingRoll['tableRows'] {
+  const raw = (tables.get('M-3')?.raw as any)?.attack_positions;
+  if (!raw) return [
+    { roll: '1-5', columns: { result: 'Depends on position' } },
+    { roll: '6', columns: { result: 'Always hits' } },
+  ];
+  const attackGroup = getM3AttackGroup(fighterPosition as any);
+  const groupData = raw[attackGroup];
+  if (!groupData?.hit_on) return [
+    { roll: '1-5', columns: { result: 'Depends on position' } },
+    { roll: '6', columns: { result: 'Always hits' } },
+  ];
+  const hitNumbers: number[] = groupData.hit_on;
+  const minHit = Math.min(...hitNumbers);
+  const rows: PendingRoll['tableRows'] = [];
+  if (minHit > 1) {
+    rows.push({ roll: minHit > 2 ? `1-${minHit - 1}` : '1', columns: { result: 'Miss' } });
+  }
+  for (let i = minHit; i <= 5; i++) {
+    if (hitNumbers.includes(i)) {
+      rows.push({ roll: String(i), columns: { result: 'Hit' } });
+    } else {
+      rows.push({ roll: String(i), columns: { result: 'Miss' } });
+    }
+  }
+  rows.push({ roll: '6', columns: { result: 'Hit (always)' } });
+  return rows;
+}
+
 /** Build display rows for O-3 filtered by a specific flak level */
 function buildO3Rows(tables: TableStore, flakLevel: string): PendingRoll['tableRows'] {
   const table = tables.getRoll('O-3');
@@ -232,7 +275,7 @@ function createFixedRng(value: number, fallback: RNG): RNG {
 }
 
 // ─── Yield type for the mission generator ───
-type MissionYield = { type: 'events'; events: GameEvent[] } | { type: 'pending'; roll: PendingRoll; events: GameEvent[] };
+type MissionYield = { type: 'events'; events: GameEvent[] } | { type: 'pending'; roll: PendingRoll; events: GameEvent[] } | { type: 'choice'; choice: PendingChoice; events: GameEvent[] };
 
 // ─── Session ───
 
@@ -248,9 +291,11 @@ export class GameSession {
   private pendingRollId = 0;
 
   /** Generator for step-by-step mission execution */
-  private missionGen: Generator<MissionYield, void, number | undefined> | null = null;
+  private missionGen: Generator<MissionYield, void, number | number[] | undefined> | null = null;
   /** Current pending roll waiting for player input */
   private currentPendingRoll: PendingRoll | null = null;
+  /** Current pending choice waiting for player input */
+  private currentPendingChoice: PendingChoice | null = null;
   /** Events buffered since last yield */
   private eventBuffer: GameEvent[] = [];
 
@@ -274,6 +319,7 @@ export class GameSession {
   isAutoplay(): boolean { return this.autoplay; }
   setAutoplay(val: boolean): void { this.autoplay = val; }
   getCurrentPendingRoll(): PendingRoll | null { return this.currentPendingRoll; }
+  getCurrentPendingChoice(): PendingChoice | null { return this.currentPendingChoice; }
 
   private emit(
     phase: string, message: string, category: GameEvent['category'],
@@ -313,9 +359,9 @@ export class GameSession {
   }
 
   /** Start a new mission — returns first pending roll or all events if autoplay */
-  startMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+  startMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
     if (this.missionInProgress) {
-      return { events: [], pendingRoll: this.currentPendingRoll, complete: false };
+      return { events: [], pendingRoll: this.currentPendingRoll, pendingChoice: this.currentPendingChoice, complete: false };
     }
 
     this.missionInProgress = true;
@@ -326,25 +372,48 @@ export class GameSession {
   }
 
   /** Submit a roll value and advance to next step */
-  submitRoll(value: number): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+  submitRoll(value: number): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
     if (!this.missionGen || !this.currentPendingRoll) {
-      return { events: [], pendingRoll: null, complete: true };
+      return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
     }
 
     this.eventBuffer = [];
     this.currentPendingRoll = null;
+    this.currentPendingChoice = null;
 
     const result = this.missionGen.next(value);
     return this._processGeneratorResult(result);
   }
 
-  /** Auto-roll and advance (for autoplay mode) */
-  autoStep(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
-    if (!this.missionGen || !this.currentPendingRoll) {
-      return { events: [], pendingRoll: null, complete: true };
+  /** Submit a choice selection and advance to next step */
+  submitChoice(selectedIds: number[]): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
+    if (!this.missionGen || !this.currentPendingChoice) {
+      return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
     }
 
-    const diceType = this.currentPendingRoll.diceType;
+    this.eventBuffer = [];
+    this.currentPendingRoll = null;
+    this.currentPendingChoice = null;
+
+    const result = this.missionGen.next(selectedIds);
+    return this._processGeneratorResult(result);
+  }
+
+  /** Auto-roll and advance (for autoplay mode) */
+  autoStep(): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
+    if (!this.missionGen || (!this.currentPendingRoll && !this.currentPendingChoice)) {
+      return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
+    }
+
+    // Auto-resolve choices: pick first N enabled options
+    if (this.currentPendingChoice) {
+      const choice = this.currentPendingChoice;
+      const enabled = choice.options.filter(o => !o.disabled);
+      const autoSelected = enabled.slice(0, choice.maxSelections).map(o => o.id);
+      return this.submitChoice(autoSelected);
+    }
+
+    const diceType = this.currentPendingRoll!.diceType;
     const rollValue = autoRoll(diceType, this.rng);
     return this.submitRoll(rollValue);
   }
@@ -354,7 +423,7 @@ export class GameSession {
     const startResult = this.startMission();
     const allEvents = [...startResult.events];
 
-    while (startResult.pendingRoll || this.currentPendingRoll) {
+    while (startResult.pendingRoll || this.currentPendingRoll || this.currentPendingChoice) {
       const stepResult = this.autoStep();
       allEvents.push(...stepResult.events);
       if (stepResult.complete) break;
@@ -363,36 +432,42 @@ export class GameSession {
     return { events: allEvents, complete: true };
   }
 
-  private _advanceMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
-    if (!this.missionGen) return { events: [], pendingRoll: null, complete: true };
+  private _advanceMission(): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
+    if (!this.missionGen) return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
 
     const result = this.missionGen.next(undefined);
     return this._processGeneratorResult(result);
   }
 
-  private _processGeneratorResult(result: IteratorResult<MissionYield, void>): { events: GameEvent[]; pendingRoll: PendingRoll | null; complete: boolean } {
+  private _processGeneratorResult(result: IteratorResult<MissionYield, void>): { events: GameEvent[]; pendingRoll: PendingRoll | null; pendingChoice: PendingChoice | null; complete: boolean } {
     if (result.done) {
       this.missionGen = null;
       this.currentPendingRoll = null;
+      this.currentPendingChoice = null;
       this.missionInProgress = false;
-      return { events: this.eventBuffer, pendingRoll: null, complete: true };
+      return { events: this.eventBuffer, pendingRoll: null, pendingChoice: null, complete: true };
     }
 
     const yielded = result.value;
     if (yielded.type === 'pending') {
       this.currentPendingRoll = yielded.roll;
-      return { events: yielded.events, pendingRoll: yielded.roll, complete: false };
+      return { events: yielded.events, pendingRoll: yielded.roll, pendingChoice: null, complete: false };
+    }
+
+    if (yielded.type === 'choice') {
+      this.currentPendingChoice = yielded.choice;
+      return { events: yielded.events, pendingRoll: null, pendingChoice: yielded.choice, complete: false };
     }
 
     // type === 'events' — shouldn't happen with current design but handle it
-    return { events: yielded.events, pendingRoll: null, complete: false };
+    return { events: yielded.events, pendingRoll: null, pendingChoice: null, complete: false };
   }
 
   /**
    * Mission generator — yields PendingRoll at each table lookup.
    * Receives the player's roll value via generator.next(value).
    */
-  private *_executeMission(): Generator<MissionYield, void, number | undefined> {
+  private *_executeMission(): Generator<MissionYield, void, number | number[] | undefined> {
     const missionNumber = this.state.campaign.missionsCompleted + 1;
     const rng = this.rng;
     const tables = this.tables;
@@ -685,12 +760,7 @@ export class GameSession {
 
           const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
           if (coverResult.initialDrivenOff > 0) {
-            const { remaining, removed } = removeDrivenOffFighters(fighters, coverResult.initialDrivenOff);
-            fighters = remaining;
-            if (removed.length > 0) {
-              this.emit('COMBAT', `Friendly fighters drive off ${removed.length} enemy!`, 'combat', 'good', z, 'outbound',
-                [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${coverResult.initialDrivenOff} driven off (${coverLevel} cover)` }]);
-            }
+            fighters = yield* this._playerRemoveFighters(fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'outbound');
           } else {
             this.emit('COMBAT', `Friendly fighters fail to intercept`, 'combat', 'warn', z, 'outbound',
               [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `0 driven off (${coverLevel} cover)` }]);
@@ -804,13 +874,16 @@ export class GameSession {
               'M-3', 'German Offensive Fire',
               `${fighter.type} at ${fighter.position} attacks your B-17`,
               '1d6',
-              [
-                { roll: '1-5', columns: { result: 'Depends on position/type' } },
-                { roll: '6', columns: { result: 'Always hits' } },
-              ],
+              buildM3Rows(tables, fighter.position),
             );
 
-            const offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables, engineMod, evasiveMod);
+            let offResult: { roll: number; hit: boolean };
+            try {
+              offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables, engineMod, evasiveMod);
+            } catch {
+              // Bug 2: if resolution fails, treat as miss and continue
+              offResult = { roll: offRollValue, hit: offRollValue === 6 };
+            }
             fighter.attacksMade++;
 
             if (offResult.hit) {
@@ -1007,12 +1080,7 @@ export class GameSession {
 
             const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
             if (coverResult.initialDrivenOff > 0) {
-              const { remaining, removed } = removeDrivenOffFighters(fighters, coverResult.initialDrivenOff);
-              fighters = remaining;
-              if (removed.length > 0) {
-                this.emit('COMBAT', `Friendly fighters drive off ${removed.length} enemy!`, 'combat', 'good', z, 'inbound',
-                  [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${coverResult.initialDrivenOff} driven off (${coverLevel} cover)` }]);
-              }
+              fighters = yield* this._playerRemoveFighters(fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'inbound');
             }
           }
 
@@ -1081,15 +1149,17 @@ export class GameSession {
               'M-3', 'German Offensive Fire',
               `${fighter.type} at ${fighter.position} attacks your B-17`,
               '1d6',
-              [
-                { roll: '1-5', columns: { result: 'Depends on position/type' } },
-                { roll: '6', columns: { result: 'Always hits' } },
-              ],
+              buildM3Rows(tables, fighter.position),
             );
 
-            const offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables,
-              enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0,
-              mission.evasiveAction ? -1 : 0);
+            let offResult: { roll: number; hit: boolean };
+            try {
+              offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables,
+                enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0,
+                mission.evasiveAction ? -1 : 0);
+            } catch {
+              offResult = { roll: offRollValue, hit: offRollValue === 6 };
+            }
             fighter.attacksMade++;
 
             if (offResult.hit) {
@@ -1236,7 +1306,7 @@ export class GameSession {
    */
   private *_executeBombRun(
     target: TargetInfo, zone: number, mission: MissionState,
-  ): Generator<MissionYield, void, number | undefined> {
+  ): Generator<MissionYield, void, number | number[] | undefined> {
     const rng = this.rng;
     const tables = this.tables;
 
@@ -1370,17 +1440,95 @@ export class GameSession {
       [{ table: 'O-7', rollType: '2d6', rolled: accuracyRoll, result: `${accuracy}% accuracy`, description: `Bombing accuracy (${onOff})` }], true);
   }
 
+  /**
+   * Player chooses which fighters to remove (Rule 6.2).
+   * Yields a PendingChoice if in manual mode; auto-picks in autoplay.
+   */
+  private *_playerRemoveFighters(
+    fighters: Fighter[], count: number,
+    m4RollValue: number, coverLevel: string,
+    zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, Fighter[], number | number[] | undefined> {
+    const removable = fighters.filter(f => canBeDrivenOffByCover(f.position));
+    const nonRemovable = fighters.filter(f => !canBeDrivenOffByCover(f.position));
+    const actualCount = Math.min(count, removable.length);
+
+    if (actualCount === 0) {
+      this.emit('COMBAT', `${count} fighters should be driven off, but none are eligible (Vertical Dive immune)`, 'combat', 'warn', zone, direction,
+        [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${count} driven off (${coverLevel} cover) — none eligible` }]);
+      return fighters;
+    }
+
+    // If only one possible set of removals, skip the choice
+    if (actualCount >= removable.length) {
+      this.emit('COMBAT', `Friendly fighters drive off ${removable.length} enemy!`, 'combat', 'good', zone, direction,
+        [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
+      return nonRemovable;
+    }
+
+    this.emit('COMBAT', `Friendly fighters can drive off ${actualCount} enemy — choose which to remove`, 'combat', 'good', zone, direction,
+      [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
+
+    // Yield a choice for the player
+    this.eventBuffer = [];
+    const choice: PendingChoice = {
+      id: this.pendingRollId++,
+      type: 'choice',
+      purpose: `Choose ${actualCount} fighter${actualCount > 1 ? 's' : ''} to drive off`,
+      prompt: `Select ${actualCount} fighter${actualCount > 1 ? 's' : ''} to remove (Vertical Dive fighters cannot be driven off):`,
+      options: fighters.map(f => ({
+        id: f.id,
+        label: `${f.type} at ${f.position}`,
+        disabled: !canBeDrivenOffByCover(f.position),
+        reason: !canBeDrivenOffByCover(f.position) ? 'Vertical Dive — immune to fighter cover' : undefined,
+      })),
+      minSelections: actualCount,
+      maxSelections: actualCount,
+    };
+
+    const response = yield { type: 'choice' as const, choice, events: this.eventBuffer };
+    this.eventBuffer = [];
+
+    // Parse response — should be number[] of fighter IDs
+    let selectedIds: number[] = [];
+    if (Array.isArray(response)) {
+      selectedIds = response;
+    } else {
+      // Fallback: auto-select first N removable
+      selectedIds = removable.slice(0, actualCount).map(f => f.id);
+    }
+
+    // Validate: only remove removable fighters, up to actualCount
+    const validIds = new Set(selectedIds.filter(id => removable.some(f => f.id === id)).slice(0, actualCount));
+    // If player didn't select enough, fill in
+    if (validIds.size < actualCount) {
+      for (const f of removable) {
+        if (validIds.size >= actualCount) break;
+        validIds.add(f.id);
+      }
+    }
+
+    const removed = fighters.filter(f => validIds.has(f.id));
+    const remaining = fighters.filter(f => !validIds.has(f.id));
+
+    const removedDescs = removed.map(f => `${f.type} at ${f.position}`).join(', ');
+    this.emit('COMBAT', `Driven off: ${removedDescs}`, 'combat', 'good', zone, direction);
+
+    return remaining;
+  }
+
   /** Yield a PendingRoll for a combat dice roll and return the player's value */
   private *_yieldCombatRoll(
     tableId: string, tableName: string, purpose: string, diceType: string,
     tableRows: PendingRoll['tableRows'] = [], modifier = 0,
-  ): Generator<MissionYield, number, number | undefined> {
+  ): Generator<MissionYield, number, number | number[] | undefined> {
     this.eventBuffer = [];
     const pending: PendingRoll = {
       id: this.pendingRollId++,
       tableId, tableName, diceType, purpose, modifier, tableRows,
     };
-    const value: number = (yield { type: 'pending', roll: pending, events: this.eventBuffer }) ?? autoRoll(diceType, this.rng);
+    const raw = yield { type: 'pending', roll: pending, events: this.eventBuffer };
+    const value: number = (typeof raw === 'number' ? raw : undefined) ?? autoRoll(diceType, this.rng);
     this.eventBuffer = [];
     return value;
   }
@@ -1389,7 +1537,7 @@ export class GameSession {
   private *_resolveCompartmentHitGen(
     location: string, damageTable: string,
     zone: number, direction: 'outbound' | 'inbound',
-  ): Generator<MissionYield, void, number | undefined> {
+  ): Generator<MissionYield, void, number | number[] | undefined> {
     const rng = this.rng;
     const tables = this.tables;
 

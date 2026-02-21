@@ -13,6 +13,7 @@ let currentMapTargetZone = 0;
 let autoplayMode = false;
 let autoPlayTimer = null;
 let pendingRoll = null; // Current roll the engine is waiting for
+let pendingChoice = null; // Current choice the engine is waiting for
 
 // ─── DOM refs ───
 const $ = id => document.getElementById(id);
@@ -191,9 +192,11 @@ btnFly.addEventListener('click', async () => {
           }
         }
       }
-      // Show pending roll or complete
+      // Show pending roll/choice or complete
       if (data.pendingRoll) {
         showPendingRoll(data.pendingRoll);
+      } else if (data.pendingChoice) {
+        showPendingChoice(data.pendingChoice);
       } else if (data.complete) {
         missionComplete();
       }
@@ -468,6 +471,8 @@ function processStepResult(data) {
   // Next step
   if (data.pendingRoll) {
     showPendingRoll(data.pendingRoll);
+  } else if (data.pendingChoice) {
+    showPendingChoice(data.pendingChoice);
   } else if (data.complete) {
     missionComplete();
   }
@@ -487,10 +492,85 @@ function updateAutoplayButton() {
 }
 
 // ─── Mission complete ───
+// ─── Show pending choice panel ───
+function showPendingChoice(choice) {
+  pendingChoice = choice;
+  pendingRoll = null;
+  rollPanel.style.display = 'block';
+
+  const selectedIds = new Set();
+
+  let html = `
+    <div class="roll-prompt">
+      <div class="roll-purpose">✋ ${escapeHtml(choice.purpose)}</div>
+      <div class="roll-description">${escapeHtml(choice.prompt)}</div>
+    </div>
+    <div class="choice-options">
+  `;
+
+  for (const opt of choice.options) {
+    const disabledAttr = opt.disabled ? 'disabled' : '';
+    const disabledClass = opt.disabled ? 'choice-disabled' : '';
+    const reason = opt.reason ? ` <span class="choice-reason">(${escapeHtml(opt.reason)})</span>` : '';
+    html += `
+      <label class="choice-option ${disabledClass}">
+        <input type="checkbox" class="choice-checkbox" data-id="${opt.id}" ${disabledAttr}>
+        <span class="choice-label">${escapeHtml(opt.label)}${reason}</span>
+      </label>
+    `;
+  }
+
+  html += `
+    </div>
+    <div class="roll-input-area">
+      <button id="btn-submit-choice" class="btn btn-primary btn-roll-submit" disabled>
+        Select ${choice.minSelections} fighter${choice.minSelections > 1 ? 's' : ''}
+      </button>
+    </div>
+  `;
+
+  rollPanel.innerHTML = html;
+
+  const checkboxes = rollPanel.querySelectorAll('.choice-checkbox');
+  const submitBtn = document.getElementById('btn-submit-choice');
+
+  function updateSubmitState() {
+    const checked = rollPanel.querySelectorAll('.choice-checkbox:checked:not(:disabled)');
+    const count = checked.length;
+    submitBtn.disabled = count < choice.minSelections || count > choice.maxSelections;
+    if (count >= choice.minSelections && count <= choice.maxSelections) {
+      submitBtn.textContent = `Confirm (${count} selected)`;
+    } else {
+      submitBtn.textContent = `Select ${choice.minSelections} fighter${choice.minSelections > 1 ? 's' : ''} (${count} selected)`;
+    }
+  }
+
+  for (const cb of checkboxes) {
+    cb.addEventListener('change', () => {
+      // Enforce max selections
+      const checked = rollPanel.querySelectorAll('.choice-checkbox:checked:not(:disabled)');
+      if (checked.length > choice.maxSelections) {
+        cb.checked = false;
+      }
+      updateSubmitState();
+    });
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    const checked = rollPanel.querySelectorAll('.choice-checkbox:checked:not(:disabled)');
+    const ids = Array.from(checked).map(cb => parseInt(cb.dataset.id, 10));
+    const data = await api('POST', '/api/game/submit-choice', { selectedIds: ids });
+    processStepResult(data);
+  });
+
+  rollPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function missionComplete() {
   rollPanel.innerHTML = '';
   rollPanel.style.display = 'none';
   pendingRoll = null;
+  pendingChoice = null;
   btnFly.style.display = 'none';
   btnNewMission.style.display = '';
   updateMissionCount();
@@ -903,6 +983,8 @@ function formatColumnHeader(key) {
       btnNewMission.style.display = 'none';
       if (data.pendingRoll) {
         showPendingRoll(data.pendingRoll);
+      } else if (data.pendingChoice) {
+        showPendingChoice(data.pendingChoice);
       }
     } else {
       // Game exists but mission is not in progress — show "Fly" or "New Mission"

@@ -148,8 +148,8 @@ describe('attack group mapping', () => {
   it('getM3AttackGroup groups correctly per M-3 structure', () => {
     expect(getM3AttackGroup('12 High')).toBe('12_high_level_low');
     expect(getM3AttackGroup('12 Level')).toBe('12_high_level_low');
-    expect(getM3AttackGroup('10:30 Low')).toBe('10:30_1:30_high_level_low');
-    expect(getM3AttackGroup('1:30 High')).toBe('10:30_1:30_high_level_low');
+    expect(getM3AttackGroup('10:30 Low')).toBe('1:30_10:30_high_level_low');
+    expect(getM3AttackGroup('1:30 High')).toBe('1:30_10:30_high_level_low');
     expect(getM3AttackGroup('3 Level')).toBe('3_9_high_level_low');
     expect(getM3AttackGroup('9 High')).toBe('3_9_high_level_low');
     expect(getM3AttackGroup('6 Low')).toBe('6_high_level_low');

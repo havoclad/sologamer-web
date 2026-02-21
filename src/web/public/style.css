@@ -731,3 +731,51 @@ details.table-lookup summary:hover { color: #b89b4a; }
 .btn-roll-auto:hover {
   background: var(--accent-dim);
 }
+
+/* ─── Choice UI ─── */
+.choice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 0 8px;
+}
+
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.choice-option:hover:not(.choice-disabled) {
+  background: var(--bg-hover, #2a2a2a);
+  border-color: var(--accent-dim);
+}
+
+.choice-option.choice-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.choice-label {
+  font-size: 0.9rem;
+  color: var(--text-bright);
+}
+
+.choice-reason {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.choice-checkbox {
+  accent-color: var(--accent, #d4a017);
+  width: 16px;
+  height: 16px;
+}
