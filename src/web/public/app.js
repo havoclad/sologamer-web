@@ -4,6 +4,7 @@
  */
 
 // ─── State ───
+window._compartmentHits = {};
 let gameState = null;
 let allEvents = [];
 let selectedEventId = null;
@@ -659,6 +660,7 @@ btnNewMission.addEventListener('click', () => {
   btnFly.disabled = false;
   eventLog.innerHTML = '';
   allEvents = [];
+  window._compartmentHits = {};
   rollPanel.innerHTML = '';
   rollPanel.style.display = 'none';
   detailContent.innerHTML = '<p class="placeholder">Click any event to see dice rolls and table lookups.</p>';
@@ -704,8 +706,25 @@ function autoPlayEvents() {
 }
 
 // ─── Append event to log ───
+function trackDamageFromEvent(evt) {
+  if (evt.category !== 'damage' || !evt.message) return;
+  const hitAreas = ['Nose', 'Pilot Compt.', 'Pilot Compartment', 'Bomb Bay', 'Radio Room', 'Waist', 'Tail',
+    'Port Wing', 'Starboard Wing', 'Wings'];
+  for (const area of hitAreas) {
+    if (evt.message.includes(area) && (evt.message.includes('Hit to') || evt.message.includes('hit in') || evt.message.includes('shell'))) {
+      const key = area === 'Pilot Compartment' ? 'Pilot Compt.' : area === 'Starboard Wing' ? 'Stbd Wing' : area;
+      window._compartmentHits[key] = (window._compartmentHits[key] || 0) + 1;
+    }
+  }
+  // Engine/system damage
+  if (evt.message.includes('Engine #') && evt.message.includes('knocked out')) {
+    // Already tracked via aircraft state
+  }
+}
+
 function appendEvent(evt) {
   updateStatusFromEvent(evt);
+  trackDamageFromEvent(evt);
   if (evt.phase === 'ZONE' || evt.phase === 'SETUP' && evt.message.includes('Mission #')) {
     const header = document.createElement('div');
     header.className = 'log-zone-header';
@@ -847,6 +866,35 @@ function renderAircraft(ac) {
     html += `<div class="system-damage">⚠ ${damages.join(' · ')}</div>`;
   } else {
     html += `<div style="color:var(--good); margin-top:4px">All systems operational</div>`;
+  }
+
+  // ─── Compartment damage tracking ───
+  const compartments = [
+    { name: 'Nose', key: 'nose' },
+    { name: 'Pilot Compt.', key: 'pilot' },
+    { name: 'Bomb Bay', key: 'bombBay' },
+    { name: 'Radio Room', key: 'radio' },
+    { name: 'Waist', key: 'waist' },
+    { name: 'Tail', key: 'tail' },
+    { name: 'Port Wing', key: 'portWing' },
+    { name: 'Stbd Wing', key: 'stbdWing' },
+  ];
+  // Count damage from recent events — track hits per area
+  if (window._compartmentHits) {
+    const hasAnyDamage = Object.values(window._compartmentHits).some(v => v > 0);
+    if (hasAnyDamage) {
+      html += `<div class="damage-section"><div class="ammo-header">Damage Tracking</div>`;
+      for (const comp of compartments) {
+        const hits = window._compartmentHits[comp.name] || 0;
+        if (hits === 0) continue;
+        const maxHits = 5;
+        const filled = Math.min(hits, maxHits);
+        const bar = '█'.repeat(filled) + '░'.repeat(maxHits - filled);
+        const cls = hits >= 4 ? 'dmg-critical' : hits >= 2 ? 'dmg-warn' : 'dmg-light';
+        html += `<div class="damage-row ${cls}"><span class="damage-area">${comp.name}</span><span class="damage-bar">${bar}</span><span class="damage-count">${hits}</span></div>`;
+      }
+      html += `</div>`;
+    }
   }
 
   if (ac.ammo) {

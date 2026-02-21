@@ -237,6 +237,62 @@ function buildM3Rows(tables: TableStore, fighterPosition: string): PendingRoll['
   return rows;
 }
 
+/** Build display rows for B-4 filtered by fighter attack position group */
+function buildB4Rows(tables: TableStore, fighterPosition: string): PendingRoll['tableRows'] {
+  const raw = (tables.get('B-4')?.raw as any)?.attack_positions;
+  if (!raw) return [];
+
+  // Map fighter position to B-4 group key
+  const posLower = fighterPosition.toLowerCase();
+  let groupKey: string;
+  if (posLower.includes('vertical dive')) groupKey = 'vertical_dive';
+  else if (posLower.includes('vertical climb')) groupKey = 'vertical_climb';
+  else if (posLower.startsWith('3 ') || posLower.startsWith('9 ')) groupKey = '3_9';
+  else if (posLower.startsWith('6 ')) groupKey = '6';
+  else groupKey = '12_1:30_10:30';
+
+  const group = raw[groupKey];
+  if (!group?.rolls) return [];
+
+  const rows: PendingRoll['tableRows'] = [];
+  for (const [roll, hits] of Object.entries(group.rolls as Record<string, number>)) {
+    rows.push({ roll, columns: { 'Shell Hits': String(hits) } });
+  }
+  return rows;
+}
+
+/** Build display rows for B-5 filtered by fighter attack position and altitude */
+function buildB5Rows(tables: TableStore, fighterPosition: string): PendingRoll['tableRows'] {
+  const raw = (tables.get('B-5')?.raw as any)?.attack_positions;
+  if (!raw) return [];
+
+  // Map fighter position to B-5 group key
+  const posLower = fighterPosition.toLowerCase();
+  let groupKey: string;
+  if (posLower.includes('vertical dive')) groupKey = 'vertical_dive';
+  else if (posLower.includes('vertical climb')) groupKey = 'vertical_climb';
+  else if (posLower.startsWith('3 ') || posLower.startsWith('9 ')) groupKey = '3_9';
+  else if (posLower.startsWith('6 ')) groupKey = '6';
+  else groupKey = '12_1:30_10:30';
+
+  const group = raw[groupKey];
+  if (!group) return [];
+
+  // Determine altitude sub-key (high/level/low from position, or flat for vertical)
+  let altKey: string | null = null;
+  if (posLower.includes('high')) altKey = 'high';
+  else if (posLower.includes('low')) altKey = 'low';
+  else if (posLower.includes('level')) altKey = 'level';
+
+  const data = altKey && group[altKey] ? group[altKey] : group;
+  const rows: PendingRoll['tableRows'] = [];
+  for (const [roll, entry] of Object.entries(data as Record<string, any>)) {
+    if (roll === 'name' || typeof entry !== 'object') continue;
+    rows.push({ roll, columns: { Location: entry.location ?? '—', Description: entry.description ?? '' } });
+  }
+  return rows;
+}
+
 /** Build display rows for O-3 filtered by a specific flak level */
 function buildO3Rows(tables: TableStore, flakLevel: string): PendingRoll['tableRows'] {
   const table = tables.getRoll('O-3');
@@ -1177,11 +1233,21 @@ export class GameSession {
     type GunEntry = { gun: GunPosition; crewPos: CrewPosition; targets: GunTarget[] };
     type Allocation = { gun: GunPosition; fighter: Fighter; hitReq: number; isDelayed: boolean; crewPos: CrewPosition };
 
+    /** Track what happened each round for successive attack context */
+    let lastRoundSummary: string[] = [];
+
     while (activeFighters.length > 0 && attackRound < 3) {
       attackRound++;
       if (attackRound > 1) {
-        this.emit('COMBAT', `Successive attack round ${attackRound}`, 'combat', 'warn', zone, direction);
+        // Provide context: what happened in the previous round
+        this.emit('COMBAT', `═══ Successive Attack Round ${attackRound} ═══`, 'combat', 'warn', zone, direction);
+        for (const line of lastRoundSummary) {
+          this.emit('COMBAT', line, 'combat', 'info', zone, direction);
+        }
+        const survDescs = activeFighters.map(f => `${f.type} at ${f.position}`);
+        this.emit('COMBAT', `${plural(activeFighters.length, 'fighter')} pressing the attack: ${survDescs.join(', ')}`, 'combat', 'warn', zone, direction);
       }
+      lastRoundSummary = [];
 
       // ═══ ALLOCATION PHASE (Rule 6.3a) ═══
       // Build gun→targets map from M-1 field of fire data
@@ -1232,7 +1298,6 @@ export class GameSession {
         this.emit('COMBAT', 'No guns available to fire!', 'combat', 'warn', zone, direction);
       } else {
         // Yield gun allocation choice to player
-        this.eventBuffer = [];
         const allocationChoice: PendingChoice = {
           id: this.pendingRollId++,
           type: 'choice',
@@ -1262,7 +1327,9 @@ export class GameSession {
           }),
         };
 
-        const response = yield { type: 'choice' as const, choice: allocationChoice, events: this.eventBuffer };
+        const eventsToSend = this.eventBuffer;
+        this.eventBuffer = [];
+        const response = yield { type: 'choice' as const, choice: allocationChoice, events: eventsToSend };
         this.eventBuffer = [];
 
         // Parse allocation response: array where response[i] = fighterId for gun i, or -1 for hold
@@ -1304,12 +1371,18 @@ export class GameSession {
 
         // ═══ RESOLVE REGULAR DEFENSIVE FIRE ═══
         if (regularAllocations.length > 0) {
-          this.emit('COMBAT', `Resolving defensive fire — ${plural(regularAllocations.length, 'gun')} firing`, 'combat', 'info', zone, direction);
+          this.emit('COMBAT', `Resolving defensive fire — ${plural(regularAllocations.length, 'gun')} firing`, 'combat', 'info', zone, direction, undefined, true);
         }
 
         for (const alloc of regularAllocations) {
           yield* this._resolveGunFire(alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
         }
+
+        // Build summary for successive attack context
+        const firedGunNames = regularAllocations.map(a => GUN_LABELS[a.gun] || a.gun);
+        if (firedGunNames.length > 0) lastRoundSummary.push(`Defensive fire: ${firedGunNames.join(', ')}`);
+        if (delayedAllocations.length > 0) lastRoundSummary.push(`Delayed tail fire: ${plural(delayedAllocations.length, 'target')}`);
+        if (heldCount > 0) lastRoundSummary.push(`${plural(heldCount, 'gun')} held fire`);
       }
 
       // Filter destroyed/broken-off fighters after defensive fire
@@ -1322,7 +1395,7 @@ export class GameSession {
       });
 
       if (activeFighters.length === 0) {
-        this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction);
+        this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction, undefined, true);
         break;
       }
 
@@ -1352,8 +1425,8 @@ export class GameSession {
             [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit', description: 'German offensive fire' }]);
 
           const shellRollValue: number = yield* this._yieldCombatRoll(
-            'B-4', 'Shell Hits', `Number of shell hits from ${fighter.type}`,
-            '2d6', (tables.getTableDisplayData('B-4')?.rows ?? []),
+            'B-4', 'Shell Hits', `Number of shell hits from ${fighter.type} at ${fighter.position}`,
+            '2d6', buildB4Rows(tables, fighter.position),
           );
 
           let shellHits: number;
@@ -1364,8 +1437,8 @@ export class GameSession {
 
           for (let s = 0; s < shellHits; s++) {
             const hitLocRollValue: number = yield* this._yieldCombatRoll(
-              'B-5', 'Hit Location', `Where does shell ${s + 1} hit?`,
-              '2d6', (tables.getTableDisplayData('B-5')?.rows ?? []),
+              'B-5', 'Hit Location', `Where does shell ${s + 1} hit? (${fighter.type} at ${fighter.position})`,
+              '2d6', buildB5Rows(tables, fighter.position),
             );
 
             let hitLoc: ShellHitLocation;
@@ -1398,6 +1471,12 @@ export class GameSession {
             [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
         }
       }
+
+      // Track German fire results for successive attack summary
+      const germanHits = activeFighters.filter(f => f.scoredHit).length;
+      const germanMisses = activeFighters.length - germanHits;
+      if (germanHits > 0) lastRoundSummary.push(`German fire: ${plural(germanHits, 'hit')}, ${plural(germanMisses, 'miss', 'misses')}`);
+      else lastRoundSummary.push(`German fire: all missed`);
 
       // ═══ DELAYED TAIL GUN FIRE (M-1 Notes) ═══
       // Tail guns firing at 10:30/12/1:30 resolve AFTER all other defensive fire AND German offensive fire
@@ -1518,7 +1597,7 @@ export class GameSession {
       }
     } else {
       this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.position}... miss`, 'combat', 'info', zone, direction,
-        [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }]);
+        [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }], true);
     }
   }
 
@@ -1552,7 +1631,6 @@ export class GameSession {
       [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
 
     // Yield a choice for the player — include field-of-fire info so they can make informed decisions
-    this.eventBuffer = [];
     const tables = this.tables;
     const choice: PendingChoice = {
       id: this.pendingRollId++,
@@ -1584,7 +1662,9 @@ export class GameSession {
       maxSelections: actualCount,
     };
 
-    const response = yield { type: 'choice' as const, choice, events: this.eventBuffer };
+    const removEventsToSend = this.eventBuffer;
+    this.eventBuffer = [];
+    const response = yield { type: 'choice' as const, choice, events: removEventsToSend };
     this.eventBuffer = [];
 
     // Parse response — should be number[] of fighter IDs
@@ -1620,12 +1700,14 @@ export class GameSession {
     tableId: string, tableName: string, purpose: string, diceType: string,
     tableRows: PendingRoll['tableRows'] = [], modifier = 0,
   ): Generator<MissionYield, number, number | number[] | undefined> {
-    this.eventBuffer = [];
     const pending: PendingRoll = {
       id: this.pendingRollId++,
       tableId, tableName, diceType, purpose, modifier, tableRows,
     };
-    const raw = yield { type: 'pending', roll: pending, events: this.eventBuffer };
+    // Flush accumulated events WITH this yield (don't clear before — that loses events)
+    const eventsToSend = this.eventBuffer;
+    this.eventBuffer = [];
+    const raw = yield { type: 'pending', roll: pending, events: eventsToSend };
     const value: number = (typeof raw === 'number' ? raw : undefined) ?? autoRoll(diceType, this.rng);
     this.eventBuffer = [];
     return value;

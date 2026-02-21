@@ -511,6 +511,39 @@ body {
   flex-shrink: 0;
 }
 
+/* ─── Damage Tracking ─── */
+.damage-section {
+  margin-top: 8px;
+  border-top: 1px solid #3a3a2a;
+  padding-top: 6px;
+}
+.damage-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  margin-bottom: 1px;
+}
+.damage-area {
+  width: 80px;
+  color: #8a8a6a;
+  text-align: right;
+  flex-shrink: 0;
+}
+.damage-bar {
+  font-family: monospace;
+  letter-spacing: 1px;
+  color: var(--warn);
+}
+.damage-count {
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.dmg-light .damage-bar, .dmg-light .damage-count { color: var(--warn); }
+.dmg-warn .damage-bar, .dmg-warn .damage-count { color: var(--bad); }
+.dmg-critical .damage-bar, .dmg-critical .damage-count { color: var(--critical); font-weight: bold; }
+
 /* ─── Modifier Badges ─── */
 .modifier {
   display: inline;
