@@ -34,6 +34,7 @@ import {
   applyFighterDamage, resolveGermanOffensiveFire, rollFighterCoverDefense,
   removeDrivenOffFighters, rollShellHits, rollSuccessiveAttackPosition,
   getSuccessiveAttackers,
+  type GunPosition,
 } from '../games/b17/rules/combat.js';
 import {
   rollHitLocation, rollCompartmentDamage, rollCrewWound, accumulateWound,
@@ -90,11 +91,21 @@ export interface GameEvent {
 export interface PendingChoice {
   id: number;
   type: 'choice';
+  choiceType?: 'selection' | 'gun-allocation';
   purpose: string;        // Human-readable description
   prompt: string;         // What the player should do
   options: Array<{ id: number; label: string; disabled?: boolean; reason?: string }>;
   minSelections: number;
   maxSelections: number;
+  /** Gun allocation data — present when choiceType === 'gun-allocation' */
+  allocations?: Array<{
+    gunId: string;
+    gunLabel: string;
+    crewName: string;
+    ammoRemaining: number;
+    isTailSpecial: boolean;
+    targets: Array<{ fighterId: number; label: string; hitReq: number }>;
+  }>;
 }
 
 /** Pending roll — the engine is waiting for the player to provide a dice result */
@@ -772,197 +783,11 @@ export class GameSession {
           continue;
         }
 
-        // Combat rounds — yield PendingRoll for EVERY dice roll
+        // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
         let activeFighters = [...fighters];
         let attackRound = 0;
-
-        while (activeFighters.length > 0 && attackRound < 3 && !destroyed) {
-          attackRound++;
-          if (attackRound > 1) {
-            this.emit('COMBAT', `Successive attack round ${attackRound}`, 'combat', 'warn', z, 'outbound');
-          }
-
-          // Defensive fire — yield for each gun firing
-          for (const fighter of activeFighters) {
-            const fieldOfFire = getFieldOfFire(fighter.position, tables);
-            for (const [gun, hitReq] of fieldOfFire) {
-              const crewPos = GUN_TO_CREW[gun];
-              if (!crewPos) continue;
-              const cm = getCrewByPosition(this.state.campaign.crew, crewPos);
-              if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') continue;
-              const ammoKey = gun as keyof AmmoState;
-              if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
-              this.state.campaign.aircraft.ammo[ammoKey]--;
-
-              // Yield for defensive fire roll
-              const defRollValue: number = yield* this._yieldCombatRoll(
-                'M-1', 'Defensive Fire',
-                `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.type} at ${fighter.position} — need ${hitReq}+ to hit`,
-                '1d6',
-                [
-                  ...(hitReq > 1 ? [{ roll: `1-${hitReq - 1}`, columns: { result: 'Miss' } }] : []),
-                  { roll: `${hitReq}-6`, columns: { result: 'Hit' } },
-                ],
-              );
-
-              const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
-              if (fr.hit) {
-                // Yield for fighter damage roll
-                const dmgRollValue: number = yield* this._yieldCombatRoll(
-                  'M-2', 'Fighter Damage',
-                  `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
-                  '1d6',
-                  [
-                    { roll: '1-3', columns: { result: 'FCA — continues attack' } },
-                    { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
-                    { roll: '6', columns: { result: 'Destroyed' } },
-                  ],
-                );
-
-                const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
-                const status = applyFighterDamage(fighter, dmg);
-
-                if (status.status === 'destroyed') {
-                  fightersDestroyed++;
-                  cm.kills++;
-                  this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', z, 'outbound',
-                    [
-                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
-                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed', description: 'Fighter damage result' },
-                    ], true);
-                } else if (status.status === 'breaks_off') {
-                  this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', z, 'outbound',
-                    [
-                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' },
-                    ]);
-                } else {
-                  this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', z, 'outbound',
-                    [
-                      { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-                      { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Continues attack' },
-                    ]);
-                }
-              } else {
-                this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.position}... miss`, 'combat', 'info', z, 'outbound',
-                  [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }]);
-              }
-            }
-          }
-
-          // Filter destroyed/broken-off fighters
-          activeFighters = fighters.filter(f => {
-            const fboa = f.damage.filter(d => d === 'FBOA').length;
-            if (fboa > 0) return false;
-            const fca = f.damage.filter(d => d === 'FCA').length;
-            if (fca >= 2) return false;
-            return true;
-          });
-
-          if (activeFighters.length === 0) {
-            this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', z, 'outbound');
-            break;
-          }
-
-          // German offensive fire — yield for each fighter attack
-          const engineMod = enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0;
-          const evasiveMod = mission.evasiveAction ? -1 : 0;
-
-          for (const fighter of activeFighters) {
-            // Yield for German offensive fire roll
-            const offRollValue: number = yield* this._yieldCombatRoll(
-              'M-3', 'German Offensive Fire',
-              `${fighter.type} at ${fighter.position} attacks your B-17`,
-              '1d6',
-              buildM3Rows(tables, fighter.position),
-            );
-
-            let offResult: { roll: number; hit: boolean };
-            try {
-              offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables, engineMod, evasiveMod);
-            } catch {
-              // Bug 2: if resolution fails, treat as miss and continue
-              offResult = { roll: offRollValue, hit: offRollValue === 6 };
-            }
-            fighter.attacksMade++;
-
-            if (offResult.hit) {
-              fighter.scoredHit = true;
-              this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — HIT!`, 'combat', 'bad', z, 'outbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit', description: 'German offensive fire' }]);
-
-              // Yield for shell hits roll
-              const shellRollValue: number = yield* this._yieldCombatRoll(
-                'B-4', 'Shell Hits',
-                `Number of shell hits from ${fighter.type}`,
-                '2d6',
-                (tables.getTableDisplayData('B-4')?.rows ?? []),
-              );
-
-              let shellHits: number;
-              try { shellHits = rollShellHits(fighter, createFixedRng(shellRollValue, rng), tables); } catch { shellHits = rng.int(1, 3); }
-
-              this.emit('DAMAGE', `${plural(shellHits, 'shell hit')}!`, 'damage', 'bad', z, 'outbound',
-                [{ table: 'B-4', rollType: '2d6', rolled: shellRollValue, result: `${shellHits} shells` }]);
-
-              for (let s = 0; s < shellHits; s++) {
-                // Yield for hit location roll
-                const hitLocRollValue: number = yield* this._yieldCombatRoll(
-                  'B-5', 'Hit Location',
-                  `Where does shell ${s + 1} hit?`,
-                  '2d6',
-                  (tables.getTableDisplayData('B-5')?.rows ?? []),
-                );
-
-                let hitLoc: ShellHitLocation;
-                try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
-
-                if (hitLoc.isSuperificial) {
-                  this.emit('DAMAGE', `Shell ${s + 1}: Superficial damage`, 'damage', 'info', z, 'outbound',
-                    [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }]);
-                  continue;
-                }
-
-                if (hitLoc.isWalkingHits) {
-                  this.emit('DAMAGE', `Shell ${s + 1}: Walking hits along fuselage!`, 'damage', 'critical', z, 'outbound',
-                    [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Walking hits' }]);
-                  for (const compt of WALKING_HIT_COMPARTMENTS) {
-                    yield* this._resolveCompartmentHitGen(compt.location, compt.damageTable, z, 'outbound');
-                  }
-                  continue;
-                }
-
-                this.emit('DAMAGE', `Shell ${s + 1}: Hit to ${hitLoc.location}`, 'damage', 'warn', z, 'outbound',
-                  [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: hitLoc.location as string }]);
-
-                if (hitLoc.damageTable) {
-                  yield* this._resolveCompartmentHitGen(hitLoc.location as string, hitLoc.damageTable, z, 'outbound');
-                }
-              }
-            } else {
-              this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — miss`, 'combat', 'info', z, 'outbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
-            }
-          }
-
-          // Check destruction
-          if (countEnginesOut(this.state.campaign.aircraft) >= 4) {
-            this.emit('DAMAGE', 'ALL ENGINES OUT! Going down!', 'damage', 'critical', z, 'outbound', undefined, true);
-            destroyed = true;
-            break;
-          }
-
-          // Successive attacks
-          if (attackRound < 3) {
-            activeFighters = getSuccessiveAttackers(activeFighters, mission.outOfFormation);
-            for (const f of activeFighters) {
-              try {
-                const newPos = rollSuccessiveAttackPosition(rng, tables);
-                f.position = newPos;
-              } catch { /* keep position */ }
-            }
-          }
-        }
+        const combatResult = yield* this._resolveCombatRounds(activeFighters, fighters, mission, z, 'outbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; });
+        if (combatResult.destroyed) { destroyed = true; }
       }
 
       // Abort check
@@ -1088,124 +913,9 @@ export class GameSession {
 
           this.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound');
 
-          // Combat — yield for each roll
-          for (const fighter of fighters) {
-            const fieldOfFire = getFieldOfFire(fighter.position, tables);
-            let shotDown = false;
-            for (const [gun, hitReq] of fieldOfFire) {
-              const crewPos = GUN_TO_CREW[gun];
-              if (!crewPos) continue;
-              const cm = getCrewByPosition(this.state.campaign.crew, crewPos);
-              if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') continue;
-              const ammoKey = gun as keyof AmmoState;
-              if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
-              this.state.campaign.aircraft.ammo[ammoKey]--;
-
-              // Yield for defensive fire roll
-              const defRollValue: number = yield* this._yieldCombatRoll(
-                'M-1', 'Defensive Fire',
-                `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.type} at ${fighter.position} — need ${hitReq}+ to hit`,
-                '1d6',
-                [
-                  ...(hitReq > 1 ? [{ roll: `1-${hitReq - 1}`, columns: { result: 'Miss' } }] : []),
-                  { roll: `${hitReq}-6`, columns: { result: 'Hit' } },
-                ],
-              );
-
-              const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
-              if (fr.hit) {
-                // Yield for fighter damage roll
-                const dmgRollValue: number = yield* this._yieldCombatRoll(
-                  'M-2', 'Fighter Damage',
-                  `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
-                  '1d6',
-                  [
-                    { roll: '1-3', columns: { result: 'FCA — continues attack' } },
-                    { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
-                    { roll: '6', columns: { result: 'Destroyed' } },
-                  ],
-                );
-
-                const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
-                const status = applyFighterDamage(fighter, dmg);
-                if (status.status === 'destroyed') {
-                  fightersDestroyed++; cm.kills++;
-                  this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', z, 'inbound',
-                    [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-                     { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed' }], true);
-                  shotDown = true; break;
-                } else if (status.status === 'breaks_off') {
-                  this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} breaks off`, 'combat', 'good', z, 'inbound',
-                    [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit` },
-                     { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' }]);
-                  shotDown = true; break;
-                }
-              }
-            }
-            if (shotDown) continue;
-
-            // German fire — yield for attack roll
-            const offRollValue: number = yield* this._yieldCombatRoll(
-              'M-3', 'German Offensive Fire',
-              `${fighter.type} at ${fighter.position} attacks your B-17`,
-              '1d6',
-              buildM3Rows(tables, fighter.position),
-            );
-
-            let offResult: { roll: number; hit: boolean };
-            try {
-              offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables,
-                enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0,
-                mission.evasiveAction ? -1 : 0);
-            } catch {
-              offResult = { roll: offRollValue, hit: offRollValue === 6 };
-            }
-            fighter.attacksMade++;
-
-            if (offResult.hit) {
-              fighter.scoredHit = true;
-              this.emit('COMBAT', `${fighter.type} at ${fighter.position} — HIT!`, 'combat', 'bad', z, 'inbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit' }]);
-
-              // Yield for shell hits
-              const shellRollValue: number = yield* this._yieldCombatRoll(
-                'B-4', 'Shell Hits',
-                `Number of shell hits from ${fighter.type}`,
-                '2d6',
-                (tables.getTableDisplayData('B-4')?.rows ?? []),
-              );
-
-              let shellHits: number;
-              try { shellHits = rollShellHits(fighter, createFixedRng(shellRollValue, rng), tables); } catch { shellHits = rng.int(1, 2); }
-
-              for (let s = 0; s < shellHits; s++) {
-                // Yield for hit location
-                const hitLocRollValue: number = yield* this._yieldCombatRoll(
-                  'B-5', 'Hit Location',
-                  `Where does shell ${s + 1} hit?`,
-                  '2d6',
-                  (tables.getTableDisplayData('B-5')?.rows ?? []),
-                );
-
-                let hitLoc: ShellHitLocation;
-                try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
-                if (hitLoc.isSuperificial) { this.emit('DAMAGE', 'Superficial damage', 'damage', 'info', z, 'inbound'); continue; }
-                this.emit('DAMAGE', `Hit to ${hitLoc.location}`, 'damage', 'warn', z, 'inbound',
-                  [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: hitLoc.location as string }]);
-                if (hitLoc.damageTable) {
-                  yield* this._resolveCompartmentHitGen(hitLoc.location as string, hitLoc.damageTable, z, 'inbound');
-                }
-              }
-            } else {
-              this.emit('COMBAT', `${fighter.type} at ${fighter.position} — miss`, 'combat', 'info', z, 'inbound',
-                [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
-            }
-          }
-
-          if (countEnginesOut(this.state.campaign.aircraft) >= 4) {
-            this.emit('DAMAGE', 'ALL ENGINES OUT!', 'damage', 'critical', z, 'inbound', undefined, true);
-            destroyed = true;
-          }
+          // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
+          const inboundResult = yield* this._resolveCombatRounds(fighters, fighters, mission, z, 'inbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; });
+          if (inboundResult.destroyed) { destroyed = true; }
         }
       }
     }
@@ -1441,6 +1151,378 @@ export class GameSession {
   }
 
   /**
+   * Full combat round resolution per Rule 6.3a:
+   * 1. Player allocates ALL guns to targets (or holds fire)
+   * 2. Resolve non-tail defensive fire
+   * 3. German offensive fire for surviving fighters
+   * 4. Resolve delayed tail gun fire (per M-1 notes)
+   * 5. Successive attacks
+   */
+  private *_resolveCombatRounds(
+    activeFighters: Fighter[],
+    allFighters: Fighter[],
+    mission: MissionState,
+    zone: number,
+    direction: 'outbound' | 'inbound',
+    getDestroyed: () => number,
+    setDestroyed: (v: number) => void,
+  ): Generator<MissionYield, { destroyed: boolean }, number | number[] | undefined> {
+    const rng = this.rng;
+    const tables = this.tables;
+    const crew = this.state.campaign.crew;
+    const aircraft = this.state.campaign.aircraft;
+    let attackRound = 0;
+
+    type GunTarget = { fighterId: number; fighter: Fighter; hitReq: number; isDelayed: boolean };
+    type GunEntry = { gun: GunPosition; crewPos: CrewPosition; targets: GunTarget[] };
+    type Allocation = { gun: GunPosition; fighter: Fighter; hitReq: number; isDelayed: boolean; crewPos: CrewPosition };
+
+    while (activeFighters.length > 0 && attackRound < 3) {
+      attackRound++;
+      if (attackRound > 1) {
+        this.emit('COMBAT', `Successive attack round ${attackRound}`, 'combat', 'warn', zone, direction);
+      }
+
+      // ═══ ALLOCATION PHASE (Rule 6.3a) ═══
+      // Build gun→targets map from M-1 field of fire data
+      const gunEntries: GunEntry[] = [];
+
+      for (const fighter of activeFighters) {
+        const fieldOfFire = getFieldOfFire(fighter.position, tables);
+        for (const [gun, hitReq] of fieldOfFire) {
+          let entry = gunEntries.find(e => e.gun === gun);
+          if (!entry) {
+            const crewPos = GUN_TO_CREW[gun];
+            if (!crewPos) continue;
+            entry = { gun, crewPos, targets: [] };
+            gunEntries.push(entry);
+          }
+          entry.targets.push({ fighterId: fighter.id, fighter, hitReq, isDelayed: false });
+        }
+
+        // Tail gun special rule: can fire at 10:30, 12, 1:30 positions (need 6, resolves LAST)
+        const posLower = fighter.position.toLowerCase();
+        const isTailSpecialPos = posLower.startsWith('10:30') || posLower.startsWith('12 ') || posLower.startsWith('1:30');
+        if (isTailSpecialPos && !posLower.includes('vertical')) {
+          const fieldOfFire = getFieldOfFire(fighter.position, tables);
+          if (!fieldOfFire.has('Tail')) {
+            // Tail isn't already listed — add as special delayed target
+            let entry = gunEntries.find(e => e.gun === 'Tail');
+            if (!entry) {
+              entry = { gun: 'Tail', crewPos: 'tail_gunner', targets: [] };
+              gunEntries.push(entry);
+            }
+            entry.targets.push({ fighterId: fighter.id, fighter, hitReq: 6, isDelayed: true });
+          }
+        }
+      }
+
+      // Filter guns by crew availability and ammo
+      const eligibleGuns = gunEntries.filter(ge => {
+        const cm = getCrewByPosition(crew, ge.crewPos);
+        if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') return false;
+        const ammoKey = ge.gun as keyof AmmoState;
+        if (aircraft.ammo[ammoKey] <= 0) return false;
+        return true;
+      });
+
+      let delayedAllocations: Allocation[] = [];
+
+      if (eligibleGuns.length === 0) {
+        this.emit('COMBAT', 'No guns available to fire!', 'combat', 'warn', zone, direction);
+      } else {
+        // Yield gun allocation choice to player
+        this.eventBuffer = [];
+        const allocationChoice: PendingChoice = {
+          id: this.pendingRollId++,
+          type: 'choice',
+          choiceType: 'gun-allocation',
+          purpose: 'Allocate Defensive Fire (Rule 6.3a)',
+          prompt: 'Assign each gun to a target fighter, or hold fire to conserve ammo.',
+          options: [], // Not used for allocation type
+          minSelections: 0,
+          maxSelections: eligibleGuns.length,
+          allocations: eligibleGuns.map(ge => {
+            const cm = getCrewByPosition(crew, ge.crewPos)!;
+            const ammoKey = ge.gun as keyof AmmoState;
+            // Determine if ALL targets for this gun are delayed (tail special only)
+            const allDelayed = ge.targets.every(t => t.isDelayed);
+            return {
+              gunId: ge.gun,
+              gunLabel: GUN_LABELS[ge.gun] || ge.gun,
+              crewName: cm.name,
+              ammoRemaining: aircraft.ammo[ammoKey],
+              isTailSpecial: allDelayed,
+              targets: ge.targets.map(t => ({
+                fighterId: t.fighterId,
+                label: `${t.fighter.type} at ${t.fighter.position} (need ${t.hitReq}+)${t.isDelayed ? ' ⏳ fires after German attack' : ''}`,
+                hitReq: t.hitReq,
+              })),
+            };
+          }),
+        };
+
+        const response = yield { type: 'choice' as const, choice: allocationChoice, events: this.eventBuffer };
+        this.eventBuffer = [];
+
+        // Parse allocation response: array where response[i] = fighterId for gun i, or -1 for hold
+        const allocationResponse: number[] = Array.isArray(response) ? response : [];
+
+        const regularAllocations: Allocation[] = [];
+
+        for (let i = 0; i < eligibleGuns.length; i++) {
+          const fighterId = allocationResponse[i] ?? -1;
+          if (fighterId === -1) continue; // Hold fire
+
+          const ge = eligibleGuns[i];
+          const target = ge.targets.find(t => t.fighterId === fighterId);
+          if (!target) continue;
+
+          // Deduct ammo now (per rules, ammo is spent when gun fires)
+          const ammoKey = ge.gun as keyof AmmoState;
+          aircraft.ammo[ammoKey]--;
+
+          const alloc: Allocation = {
+            gun: ge.gun,
+            fighter: target.fighter,
+            hitReq: target.hitReq,
+            isDelayed: target.isDelayed,
+            crewPos: ge.crewPos,
+          };
+
+          if (target.isDelayed) {
+            delayedAllocations.push(alloc);
+          } else {
+            regularAllocations.push(alloc);
+          }
+        }
+
+        const heldCount = eligibleGuns.length - regularAllocations.length - delayedAllocations.length;
+        if (heldCount > 0) {
+          this.emit('COMBAT', `${plural(heldCount, 'gun')} holding fire`, 'combat', 'info', zone, direction);
+        }
+
+        // ═══ RESOLVE REGULAR DEFENSIVE FIRE ═══
+        if (regularAllocations.length > 0) {
+          this.emit('COMBAT', `Resolving defensive fire — ${plural(regularAllocations.length, 'gun')} firing`, 'combat', 'info', zone, direction);
+        }
+
+        for (const alloc of regularAllocations) {
+          yield* this._resolveGunFire(alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
+        }
+      }
+
+      // Filter destroyed/broken-off fighters after defensive fire
+      activeFighters = allFighters.filter(f => {
+        const fboa = f.damage.filter(d => d === 'FBOA').length;
+        if (fboa > 0) return false;
+        const fca = f.damage.filter(d => d === 'FCA').length;
+        if (fca >= 2) return false;
+        return !f.damage.includes('Destroyed' as any);
+      });
+
+      if (activeFighters.length === 0) {
+        this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction);
+        break;
+      }
+
+      // ═══ GERMAN OFFENSIVE FIRE (Rule 6.4) ═══
+      const engineMod = enginesOut(this.state.campaign.aircraft) >= 2 ? 1 : 0;
+      const evasiveMod = mission.evasiveAction ? -1 : 0;
+
+      for (const fighter of activeFighters) {
+        const offRollValue: number = yield* this._yieldCombatRoll(
+          'M-3', 'German Offensive Fire',
+          `${fighter.type} at ${fighter.position} attacks your B-17`,
+          '1d6',
+          buildM3Rows(tables, fighter.position),
+        );
+
+        let offResult: { roll: number; hit: boolean };
+        try {
+          offResult = resolveGermanOffensiveFire(fighter, createFixedRng(offRollValue, rng), tables, engineMod, evasiveMod);
+        } catch {
+          offResult = { roll: offRollValue, hit: offRollValue === 6 };
+        }
+        fighter.attacksMade++;
+
+        if (offResult.hit) {
+          fighter.scoredHit = true;
+          this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — HIT!`, 'combat', 'bad', zone, direction,
+            [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Hit', description: 'German offensive fire' }]);
+
+          const shellRollValue: number = yield* this._yieldCombatRoll(
+            'B-4', 'Shell Hits', `Number of shell hits from ${fighter.type}`,
+            '2d6', (tables.getTableDisplayData('B-4')?.rows ?? []),
+          );
+
+          let shellHits: number;
+          try { shellHits = rollShellHits(fighter, createFixedRng(shellRollValue, rng), tables); } catch { shellHits = rng.int(1, 3); }
+
+          this.emit('DAMAGE', `${plural(shellHits, 'shell hit')}!`, 'damage', 'bad', zone, direction,
+            [{ table: 'B-4', rollType: '2d6', rolled: shellRollValue, result: `${shellHits} shells` }]);
+
+          for (let s = 0; s < shellHits; s++) {
+            const hitLocRollValue: number = yield* this._yieldCombatRoll(
+              'B-5', 'Hit Location', `Where does shell ${s + 1} hit?`,
+              '2d6', (tables.getTableDisplayData('B-5')?.rows ?? []),
+            );
+
+            let hitLoc: ShellHitLocation;
+            try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
+
+            if (hitLoc.isSuperificial) {
+              this.emit('DAMAGE', `Shell ${s + 1}: Superficial damage`, 'damage', 'info', zone, direction,
+                [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }]);
+              continue;
+            }
+
+            if (hitLoc.isWalkingHits) {
+              this.emit('DAMAGE', `Shell ${s + 1}: Walking hits along fuselage!`, 'damage', 'critical', zone, direction,
+                [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Walking hits' }]);
+              for (const compt of WALKING_HIT_COMPARTMENTS) {
+                yield* this._resolveCompartmentHitGen(compt.location, compt.damageTable, zone, direction);
+              }
+              continue;
+            }
+
+            this.emit('DAMAGE', `Shell ${s + 1}: Hit to ${hitLoc.location}`, 'damage', 'warn', zone, direction,
+              [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: hitLoc.location as string }]);
+
+            if (hitLoc.damageTable) {
+              yield* this._resolveCompartmentHitGen(hitLoc.location as string, hitLoc.damageTable, zone, direction);
+            }
+          }
+        } else {
+          this.emit('COMBAT', `${fighter.type} at ${fighter.position} fires — miss`, 'combat', 'info', zone, direction,
+            [{ table: 'M-3', rollType: '1d6', rolled: offRollValue, result: 'Miss' }]);
+        }
+      }
+
+      // ═══ DELAYED TAIL GUN FIRE (M-1 Notes) ═══
+      // Tail guns firing at 10:30/12/1:30 resolve AFTER all other defensive fire AND German offensive fire
+      if (delayedAllocations.length > 0) {
+        // Check tail gunner is still alive and gun is still operational
+        const tailGunner = getCrewByPosition(crew, 'tail_gunner');
+        const tailAmmo = aircraft.ammo['Tail' as keyof AmmoState];
+        if (tailGunner && tailGunner.status === 'active' && tailGunner.wounds !== 'serious' && tailGunner.wounds !== 'kia') {
+          this.emit('COMBAT', `Tail guns firing (delayed) — ${plural(delayedAllocations.length, 'target')}`, 'combat', 'info', zone, direction);
+          for (const alloc of delayedAllocations) {
+            yield* this._resolveGunFire(alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
+          }
+        } else {
+          this.emit('COMBAT', 'Tail guns cannot fire — gunner down or gun knocked out', 'combat', 'warn', zone, direction);
+          // Ammo was already deducted; that's the rule — ammo is lost if gun is knocked out before firing
+        }
+
+        // Re-filter after tail gun fire
+        activeFighters = allFighters.filter(f => {
+          const fboa = f.damage.filter(d => d === 'FBOA').length;
+          if (fboa > 0) return false;
+          const fca = f.damage.filter(d => d === 'FCA').length;
+          if (fca >= 2) return false;
+          return true;
+        });
+      }
+
+      // Check destruction
+      if (countEnginesOut(this.state.campaign.aircraft) >= 4) {
+        this.emit('DAMAGE', 'ALL ENGINES OUT! Going down!', 'damage', 'critical', zone, direction, undefined, true);
+        return { destroyed: true };
+      }
+
+      // Successive attacks
+      if (attackRound < 3) {
+        activeFighters = getSuccessiveAttackers(activeFighters, mission.outOfFormation);
+        for (const f of activeFighters) {
+          try {
+            const newPos = rollSuccessiveAttackPosition(rng, tables);
+            f.position = newPos;
+          } catch { /* keep position */ }
+        }
+      }
+    }
+
+    return { destroyed: false };
+  }
+
+  /**
+   * Resolve a single gun firing at a fighter — yields M-1 roll and if hit, M-2 roll.
+   */
+  private *_resolveGunFire(
+    gun: GunPosition,
+    fighter: Fighter,
+    hitReq: number,
+    crewPos: CrewPosition,
+    mission: MissionState,
+    zone: number,
+    direction: 'outbound' | 'inbound',
+    getDestroyed: () => number,
+    setDestroyed: (v: number) => void,
+  ): Generator<MissionYield, void, number | number[] | undefined> {
+    const rng = this.rng;
+    const tables = this.tables;
+    const cm = getCrewByPosition(this.state.campaign.crew, crewPos);
+    if (!cm) return;
+
+    // Check fighter is still active (may have been destroyed by earlier gun in same phase)
+    const fboaCount = fighter.damage.filter(d => d === 'FBOA').length;
+    if (fboaCount > 0 || fighter.damage.filter(d => d === 'FCA').length >= 2) return;
+
+    const defRollValue: number = yield* this._yieldCombatRoll(
+      'M-1', 'Defensive Fire',
+      `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.type} at ${fighter.position} — need ${hitReq}+ to hit`,
+      '1d6',
+      [
+        ...(hitReq > 1 ? [{ roll: `1-${hitReq - 1}`, columns: { result: 'Miss' } }] : []),
+        { roll: `${hitReq}-6`, columns: { result: 'Hit' } },
+      ],
+    );
+
+    const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
+    if (fr.hit) {
+      const dmgRollValue: number = yield* this._yieldCombatRoll(
+        'M-2', 'Fighter Damage',
+        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
+        '1d6',
+        [
+          { roll: '1-3', columns: { result: 'FCA — continues attack' } },
+          { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
+          { roll: '6', columns: { result: 'Destroyed' } },
+        ],
+      );
+
+      const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
+      const status = applyFighterDamage(fighter, dmg);
+
+      if (status.status === 'destroyed') {
+        setDestroyed(getDestroyed() + 1);
+        cm.kills++;
+        this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
+            { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed', description: 'Fighter damage result' },
+          ], true);
+      } else if (status.status === 'breaks_off') {
+        this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+            { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' },
+          ]);
+      } else {
+        this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+            { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Continues attack' },
+          ]);
+      }
+    } else {
+      this.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.position}... miss`, 'combat', 'info', zone, direction,
+        [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Miss (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` }]);
+    }
+  }
+
+  /**
    * Player chooses which fighters to remove (Rule 6.2).
    * Yields a PendingChoice if in manual mode; auto-picks in autoplay.
    */
@@ -1469,19 +1551,35 @@ export class GameSession {
     this.emit('COMBAT', `Friendly fighters can drive off ${actualCount} enemy — choose which to remove`, 'combat', 'good', zone, direction,
       [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
 
-    // Yield a choice for the player
+    // Yield a choice for the player — include field-of-fire info so they can make informed decisions
     this.eventBuffer = [];
+    const tables = this.tables;
     const choice: PendingChoice = {
       id: this.pendingRollId++,
       type: 'choice',
       purpose: `Choose ${actualCount} fighter${actualCount > 1 ? 's' : ''} to drive off`,
-      prompt: `Select ${actualCount} fighter${actualCount > 1 ? 's' : ''} to remove (Vertical Dive fighters cannot be driven off):`,
-      options: fighters.map(f => ({
-        id: f.id,
-        label: `${f.type} at ${f.position}`,
-        disabled: !canBeDrivenOffByCover(f.position),
-        reason: !canBeDrivenOffByCover(f.position) ? 'Vertical Dive — immune to fighter cover' : undefined,
-      })),
+      prompt: `Select ${actualCount} fighter${actualCount > 1 ? 's' : ''} to remove:`,
+      options: fighters.map(f => {
+        // Build field-of-fire summary for this fighter
+        const fieldOfFire = getFieldOfFire(f.position, tables);
+        const gunDescs: string[] = [];
+        for (const [gun, hitReq] of fieldOfFire) {
+          const crewPos = GUN_TO_CREW[gun];
+          if (!crewPos) continue;
+          if (isCrewDown(this.state.campaign.crew, crewPos)) continue;
+          const ammoKey = gun as keyof AmmoState;
+          if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
+          gunDescs.push(`${GUN_LABELS[gun]} (${hitReq}+)`);
+        }
+        const gunInfo = gunDescs.length > 0 ? ` — ${gunDescs.join(', ')}` : ' — no guns in range';
+        const isVerticalDive = !canBeDrivenOffByCover(f.position);
+        return {
+          id: f.id,
+          label: `${f.type} at ${f.position}${gunInfo}`,
+          disabled: isVerticalDive,
+          reason: isVerticalDive ? 'Vertical Dive — cannot be driven off' : undefined,
+        };
+      }),
       minSelections: actualCount,
       maxSelections: actualCount,
     };

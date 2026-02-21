@@ -498,6 +498,12 @@ function showPendingChoice(choice) {
   pendingRoll = null;
   rollPanel.style.display = 'block';
 
+  // Gun allocation mode — completely different UI
+  if (choice.choiceType === 'gun-allocation' && choice.allocations) {
+    showGunAllocationChoice(choice);
+    return;
+  }
+
   const selectedIds = new Set();
 
   let html = `
@@ -560,6 +566,75 @@ function showPendingChoice(choice) {
     const checked = rollPanel.querySelectorAll('.choice-checkbox:checked:not(:disabled)');
     const ids = Array.from(checked).map(cb => parseInt(cb.dataset.id, 10));
     const data = await api('POST', '/api/game/submit-choice', { selectedIds: ids });
+    processStepResult(data);
+  });
+
+  rollPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── Gun Allocation UI (Rule 6.3a) ───
+function showGunAllocationChoice(choice) {
+  const allocs = choice.allocations;
+
+  let html = `
+    <div class="roll-prompt">
+      <div class="roll-purpose">🎯 ${escapeHtml(choice.purpose)}</div>
+      <div class="roll-description">${escapeHtml(choice.prompt)}</div>
+    </div>
+    <div class="gun-allocation-grid">
+  `;
+
+  for (let i = 0; i < allocs.length; i++) {
+    const gun = allocs[i];
+    const delayedNote = gun.isTailSpecial ? ' <span class="gun-delayed-note">⏳ Fires after German attack</span>' : '';
+    html += `
+      <div class="gun-allocation-row">
+        <div class="gun-info">
+          <span class="gun-name">${escapeHtml(gun.gunLabel)}</span>
+          <span class="gun-crew">${escapeHtml(gun.crewName)}</span>
+          <span class="gun-ammo">Ammo: ${gun.ammoRemaining}</span>
+          ${delayedNote}
+        </div>
+        <select class="gun-target-select" data-gun-index="${i}">
+          <option value="-1">— Hold fire —</option>
+    `;
+    for (const t of gun.targets) {
+      html += `<option value="${t.fighterId}">${escapeHtml(t.label)}</option>`;
+    }
+    html += `
+        </select>
+      </div>
+    `;
+  }
+
+  html += `
+    </div>
+    <div class="roll-input-area">
+      <button id="btn-submit-allocation" class="btn btn-primary btn-roll-submit">Confirm Allocations</button>
+      <button id="btn-fire-all" class="btn btn-roll-auto">🔫 Auto-assign all</button>
+    </div>
+  `;
+
+  rollPanel.innerHTML = html;
+
+  // Auto-assign: for each gun, pick the first target (not hold fire)
+  document.getElementById('btn-fire-all').addEventListener('click', () => {
+    const selects = rollPanel.querySelectorAll('.gun-target-select');
+    for (const sel of selects) {
+      if (sel.options.length > 1) {
+        sel.selectedIndex = 1; // First actual target
+      }
+    }
+  });
+
+  // Submit allocations
+  document.getElementById('btn-submit-allocation').addEventListener('click', async () => {
+    const selects = rollPanel.querySelectorAll('.gun-target-select');
+    const selectedIds = [];
+    for (const sel of selects) {
+      selectedIds.push(parseInt(sel.value, 10));
+    }
+    const data = await api('POST', '/api/game/submit-choice', { selectedIds });
     processStepResult(data);
   });
 

@@ -779,3 +779,73 @@ details.table-lookup summary:hover { color: #b89b4a; }
   width: 16px;
   height: 16px;
 }
+
+/* ─── Gun Allocation UI ─── */
+.gun-allocation-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 0 8px;
+}
+
+.gun-allocation-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.gun-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.gun-name {
+  font-weight: bold;
+  color: var(--text-bright);
+  font-size: 0.9rem;
+  min-width: 90px;
+}
+
+.gun-crew {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.gun-ammo {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.05);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.gun-delayed-note {
+  color: var(--warn, #c9a227);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+.gun-target-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 6px 8px;
+  background: var(--bg-main, #1a1a1a);
+  color: var(--text-bright);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.gun-target-select:focus {
+  border-color: var(--accent-dim);
+  outline: none;
+}
