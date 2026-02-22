@@ -215,6 +215,15 @@ export function rollCompartmentDamage(
     });
   }
 
+  // Check for cumulative hit tracking (e.g. wing root hits on BL-1)
+  if ((entry as any).cumulative) {
+    const cum = (entry as any).cumulative;
+    effects.push({
+      type: 'wing_root_hit',
+      target: cum.type,
+    });
+  }
+
   if (effects.length === 0) {
     effects.push({ type: 'superficial' });
   }
