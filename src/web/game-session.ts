@@ -1578,14 +1578,25 @@ export class GameSession {
         return { destroyed: true };
       }
 
-      // Successive attacks
+      // Successive attacks — roll B-6 for new attack position per §6.5a
       if (attackRound < 3) {
         activeFighters = getSuccessiveAttackers(activeFighters, mission.outOfFormation);
+        const b6Display = tables.getTableDisplayData('B-6');
         for (const f of activeFighters) {
+          const b6RollValue: number = yield* this._yieldCombatRoll(
+            'B-6', 'Successive Attack Position',
+            `${f.type} coming around — roll for new attack position`,
+            '2d6',
+            b6Display?.rows ?? [],
+          );
           try {
-            const newPos = rollSuccessiveAttackPosition(rng, tables);
-            f.position = newPos;
+            const result = tables.lookupWithValue('B-6', b6RollValue);
+            if (result) {
+              f.position = (result.entry as any).position ?? (result.entry as any).result ?? f.position;
+            }
           } catch { /* keep position */ }
+          this.emit('COMBAT', `${f.type} repositions to ${f.position}`, 'combat', 'info', zone, direction,
+            [{ table: 'B-6', rollType: '2d6', rolled: b6RollValue, result: f.position }]);
         }
       }
     }
