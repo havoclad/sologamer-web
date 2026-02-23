@@ -145,7 +145,7 @@ export interface DamageEffect {
   type: 'gun_damage' | 'equipment_damage' | 'crew_wound' | 'engine_damage'
     | 'fire' | 'oxygen_hit' | 'heat_damage' | 'control_damage'
     | 'wing_root_hit' | 'destroyed' | 'superficial' | 'landing_modifier'
-    | 'follow_up_table';
+    | 'follow_up_table' | 'system_damage';
   position?: string;
   severity?: string;
   damageType?: string;
@@ -224,8 +224,18 @@ export function rollCompartmentDamage(
     });
   }
 
+  // Only mark as superficial if the table entry explicitly says so.
+  // Any other unrecognized entry is real damage — use a generic 'system_damage'
+  // effect so the UI displays the actual result text instead of "Superficial".
   if (effects.length === 0) {
-    effects.push({ type: 'superficial' });
+    const resultText = ((entry.result as string) ?? '').toLowerCase();
+    const descText = ((entry.description as string) ?? '').toLowerCase();
+    const isSuperificial = resultText.includes('superficial') || descText === 'no effect';
+    if (isSuperificial) {
+      effects.push({ type: 'superficial' });
+    } else {
+      effects.push({ type: 'system_damage' });
+    }
   }
 
   return {
