@@ -366,6 +366,15 @@ export class GameSession {
   /** Events buffered since last yield */
   private eventBuffer: GameEvent[] = [];
 
+  /** Debug replay log: records every player input for deterministic replay */
+  private inputLog: Array<{
+    seq: number;
+    type: 'roll' | 'choice' | 'auto_roll' | 'auto_choice';
+    value: number | number[];
+    context?: string;  // table/description from pending roll/choice
+  }> = [];
+  private inputSeq = 0;
+
   constructor(seed?: number, bomberName?: string) {
     this.seed = seed ?? Date.now();
     this.rng = createRNG(this.seed);
@@ -387,6 +396,21 @@ export class GameSession {
   setAutoplay(val: boolean): void { this.autoplay = val; }
   getCurrentPendingRoll(): PendingRoll | null { return this.currentPendingRoll; }
   getCurrentPendingChoice(): PendingChoice | null { return this.currentPendingChoice; }
+
+  /** Get the debug replay log for the current mission */
+  getDebugLog(): {
+    seed: number;
+    bomberName: string;
+    missionNumber: number;
+    inputs: typeof this.inputLog;
+  } {
+    return {
+      seed: this.seed,
+      bomberName: this.state.campaign.planeName,
+      missionNumber: this.state.campaign.missionsCompleted + 1,
+      inputs: [...this.inputLog],
+    };
+  }
 
   private emit(
     phase: string, message: string, category: GameEvent['category'],
@@ -433,6 +457,8 @@ export class GameSession {
 
     this.missionInProgress = true;
     this.eventBuffer = [];
+    this.inputLog = [];
+    this.inputSeq = 0;
     this.missionGen = this._executeMission();
 
     return this._advanceMission();
@@ -443,6 +469,13 @@ export class GameSession {
     if (!this.missionGen || !this.currentPendingRoll) {
       return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
     }
+
+    this.inputLog.push({
+      seq: this.inputSeq++,
+      type: 'roll',
+      value,
+      context: `${this.currentPendingRoll.table} (${this.currentPendingRoll.description})`,
+    });
 
     this.eventBuffer = [];
     this.currentPendingRoll = null;
@@ -457,6 +490,13 @@ export class GameSession {
     if (!this.missionGen || !this.currentPendingChoice) {
       return { events: [], pendingRoll: null, pendingChoice: null, complete: true };
     }
+
+    this.inputLog.push({
+      seq: this.inputSeq++,
+      type: 'choice',
+      value: selectedIds,
+      context: this.currentPendingChoice.description,
+    });
 
     this.eventBuffer = [];
     this.currentPendingRoll = null;
@@ -477,12 +517,18 @@ export class GameSession {
       const choice = this.currentPendingChoice;
       const enabled = choice.options.filter(o => !o.disabled);
       const autoSelected = enabled.slice(0, choice.maxSelections).map(o => o.id);
-      return this.submitChoice(autoSelected);
+      const result = this.submitChoice(autoSelected);
+      // Mark last input as auto
+      if (this.inputLog.length > 0) this.inputLog[this.inputLog.length - 1].type = 'auto_choice';
+      return result;
     }
 
     const diceType = this.currentPendingRoll!.diceType;
     const rollValue = autoRoll(diceType, this.rng);
-    return this.submitRoll(rollValue);
+    const result = this.submitRoll(rollValue);
+    // Mark last input as auto
+    if (this.inputLog.length > 0) this.inputLog[this.inputLog.length - 1].type = 'auto_roll';
+    return result;
   }
 
   /** Run entire mission eagerly (for backwards compat / autoplay) */

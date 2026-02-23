@@ -178,6 +178,16 @@ app.get('/api/game/log', (req, res) => {
   });
 });
 
+app.get('/api/game/debug-log', (_req, res) => {
+  if (!session) {
+    return res.status(400).json({ error: 'No active game.' });
+  }
+  const log = session.getDebugLog();
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="b17-debug-m${log.missionNumber}-${log.seed}.json"`);
+  res.json(log);
+});
+
 // ─── Start ───
 
 const PORT = parseInt(process.env.PORT || '3000', 10);

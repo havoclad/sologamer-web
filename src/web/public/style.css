@@ -131,6 +131,8 @@ body {
 .btn-danger { background: #4a2020; border-color: #6a3030; }
 .btn-danger:hover { background: #6a3030; }
 .btn-secondary { background: var(--bg-panel); }
+.btn-dim { background: transparent; border-color: var(--border); opacity: 0.5; font-size: 0.75rem; }
+.btn-dim:hover { opacity: 0.8; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ─── Top Bar ─── */

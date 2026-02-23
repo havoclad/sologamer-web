@@ -668,6 +668,16 @@ btnNewMission.addEventListener('click', () => {
   resetStatusBar();
 });
 
+$('btn-debug-log').addEventListener('click', async () => {
+  try {
+    const a = document.createElement('a');
+    a.href = '/api/game/debug-log';
+    a.click();
+  } catch (e) {
+    console.error('Failed to download debug log:', e);
+  }
+});
+
 btnRestart.addEventListener('click', () => {
   gameScreen.classList.remove('active');
   startScreen.classList.add('active');
