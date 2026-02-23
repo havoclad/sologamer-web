@@ -474,7 +474,7 @@ export class GameSession {
       seq: this.inputSeq++,
       type: 'roll',
       value,
-      context: `${this.currentPendingRoll.table} (${this.currentPendingRoll.description})`,
+      context: `${this.currentPendingRoll.tableId} (${this.currentPendingRoll.purpose})`,
     });
 
     this.eventBuffer = [];
@@ -495,7 +495,7 @@ export class GameSession {
       seq: this.inputSeq++,
       type: 'choice',
       value: selectedIds,
-      context: this.currentPendingChoice.description,
+      context: this.currentPendingChoice.purpose,
     });
 
     this.eventBuffer = [];
@@ -863,6 +863,7 @@ export class GameSession {
         this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
 
         // Fighter cover defense (M-4)
+        let successiveCover = 0;
         if (coverLevel && hasFighterCover(z)) {
           const m4RollValue: number = yield* this._yieldCombatRoll(
             'M-4', 'Fighter Cover Defense',
@@ -872,6 +873,7 @@ export class GameSession {
           );
 
           const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
+          successiveCover = coverResult.successiveDrivenOff;
           if (coverResult.initialDrivenOff > 0) {
             fighters = yield* this._playerRemoveFighters(fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'outbound');
           } else {
@@ -888,7 +890,7 @@ export class GameSession {
         // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
         let activeFighters = [...fighters];
         let attackRound = 0;
-        const combatResult = yield* this._resolveCombatRounds(activeFighters, fighters, mission, z, 'outbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; });
+        const combatResult = yield* this._resolveCombatRounds(activeFighters, fighters, mission, z, 'outbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; }, successiveCover);
         if (combatResult.destroyed) { destroyed = true; }
       }
 
@@ -997,6 +999,7 @@ export class GameSession {
           }
 
           // Fighter cover defense (M-4)
+          let inboundSuccessiveCover = 0;
           if (coverLevel && hasFighterCover(z)) {
             const m4RollValue: number = yield* this._yieldCombatRoll(
               'M-4', 'Fighter Cover Defense',
@@ -1006,6 +1009,7 @@ export class GameSession {
             );
 
             const coverResult = rollFighterCoverDefense(coverLevel, createFixedRng(m4RollValue, rng), tables, 0);
+            inboundSuccessiveCover = coverResult.successiveDrivenOff;
             if (coverResult.initialDrivenOff > 0) {
               fighters = yield* this._playerRemoveFighters(fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'inbound');
             }
@@ -1016,7 +1020,7 @@ export class GameSession {
           this.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound');
 
           // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
-          const inboundResult = yield* this._resolveCombatRounds(fighters, fighters, mission, z, 'inbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; });
+          const inboundResult = yield* this._resolveCombatRounds(fighters, fighters, mission, z, 'inbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; }, inboundSuccessiveCover);
           if (inboundResult.destroyed) { destroyed = true; }
         }
       }
@@ -1268,6 +1272,7 @@ export class GameSession {
     direction: 'outbound' | 'inbound',
     getDestroyed: () => number,
     setDestroyed: (v: number) => void,
+    successiveCoverDrivenOff = 0,
   ): Generator<MissionYield, { destroyed: boolean }, number | number[] | undefined> {
     const rng = this.rng;
     const tables = this.tables;
@@ -1290,6 +1295,22 @@ export class GameSession {
         for (const line of lastRoundSummary) {
           this.emit('COMBAT', line, 'combat', 'info', zone, direction);
         }
+
+        // Fighter cover drives off additional fighters each successive round (M-4 successive value)
+        if (successiveCoverDrivenOff > 0 && activeFighters.length > 0) {
+          const removable = activeFighters.filter(f => canBeDrivenOffByCover(f.position));
+          const toRemove = Math.min(successiveCoverDrivenOff, removable.length);
+          if (toRemove > 0) {
+            // If player needs to choose which to remove
+            activeFighters = yield* this._playerRemoveFighters(activeFighters, toRemove, 0, 'successive cover', zone, direction);
+            allFighters = allFighters.filter(f => activeFighters.includes(f) || !f.damage.includes('Destroyed' as any));
+          }
+          if (activeFighters.length === 0) {
+            this.emit('COMBAT', 'All fighters driven off by cover!', 'combat', 'good', zone, direction, undefined, true);
+            break;
+          }
+        }
+
         const survDescs = activeFighters.map(f => `${f.type} at ${f.position}`);
         this.emit('COMBAT', `${plural(activeFighters.length, 'fighter')} pressing the attack: ${survDescs.join(', ')}`, 'combat', 'warn', zone, direction);
       }
