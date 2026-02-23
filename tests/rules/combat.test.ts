@@ -316,6 +316,16 @@ describe('getSuccessiveAttackers', () => {
     ];
     expect(getSuccessiveAttackers(fighters, true)).toHaveLength(0);
   });
+
+  it('destroyed fighters do not make successive attacks (regression)', () => {
+    const fighters = [
+      makeFighter({ id: 1, scoredHit: true, attacksMade: 1, damage: ['Destroyed'] }),
+      makeFighter({ id: 2, scoredHit: true, attacksMade: 1, damage: [] }),
+    ];
+    const result = getSuccessiveAttackers(fighters, false);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(2);
+  });
 });
 
 describe('rollShellHits (B-4)', () => {

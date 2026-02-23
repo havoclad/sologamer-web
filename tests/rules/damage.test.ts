@@ -116,6 +116,32 @@ describe('rollCompartmentDamage', () => {
       expect(result.result).toBeTruthy();
     }
   });
+
+  it('BL-1 roll 2 = Wing Root, not superficial (regression)', () => {
+    // Seed 20 produces twod6()=2 on BL-1
+    const result = rollCompartmentDamage('BL-1', createRNG(20), tables);
+    expect(result.result).toBe('Wing Root');
+    expect(result.effects.some(e => e.type === 'wing_root_hit')).toBe(true);
+    expect(result.effects.some(e => e.type === 'superficial')).toBe(false);
+  });
+
+  it('BL-1 roll 7 = Superficial Damage (actual superficial)', () => {
+    // Seed 1 produces twod6()=7 on BL-1
+    const result = rollCompartmentDamage('BL-1', createRNG(1), tables);
+    expect(result.result).toBe('Superficial Damage');
+    expect(result.effects.some(e => e.type === 'superficial')).toBe(true);
+  });
+
+  it('BL-2 entries are not superficial (regression)', () => {
+    // All BL-2 results except roll 12 (Electrical System → destroyed) are system damage
+    // None should be marked superficial since BL-2 has no "Superficial" entries
+    for (let seed = 0; seed < 500; seed++) {
+      const result = rollCompartmentDamage('BL-2', createRNG(seed), tables);
+      if (result.result !== 'Superficial') {
+        expect(result.effects.some(e => e.type === 'superficial')).toBe(false);
+      }
+    }
+  });
 });
 
 describe('rollCrewWound (BL-4)', () => {
