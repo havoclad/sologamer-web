@@ -1494,8 +1494,9 @@ export class GameSession {
           // Ammo was already deducted; that's the rule — ammo is lost if gun is knocked out before firing
         }
 
-        // Re-filter after tail gun fire
+        // Re-filter after tail gun fire (must also exclude destroyed fighters)
         activeFighters = allFighters.filter(f => {
+          if (f.damage.includes('Destroyed' as any)) return false;
           const fboa = f.damage.filter(d => d === 'FBOA').length;
           if (fboa > 0) return false;
           const fca = f.damage.filter(d => d === 'FCA').length;

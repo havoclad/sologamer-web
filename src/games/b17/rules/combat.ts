@@ -323,6 +323,7 @@ export function getSuccessiveAttackers(
 ): Fighter[] {
   return fighters.filter(f => {
     // Fighter must still be active (not destroyed or FBOA)
+    if (f.damage.includes('Destroyed' as any)) return false;
     const fboaCount = f.damage.filter(d => d === 'FBOA').length;
     if (fboaCount > 0) return false;
 
