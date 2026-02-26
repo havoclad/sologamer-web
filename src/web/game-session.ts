@@ -865,6 +865,7 @@ export class GameSession {
         }
 
         // Describe fighters
+        const initialFighterCount = fighters.length;
         const fDescs = fighters.map(f => `${f.type} at ${f.position}`);
         this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
 
@@ -891,6 +892,12 @@ export class GameSession {
         if (fighters.length === 0) {
           this.emit('COMBAT', 'All fighters driven off!', 'combat', 'good', z, 'outbound');
           continue;
+        }
+
+        // Emit updated fighter list after drive-offs so the combat view refreshes
+        if (fighters.length < initialFighterCount) {
+          const remainDescs = fighters.map(f => `${f.type} at ${f.position}`);
+          this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${remainDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
         }
 
         // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire

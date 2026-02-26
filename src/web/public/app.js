@@ -1012,7 +1012,7 @@ function updateMapFromEvent(evt) {
 // ─── Combat View ───
 function updateCombatFromEvent(evt) {
   if (evt.category !== 'combat' || !evt.message) return;
-  if (evt.message.includes('fighter:') || evt.message.includes('fighters:') || evt.message.includes('fighter attacking') || evt.message.includes('fighters attacking')) {
+  if (evt.message.includes('fighter:') || evt.message.includes('fighters:') || evt.message.includes('fighter attacking') || evt.message.includes('fighters attacking') || evt.message.includes('pressing the attack:')) {
     renderCombatDiagram(evt.message);
   }
 }
