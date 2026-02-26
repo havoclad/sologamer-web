@@ -20,7 +20,10 @@
       <h2>New Campaign</h2>
       <div class="form-group">
         <label for="bomber-name">Bomber Name</label>
-        <input type="text" id="bomber-name" value="Memphis Belle" placeholder="Name your B-17">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="bomber-name" value="" placeholder="Name your B-17" style="flex:1">
+          <button type="button" id="btn-random-name" class="btn btn-secondary" title="Random historical name" style="padding:4px 10px;font-size:1.2em;line-height:1">🎲</button>
+        </div>
       </div>
       <div class="form-group">
         <label for="seed-input">Seed (optional, for replay)</label>

@@ -16,6 +16,9 @@ const app = express();
 app.use(express.json());
 app.use(express.static(join(__dirname_resolved, 'public')));
 
+// Serve game data files (bomber names, etc.)
+app.use('/data', express.static(join(__dirname_resolved, '..', 'games', 'b17', 'data')));
+
 // ─── Game session store (single-player for now) ───
 let session: GameSession | null = null;
 

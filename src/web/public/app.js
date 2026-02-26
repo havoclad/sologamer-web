@@ -16,6 +16,17 @@ let autoPlayTimer = null;
 let pendingRoll = null; // Current roll the engine is waiting for
 let pendingChoice = null; // Current choice the engine is waiting for
 
+// ─── Bomber Names ───
+let bomberNames = [];
+fetch('/data/bomber-names.json').then(r => r.json()).then(names => {
+  bomberNames = names;
+  // Pre-fill with a random name on load
+  const input = document.getElementById('bomber-name');
+  if (input && !input.value) {
+    input.value = names[Math.floor(Math.random() * names.length)];
+  }
+}).catch(() => {});
+
 // ─── DOM refs ───
 const $ = id => document.getElementById(id);
 const startScreen = $('start-screen');
@@ -127,6 +138,13 @@ async function api(method, path, body) {
 }
 
 // ─── Start game ───
+// 🎲 Random name button
+document.getElementById('btn-random-name')?.addEventListener('click', () => {
+  if (bomberNames.length) {
+    $('bomber-name').value = bomberNames[Math.floor(Math.random() * bomberNames.length)];
+  }
+});
+
 btnStart.addEventListener('click', async () => {
   const name = $('bomber-name').value.trim() || 'Memphis Belle';
   const seedVal = $('seed-input').value.trim();
