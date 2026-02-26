@@ -144,6 +144,41 @@ describe('rollCompartmentDamage', () => {
   });
 });
 
+describe('BL-1 fuel tank and engine sub-rolls', () => {
+  it('BL-1 roll 10 (Fuel Tank) produces follow_up_table effect', () => {
+    // We need a seed that produces twod6()=10 on BL-1
+    // createFixedRng approach: find seed that gives 10
+    for (let seed = 0; seed < 500; seed++) {
+      const rng = createRNG(seed);
+      const result = rollCompartmentDamage('BL-1', rng, tables);
+      if (result.result === 'Fuel Tank') {
+        const followUp = result.effects.find(e => e.type === 'follow_up_table');
+        expect(followUp).toBeDefined();
+        expect(followUp!.table).toBe('sub_roll');
+        expect(followUp!.target).toBe('Fuel Tank');
+        return;
+      }
+    }
+    // If no seed produced a Fuel Tank result, that's a problem
+    throw new Error('Could not find a seed producing BL-1 Fuel Tank result');
+  });
+
+  it('BL-1 roll 9 (Engines) produces follow_up_table effect', () => {
+    for (let seed = 0; seed < 500; seed++) {
+      const rng = createRNG(seed);
+      const result = rollCompartmentDamage('BL-1', rng, tables);
+      if (result.result === 'Engines') {
+        const followUp = result.effects.find(e => e.type === 'follow_up_table');
+        expect(followUp).toBeDefined();
+        expect(followUp!.table).toBe('sub_roll');
+        expect(followUp!.target).toBe('Engines');
+        return;
+      }
+    }
+    throw new Error('Could not find a seed producing BL-1 Engines result');
+  });
+});
+
 describe('rollCrewWound (BL-4)', () => {
   it('returns light, serious, or kia', () => {
     const rng = createRNG(42);

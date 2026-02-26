@@ -1901,6 +1901,159 @@ export class GameSession {
           this.emit('DAMAGE', `CATASTROPHIC DAMAGE — aircraft destroyed!`, 'damage', 'critical', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Destroyed' }], true);
           break;
+        case 'follow_up_table': {
+          const subRollData = tables.get(damageTable)?.raw as any;
+          const rollEntry = subRollData?.rolls?.[String(dmgRollValue)];
+          const subRoll = rollEntry?.sub_roll;
+
+          if (subRoll?.type === 'fuel_tank') {
+            // ── Fuel Tank sub-rolls ──
+            const isPort = location === 'Port Wing';
+            const wingLabel = isPort ? 'Port' : 'Starboard';
+
+            // Roll 1: Tank location
+            const tankLocRoll: number = yield* this._yieldCombatRoll(
+              'BL-1', `${wingLabel} Wing Fuel Tank Location`,
+              `Which fuel tank was hit?`, '1d6',
+              [
+                { roll: '1-3', columns: { result: 'Outboard tank' } },
+                { roll: '4-6', columns: { result: 'Inboard tank' } },
+              ],
+            );
+            const tankLocation = tankLocRoll <= 3 ? 'Outboard tank' : 'Inboard tank';
+
+            // Roll 2: Damage type
+            const tankDmgRoll: number = yield* this._yieldCombatRoll(
+              'BL-1', `${wingLabel} Wing Fuel Tank Damage`,
+              `Damage to ${tankLocation}`, '1d6',
+              [
+                { roll: '1-2', columns: { result: 'Fire — roll to extinguish on Table BL-3' } },
+                { roll: '3-4', columns: { result: 'Fuel leak — limited range' } },
+                { roll: '5-6', columns: { result: 'Self-seal, no effect' } },
+              ],
+            );
+
+            if (tankDmgRoll <= 2) {
+              // Fire
+              this.state.campaign.aircraft.fuelFire = true;
+              this.emit('DAMAGE', `FUEL FIRE in ${wingLabel} wing ${tankLocation}!`, 'damage', 'critical', zone, direction,
+                [
+                  { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Fuel Tank' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankLocRoll, result: tankLocation, description: 'Tank location' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankDmgRoll, result: 'Fire', description: 'Fuel tank damage' },
+                ], true);
+            } else if (tankDmgRoll <= 4) {
+              // Fuel leak
+              this.state.campaign.aircraft.fuelLeak = true;
+              this.emit('DAMAGE', `Fuel leak in ${wingLabel} wing ${tankLocation} — limited range`, 'damage', 'bad', zone, direction,
+                [
+                  { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Fuel Tank' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankLocRoll, result: tankLocation, description: 'Tank location' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankDmgRoll, result: 'Fuel leak', description: 'Fuel tank damage' },
+                ], true);
+            } else {
+              // Self-seal
+              this.emit('DAMAGE', `${wingLabel} wing ${tankLocation} hit — self-sealed, no effect`, 'damage', 'good', zone, direction,
+                [
+                  { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Fuel Tank' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankLocRoll, result: tankLocation, description: 'Tank location' },
+                  { table: 'BL-1', rollType: '1d6', rolled: tankDmgRoll, result: 'Self-seal', description: 'Fuel tank damage' },
+                ]);
+            }
+          } else if (subRoll?.type === 'engine_hit') {
+            // ── Engine sub-rolls ──
+            const isPort = location === 'Port Wing';
+            const wingLabel = isPort ? 'Port' : 'Starboard';
+            const enginePair = isPort
+              ? { lo: '#1 engine', hi: '#2 engine', loIdx: 0, hiIdx: 1 }
+              : { lo: '#3 engine', hi: '#4 engine', loIdx: 2, hiIdx: 3 };
+
+            // Roll 1: Which engine
+            const engLocRoll: number = yield* this._yieldCombatRoll(
+              'BL-1', `${wingLabel} Wing Engine Hit`,
+              `Which engine was hit?`, '1d6',
+              [
+                { roll: '1-3', columns: { result: enginePair.lo } },
+                { roll: '4-6', columns: { result: enginePair.hi } },
+              ],
+            );
+            const engIdx = engLocRoll <= 3 ? enginePair.loIdx : enginePair.hiIdx;
+            const engLabel = `Engine #${engIdx + 1}`;
+
+            // Roll 2: Damage type
+            const engDmgRoll: number = yield* this._yieldCombatRoll(
+              'BL-1', `${engLabel} Damage`,
+              `Damage to ${engLabel}`, '1d6',
+              [
+                { roll: '1-2', columns: { result: 'Superficial damage — no effect' } },
+                { roll: '3-4', columns: { result: 'Engine out' } },
+                { roll: '5', columns: { result: 'Runaway engine' } },
+                { roll: '6', columns: { result: 'Oil tank hit' } },
+              ],
+            );
+
+            if (engDmgRoll <= 2) {
+              this.emit('DAMAGE', `${engLabel}: Superficial — no effect`, 'damage', 'info', zone, direction,
+                [
+                  { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Engines' },
+                  { table: 'BL-1', rollType: '1d6', rolled: engLocRoll, result: engLabel, description: 'Engine location' },
+                  { table: 'BL-1', rollType: '1d6', rolled: engDmgRoll, result: 'Superficial', description: 'Engine damage' },
+                ]);
+            } else if (engDmgRoll <= 4) {
+              if (this.state.campaign.aircraft.engines[engIdx] !== 'out') {
+                this.state.campaign.aircraft.engines[engIdx] = 'out';
+                this.emit('DAMAGE', `${engLabel} knocked out!`, 'damage', 'bad', zone, direction,
+                  [
+                    { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Engines' },
+                    { table: 'BL-1', rollType: '1d6', rolled: engLocRoll, result: engLabel, description: 'Engine location' },
+                    { table: 'BL-1', rollType: '1d6', rolled: engDmgRoll, result: 'Engine out', description: 'Engine damage' },
+                  ], true);
+                const out = countEnginesOut(this.state.campaign.aircraft);
+                if (out >= 2 && this.state.mission) {
+                  this.state.mission.outOfFormation = true;
+                  this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
+                }
+              }
+            } else if (engDmgRoll === 5) {
+              // Runaway engine — treat as engine out
+              if (this.state.campaign.aircraft.engines[engIdx] !== 'out') {
+                this.state.campaign.aircraft.engines[engIdx] = 'out';
+                this.emit('DAMAGE', `${engLabel} RUNAWAY — engine out!`, 'damage', 'bad', zone, direction,
+                  [
+                    { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Engines' },
+                    { table: 'BL-1', rollType: '1d6', rolled: engLocRoll, result: engLabel, description: 'Engine location' },
+                    { table: 'BL-1', rollType: '1d6', rolled: engDmgRoll, result: 'Runaway engine', description: 'Engine damage' },
+                  ], true);
+                const out = countEnginesOut(this.state.campaign.aircraft);
+                if (out >= 2 && this.state.mission) {
+                  this.state.mission.outOfFormation = true;
+                  this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
+                }
+              }
+            } else {
+              // Oil tank hit — engine out + fire
+              if (this.state.campaign.aircraft.engines[engIdx] !== 'out') {
+                this.state.campaign.aircraft.engines[engIdx] = 'out';
+              }
+              this.emit('DAMAGE', `${engLabel} OIL TANK HIT — engine out, fire!`, 'damage', 'critical', zone, direction,
+                [
+                  { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Engines' },
+                  { table: 'BL-1', rollType: '1d6', rolled: engLocRoll, result: engLabel, description: 'Engine location' },
+                  { table: 'BL-1', rollType: '1d6', rolled: engDmgRoll, result: 'Oil tank hit', description: 'Engine damage' },
+                ], true);
+              const out = countEnginesOut(this.state.campaign.aircraft);
+              if (out >= 2 && this.state.mission) {
+                this.state.mission.outOfFormation = true;
+                this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
+              }
+            }
+          } else {
+            // Generic follow-up — just emit info
+            this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+          }
+          break;
+        }
         default:
           this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
