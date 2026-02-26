@@ -47,7 +47,7 @@ export interface Fighter {
   type: FighterType;
   position: AttackPosition;
   /** Damage markers: FCA (continues attack -1), FBOA (breaks off), Destroyed */
-  damage: ('FCA' | 'FBOA')[];
+  damage: ('FCA' | 'FBOA' | 'Destroyed')[];
   /** Number of attacks made this wave (max 3 per §6.5b) */
   attacksMade: number;
   /** Whether fighter scored a hit in current attack */

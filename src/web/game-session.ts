@@ -33,7 +33,7 @@ import {
   getFieldOfFire, resolveDefensiveFire, rollFighterDamage, isTwinGunMount,
   applyFighterDamage, resolveGermanOffensiveFire, rollFighterCoverDefense,
   removeDrivenOffFighters, rollShellHits, rollSuccessiveAttackPosition,
-  getSuccessiveAttackers,
+  getSuccessiveAttackers, isFighterOutOfAction,
   type GunPosition,
 } from '../games/b17/rules/combat.js';
 import {
@@ -207,18 +207,20 @@ function buildM4Rows(tables: TableStore, coverLevel: string): PendingRoll['table
   return rows;
 }
 
-/** Build display rows for M-3 based on fighter's attack position */
-function buildM3Rows(tables: TableStore, fighterPosition: string): PendingRoll['tableRows'] {
+/** Build display rows for M-3 based on fighter's attack position.
+ *  totalModifier = engineMod + evasiveMod - fcaDamage (net modifier applied to roll).
+ *  Only show "(always)" on roll 6 when modifiers would cause it to miss otherwise. */
+function buildM3Rows(tables: TableStore, fighterPosition: string, totalModifier: number = 0): PendingRoll['tableRows'] {
   const raw = (tables.get('M-3')?.raw as any)?.attack_positions;
   if (!raw) return [
     { roll: '1-5', columns: { result: 'Depends on position' } },
-    { roll: '6', columns: { result: 'Always hits' } },
+    { roll: '6', columns: { result: 'Hit' } },
   ];
   const attackGroup = getM3AttackGroup(fighterPosition as any);
   const groupData = raw[attackGroup];
   if (!groupData?.hit_on) return [
     { roll: '1-5', columns: { result: 'Depends on position' } },
-    { roll: '6', columns: { result: 'Always hits' } },
+    { roll: '6', columns: { result: 'Hit' } },
   ];
   const hitNumbers: number[] = groupData.hit_on;
   const minHit = Math.min(...hitNumbers);
@@ -233,7 +235,11 @@ function buildM3Rows(tables: TableStore, fighterPosition: string): PendingRoll['
       rows.push({ roll: String(i), columns: { result: 'Miss' } });
     }
   }
-  rows.push({ roll: '6', columns: { result: 'Hit (always)' } });
+  // A natural 6 always hits per M-3 rules. Only annotate "(always)" when
+  // the net modifier is negative enough that 6 + modifier would miss.
+  const modifiedSix = 6 + totalModifier;
+  const sixWouldMissWithMods = !hitNumbers.includes(modifiedSix);
+  rows.push({ roll: '6', columns: { result: sixWouldMissWithMods ? 'Hit (always)' : 'Hit' } });
   return rows;
 }
 
@@ -435,8 +441,8 @@ export class GameSession {
   }
 
   /** Create a PendingRoll for a table lookup */
-  private createPendingRoll(tableId: string, purpose: string, modifier = 0): PendingRoll {
-    const tableDisplay = this.tables.getTableDisplayData(tableId);
+  private createPendingRoll(tableId: string, purpose: string, modifier = 0, subKey?: string): PendingRoll {
+    const tableDisplay = this.tables.getTableDisplayData(tableId, subKey);
     const table = this.tables.getRoll(tableId);
     return {
       id: this.pendingRollId++,
@@ -1233,7 +1239,7 @@ export class GameSession {
       [{ table: 'O-6', rollType: '1d6', rolled: bombRunRoll, result: onOff, description: 'Bomb run accuracy' }]);
 
     // ── O-7: Bombing accuracy ──
-    const accuracyPending = this.createPendingRoll('O-7', `Bombing accuracy (${onOff})`);
+    const accuracyPending = this.createPendingRoll('O-7', `Bombing accuracy (${onOff})`, 0, onTarget);
     const accuracyRoll: number = (yield { type: 'pending', roll: accuracyPending, events: this.eventBuffer }) ?? autoRoll(accuracyPending.diceType, rng);
     this.eventBuffer = [];
 
@@ -1303,7 +1309,7 @@ export class GameSession {
           if (toRemove > 0) {
             // If player needs to choose which to remove
             activeFighters = yield* this._playerRemoveFighters(activeFighters, toRemove, 0, 'successive cover', zone, direction);
-            allFighters = allFighters.filter(f => activeFighters.includes(f) || !f.damage.includes('Destroyed' as any));
+            allFighters = allFighters.filter(f => activeFighters.includes(f) || !f.damage.includes('Destroyed'));
           }
           if (activeFighters.length === 0) {
             this.emit('COMBAT', 'All fighters driven off by cover!', 'combat', 'good', zone, direction, undefined, true);
@@ -1412,9 +1418,9 @@ export class GameSession {
           const target = ge.targets.find(t => t.fighterId === fighterId);
           if (!target) continue;
 
-          // Deduct ammo now (per rules, ammo is spent when gun fires)
-          const ammoKey = ge.gun as keyof AmmoState;
-          aircraft.ammo[ammoKey]--;
+          // Ammo is deducted when the gun actually fires (in _resolveGunFire),
+          // not at allocation time — if the target is destroyed before firing,
+          // no ammo is spent.
 
           const alloc: Allocation = {
             gun: ge.gun,
@@ -1458,7 +1464,7 @@ export class GameSession {
         if (fboa > 0) return false;
         const fca = f.damage.filter(d => d === 'FCA').length;
         if (fca >= 2) return false;
-        return !f.damage.includes('Destroyed' as any);
+        return !f.damage.includes('Destroyed');
       });
 
       if (activeFighters.length === 0) {
@@ -1475,7 +1481,7 @@ export class GameSession {
           'M-3', 'German Offensive Fire',
           `${fighter.type} at ${fighter.position} attacks your B-17`,
           '1d6',
-          buildM3Rows(tables, fighter.position),
+          buildM3Rows(tables, fighter.position, engineMod + evasiveMod - fighter.damage.filter(d => d === 'FCA').length),
         );
 
         let offResult: { roll: number; hit: boolean };
@@ -1563,7 +1569,7 @@ export class GameSession {
 
         // Re-filter after tail gun fire (must also exclude destroyed fighters)
         activeFighters = allFighters.filter(f => {
-          if (f.damage.includes('Destroyed' as any)) return false;
+          if (f.damage.includes('Destroyed')) return false;
           const fboa = f.damage.filter(d => d === 'FBOA').length;
           if (fboa > 0) return false;
           const fca = f.damage.filter(d => d === 'FCA').length;
@@ -1624,8 +1630,11 @@ export class GameSession {
     if (!cm) return;
 
     // Check fighter is still active (may have been destroyed by earlier gun in same phase)
-    const fboaCount = fighter.damage.filter(d => d === 'FBOA').length;
-    if (fboaCount > 0 || fighter.damage.filter(d => d === 'FCA').length >= 2) return;
+    if (isFighterOutOfAction(fighter)) return;
+
+    // Deduct ammo when gun actually fires (not at allocation time)
+    const ammoKey = gun as keyof AmmoState;
+    this.state.campaign.aircraft.ammo[ammoKey]--;
 
     const defRollValue: number = yield* this._yieldCombatRoll(
       'M-1', 'Defensive Fire',

@@ -167,6 +167,7 @@ export function applyFighterDamage(
   newDamage: FighterDamageResult,
 ): { status: 'active' | 'breaks_off' | 'destroyed' } {
   if (newDamage === 'Destroyed') {
+    fighter.damage.push('Destroyed');
     return { status: 'destroyed' };
   }
 
@@ -310,6 +311,20 @@ export function rollSuccessiveAttackPosition(
 }
 
 /**
+ * Check if a fighter is out of action (destroyed, FBOA, or cumulative damage
+ * equivalent). Used to skip defensive fire, offensive fire, and successive
+ * attacks for fighters that are already gone.
+ */
+export function isFighterOutOfAction(fighter: Fighter): boolean {
+  if (fighter.damage.includes('Destroyed')) return true;
+  const fboaCount = fighter.damage.filter(d => d === 'FBOA').length;
+  if (fboaCount > 0) return true;
+  const fcaCount = fighter.damage.filter(d => d === 'FCA').length;
+  if (fcaCount >= 2) return true; // 2× FCA = FBOA per M-2 notes
+  return false;
+}
+
+/**
  * Determine which fighters make successive attacks per §6.5.
  *
  * Per §6.5a: any fighter that scored a hit makes a successive attack.
@@ -323,7 +338,7 @@ export function getSuccessiveAttackers(
 ): Fighter[] {
   return fighters.filter(f => {
     // Fighter must still be active (not destroyed or FBOA)
-    if (f.damage.includes('Destroyed' as any)) return false;
+    if (f.damage.includes('Destroyed')) return false;
     const fboaCount = f.damage.filter(d => d === 'FBOA').length;
     if (fboaCount > 0) return false;
 

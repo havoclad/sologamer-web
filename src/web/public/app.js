@@ -46,7 +46,6 @@ function updateStatusBar() {
   $('status-fighter-cover').textContent = `Cover: ${statusFighterCover}`;
   $('status-weather').textContent = `Weather: ${statusWeather}`;
   $('status-kills').textContent = `Kills: ${statusKills}`;
-  $('status-losses').textContent = `Losses: ${statusLosses}`;
 }
 
 function resetStatusBar() {

@@ -230,7 +230,7 @@ export class TableStore {
   }
 
   /** Get display-friendly table data: array of { roll, columns } for UI rendering */
-  getTableDisplayData(name: string): { title: string; rolltype: string; rows: Array<{ roll: string; columns: Record<string, string> }> } | undefined {
+  getTableDisplayData(name: string, subKey?: string): { title: string; rolltype: string; rows: Array<{ roll: string; columns: Record<string, string> }> } | undefined {
     const table = this.getRoll(name);
     if (!table) return undefined;
 
@@ -239,7 +239,11 @@ export class TableStore {
     if (table.raw.rolls) {
       for (const [key, entry] of Object.entries(table.raw.rolls)) {
         const columns: Record<string, string> = {};
-        for (const [k, v] of Object.entries(entry)) {
+        // If subKey specified, drill into the nested object for that key
+        const source = subKey && typeof entry === 'object' && entry !== null && subKey in entry
+          ? (entry as Record<string, any>)[subKey]
+          : entry;
+        for (const [k, v] of Object.entries(source)) {
           if (k === 'notes' || k === 'next' || k === 'damage_effects' || k === 'set' || k === 'fighters') continue;
           if (typeof v === 'string' || typeof v === 'number') {
             columns[k] = String(v);

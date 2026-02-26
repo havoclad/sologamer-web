@@ -7,6 +7,7 @@ import {
   isTwinGunMount, applyFighterDamage, resolveGermanOffensiveFire,
   rollFighterCoverDefense, removeDrivenOffFighters,
   rollSuccessiveAttackPosition, getSuccessiveAttackers, rollShellHits,
+  isFighterOutOfAction,
   type GunPosition,
 } from '../../src/games/b17/rules/combat.js';
 import type { Fighter, AttackPosition } from '../../src/games/b17/rules/fighter-encounters.js';
@@ -315,6 +316,42 @@ describe('getSuccessiveAttackers', () => {
       makeFighter({ id: 1, scoredHit: true, attacksMade: 1, damage: ['FBOA'] }),
     ];
     expect(getSuccessiveAttackers(fighters, true)).toHaveLength(0);
+  });
+
+  it('destroyed fighters are skipped by isFighterOutOfAction', () => {
+    // Import the helper
+    const destroyed = makeFighter({ damage: ['Destroyed'] });
+    expect(isFighterOutOfAction(destroyed)).toBe(true);
+  });
+
+  it('FBOA fighters are skipped by isFighterOutOfAction', () => {
+    const fboa = makeFighter({ damage: ['FBOA'] });
+    expect(isFighterOutOfAction(fboa)).toBe(true);
+  });
+
+  it('2x FCA fighters are skipped by isFighterOutOfAction (cumulative FBOA)', () => {
+    const twoFCA = makeFighter({ damage: ['FCA', 'FCA'] });
+    expect(isFighterOutOfAction(twoFCA)).toBe(true);
+  });
+
+  it('active fighters are NOT skipped by isFighterOutOfAction', () => {
+    const active = makeFighter({ damage: [] });
+    expect(isFighterOutOfAction(active)).toBe(false);
+    const oneFCA = makeFighter({ damage: ['FCA'] });
+    expect(isFighterOutOfAction(oneFCA)).toBe(false);
+  });
+
+  it('applyFighterDamage pushes Destroyed to fighter.damage array', () => {
+    const f = makeFighter({ damage: [] });
+    const result = applyFighterDamage(f, 'Destroyed');
+    expect(result.status).toBe('destroyed');
+    expect(f.damage).toContain('Destroyed');
+  });
+
+  it('a fighter destroyed by applyFighterDamage is caught by isFighterOutOfAction', () => {
+    const f = makeFighter({ damage: [] });
+    applyFighterDamage(f, 'Destroyed');
+    expect(isFighterOutOfAction(f)).toBe(true);
   });
 
   it('destroyed fighters do not make successive attacks (regression)', () => {
