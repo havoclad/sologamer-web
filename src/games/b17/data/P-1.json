@@ -28,26 +28,26 @@
     },
     "4": {
       "result": "Bombardier and Navigator",
-      "description": "Roll wound for each separately on Table BL-4",
+      "description": "Roll wound for each separately on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "targets": ["Bombardier", "Navigator"]
       },
       "notes": ["If Bombardier is KIA or seriously wounded, Bomb Run is automatically Off Target"]
     },
     "5": {
       "result": "Navigator",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Navigator"
       }
     },
     "6": {
       "result": "Bombardier",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Bombardier"
       }
     },
@@ -91,7 +91,7 @@
         "1-2": "Bombardier oxygen hit",
         "3-4": "Navigator oxygen hit",
         "5": "Both Bombardier and Navigator oxygen hit",
-        "6": "Fire and all nose oxygen out. Roll to extinguish fire on Table BL-3"
+        "6": "Fire and all nose oxygen out. Roll to extinguish fire on Table B1-3"
       },
       "notes": ["See rules section Oxygen Out"]
     }

@@ -11,7 +11,7 @@
  *   a. Roll on M-3 per surviving fighter. Miss = fighter removed (§13.1c exception).
  *   b. Hit → roll B-4 for number of shell hits.
  *   c. Per shell hit, roll B-5 for hit location (compartment).
- *   d. Roll on P-1..P-6, BL-1, BL-2 for specific damage.
+ *   d. Roll on P-1..P-6, B1-1, B1-2 for specific damage.
  *
  * Per §6.5, Successive Attacks:
  *   a. Any fighter scoring a hit (even if no effect) attacks again.

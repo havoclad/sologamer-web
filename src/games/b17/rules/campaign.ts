@@ -69,7 +69,7 @@ function createFreshAircraft(): AircraftState {
 /**
  * Process crew after a mission per §17.0.
  *
- * - Seriously wounded: roll for survival per BL-4 note b (simplified: 1D, 1-2 = dies, 3-6 = survives but can't fly)
+ * - Seriously wounded: roll for survival per B1-4 note b (simplified: 1D, 1-2 = dies, 3-6 = survives but can't fly)
  * - Frostbitten: roll for recovery per Errata #5 (1D: 1-3 = grounded, 4-6 = recovers)
  * - KIA crew replaced with fresh replacements
  * - Increment missions for surviving active crew

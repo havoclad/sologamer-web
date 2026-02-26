@@ -1,5 +1,5 @@
 {
-  "Title": "BL-1 WINGS",
+  "Title": "B1-1 WINGS",
   "table_type": "roll",
   "rolltype": "2d6",
   "determines": "wing_damage",
@@ -86,7 +86,7 @@
           "4-6": "Inboard tank"
         },
         "damage_roll": {
-          "1-2": "Fire - roll to extinguish on Table BL-3",
+          "1-2": "Fire - roll to extinguish on Table B1-3",
           "3-4": "Leakage - B-17 may travel limited zones",
           "5-6": "Self-seal, no effect"
         }

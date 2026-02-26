@@ -1,5 +1,5 @@
 {
-  "Title": "BL-2 INSTRUMENTS",
+  "Title": "B1-2 INSTRUMENTS",
   "table_type": "roll", 
   "rolltype": "2d6",
   "determines": "instrument_damage",
@@ -49,7 +49,7 @@
     },
     "10": {
       "result": "Propeller Feathering",
-      "description": "Propeller feathering mechanism out - crew must immediately bailout Table G-6 in case of subsequent runaway engine result from Table BL-1",
+      "description": "Propeller feathering mechanism out - crew must immediately bailout Table G-6 in case of subsequent runaway engine result from Table B1-1",
       "effect": "prop_feathering_out"
     },
     "11": {

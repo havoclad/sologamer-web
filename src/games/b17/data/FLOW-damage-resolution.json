@@ -71,7 +71,7 @@
       "condition": "compartment == wing",
       "if_true": {
         "type": "table",
-        "Table": "BL-1",
+        "Table": "B1-1",
         "pre": "Rolling on wing damage table",
         "post": "Wing damage: <1>"
       }
@@ -81,7 +81,7 @@
       "condition": "crew_wounded",
       "if_true": {
         "type": "table",
-        "Table": "BL-4",
+        "Table": "B1-4",
         "pre": "Rolling for wound severity",
         "post": "Wound severity: <1>"
       }
@@ -91,7 +91,7 @@
       "condition": "fire_started",
       "if_true": {
         "type": "table",
-        "Table": "BL-3",
+        "Table": "B1-3",
         "pre": "Rolling for fire suppression",
         "post": "Fire suppression: <1>"
       }

@@ -3,7 +3,7 @@
  * fuel, oxygen, fire, crew wounds and casualties.
  *
  * Per §6.4c, for each shell hit roll on Table B-5 to find which compartment
- * is hit, then roll on the appropriate damage table (P-1 through P-6, BL-1, BL-2).
+ * is hit, then roll on the appropriate damage table (P-1 through P-6, B1-1, B1-2).
  *
  * Per §6.4d, resolve specific damage for each hit.
  *
@@ -14,7 +14,7 @@
  *   - All 4 out: immediate crash land or bail out (§10.4)
  *
  * Per §12.0, oxygen system: 2 cumulative hits to a compartment's oxygen → knockout.
- * Per §12.2, oxygen fires: must be fought with extinguishers (Table BL-3).
+ * Per §12.2, oxygen fires: must be fought with extinguishers (Table B1-3).
  * Per §11.0, heat out: roll for frostbite each zone (1–3 = frostbite, 4–6 = ok).
  */
 
@@ -33,7 +33,7 @@ export type HitLocation =
 
 export interface ShellHitLocation {
   location: HitLocation;
-  damageTable?: string; // P-1 through P-6, BL-1, BL-2
+  damageTable?: string; // P-1 through P-6, B1-1, B1-2
   isWalkingHits?: boolean;
   isSuperificial?: boolean;
 }
@@ -92,7 +92,7 @@ export function rollHitLocation(
     // Per B-5: "Roll 1D: 1-3 = Port, 4-6 = Starboard"
     const wingRoll = rng.d6();
     const wing = wingRoll <= 3 ? 'Port Wing' : 'Starboard Wing';
-    return { location: wing as HitLocation, damageTable: 'BL-1' };
+    return { location: wing as HitLocation, damageTable: 'B1-1' };
   }
 
   return {
@@ -157,7 +157,7 @@ export interface DamageEffect {
 
 /**
  * Roll for specific compartment damage per §6.4d.
- * Rolls on the appropriate P-1..P-6 or BL-1/BL-2 table.
+ * Rolls on the appropriate P-1..P-6 or B1-1/B1-2 table.
  */
 export function rollCompartmentDamage(
   damageTable: string,
@@ -215,7 +215,7 @@ export function rollCompartmentDamage(
     });
   }
 
-  // Check for cumulative hit tracking (e.g. wing root hits on BL-1)
+  // Check for cumulative hit tracking (e.g. wing root hits on B1-1)
   if ((entry as any).cumulative) {
     const cum = (entry as any).cumulative;
     effects.push({
@@ -245,17 +245,17 @@ export function rollCompartmentDamage(
   };
 }
 
-// ─── Crew Wounds (Table BL-4) ───
+// ─── Crew Wounds (Table B1-4) ───
 
 /**
- * Roll for crew wound severity on Table BL-4 per damage table follow-ups.
+ * Roll for crew wound severity on Table B1-4 per damage table follow-ups.
  *
- * Per BL-4:
+ * Per B1-4:
  *   1–3 = Light wound (may continue duties)
  *   4–5 = Serious wound (cannot continue, cannot bail out)
  *   6 = KIA
  *
- * Per BL-4 notes:
+ * Per B1-4 notes:
  *   - 2nd light wound: gunners must roll 6 to hit; bombardier loses bonus; etc.
  *   - 3 light wounds = serious wound
  *   - 4 light wounds = KIA
@@ -265,7 +265,7 @@ export function rollCrewWound(
   rng: RNG,
   tables: TableStore,
 ): WoundSeverity {
-  const result = tables.lookup('BL-4', rng);
+  const result = tables.lookup('B1-4', rng);
   if (!result) return 'light';
 
   const severity = (result.entry as any).severity as string;
@@ -278,9 +278,9 @@ export function rollCrewWound(
 }
 
 /**
- * Apply wound accumulation rules per BL-4 notes.
+ * Apply wound accumulation rules per B1-4 notes.
  *
- * Per BL-4: "3 light wounds = serious wound. 4 light wounds = KIA.
+ * Per B1-4: "3 light wounds = serious wound. 4 light wounds = KIA.
  * Light wound + serious wound = KIA."
  */
 export function accumulateWound(
@@ -336,20 +336,20 @@ export function getEngineLandingModifier(aircraft: AircraftState): number {
   return 0;
 }
 
-// ─── Fire Resolution (Table BL-3) ───
+// ─── Fire Resolution (Table B1-3) ───
 
 /**
- * Attempt to extinguish a fire using Table BL-3 per §12.2.
+ * Attempt to extinguish a fire using Table B1-3 per §12.2.
  *
  * Per §12.2: crew member uses one fire extinguisher per attempt.
- * BL-3: 1–4 = fire out, 5–6 = fire continues.
+ * B1-3: 1–4 = fire out, 5–6 = fire continues.
  * Max 3 attempts (3 extinguishers). If fire still burning → bail out on G-6.
  */
 export function attemptExtinguishFire(
   rng: RNG,
   tables: TableStore,
 ): boolean {
-  const result = tables.lookup('BL-3', rng);
+  const result = tables.lookup('B1-3', rng);
   if (!result) return false;
 
   return (result.entry.result as string) === 'Fire out';
@@ -369,7 +369,7 @@ export function rollFrostbite(rng: RNG): boolean {
  * Post-landing frostbite effects per §11.0.
  * Roll 1D: 1–2 = serious injury (may not fly again), 3–6 = recovers.
  *
- * Per Errata #5: correct values from BL-5 note (b):
+ * Per Errata #5: correct values from B1-5 note (b):
  * 1–3 = may not fly again, 4–6 = recovers.
  */
 export function rollFrostbiteRecovery(rng: RNG): 'grounded' | 'recovers' {

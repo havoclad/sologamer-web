@@ -13,8 +13,8 @@
     },
     "3": {
       "result": "Intercom System Out",
-      "description": "See effect for roll of 4 on Instruments Table BL-2",
-      "see": "BL-2:4"
+      "description": "See effect for roll of 4 on Instruments Table B1-2",
+      "see": "B1-2:4"
     },
     "4": {
       "result": "Radio Out",
@@ -30,9 +30,9 @@
     },
     "6": {
       "result": "Radio Operator",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Radio Operator"
       }
     },
@@ -54,11 +54,11 @@
     },
     "11": {
       "result": "Oxygen Supply Hit",
-      "description": "Roll 1D: 1-5 = 1 oxygen hit; 6 = fire, and Radio Room oxygen system out. Roll to extinguish fire on Table BL-3",
+      "description": "Roll 1D: 1-5 = 1 oxygen hit; 6 = fire, and Radio Room oxygen system out. Roll to extinguish fire on Table B1-3",
       "sub_roll": {
         "type": "1d6",
         "1-5": "Radio Operator oxygen hit",
-        "6": "Fire, and Radio Room oxygen system out. Roll to extinguish fire on Table BL-3"
+        "6": "Fire, and Radio Room oxygen system out. Roll to extinguish fire on Table B1-3"
       },
       "notes": ["See rules section Oxygen Out"]
     },

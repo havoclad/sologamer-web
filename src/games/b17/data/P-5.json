@@ -13,7 +13,7 @@
         "1-2": "Port Gunner oxygen out",
         "3-4": "Starboard Gunner oxygen out", 
         "5": "Ball Gunner oxygen out",
-        "6": "Fire, Waist oxygen out - roll to extinguish on Table BL-3"
+        "6": "Fire, Waist oxygen out - roll to extinguish on Table B1-3"
       },
       "notes": ["See rules section Oxygen Out"]
     },
@@ -36,9 +36,9 @@
     },
     "6": {
       "result": "Port Gunner",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Port Waist Gunner"
       }
     },
@@ -48,18 +48,18 @@
     },
     "8": {
       "result": "Starboard Gunner",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Starboard Waist Gunner"
       }
     },
     "9": {
       "result": "Ball Turret",
-      "description": "Roll 1D: 1,2 = roll wound for gunner on Table BL-4; 3 = gunner's heat out; 4,5 = guns out; 6 = turret mechanism inoperable",
+      "description": "Roll 1D: 1,2 = roll wound for gunner on Table B1-4; 3 = gunner's heat out; 4,5 = guns out; 6 = turret mechanism inoperable",
       "sub_roll": {
         "type": "1d6",
-        "1-2": "Roll wound for Ball Gunner on Table BL-4",
+        "1-2": "Roll wound for Ball Gunner on Table B1-4",
         "3": "Ball Gunner's heat out",
         "4-5": "Ball turret guns out", 
         "6": "Ball turret mechanism inoperable - gunner trapped"
@@ -68,9 +68,9 @@
     },
     "10": {
       "result": "Waist Gunners",
-      "description": "Roll wound for each waist gunner on Table BL-4",
+      "description": "Roll wound for each waist gunner on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Both Waist Gunners"
       }
     },

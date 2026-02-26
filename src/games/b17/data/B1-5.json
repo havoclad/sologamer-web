@@ -1,5 +1,5 @@
 {
-  "Title": "BL-5 FROSTBITE", 
+  "Title": "B1-5 FROSTBITE", 
   "table_type": "roll",
   "rolltype": "1d6",
   "determines": "frostbite_effects",

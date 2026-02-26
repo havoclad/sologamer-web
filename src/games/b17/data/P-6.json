@@ -25,9 +25,9 @@
     },
     "5": {
       "result": "Tail Gunner",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4", 
+        "table": "B1-4", 
         "target": "Tail Gunner"
       }
     },
@@ -80,7 +80,7 @@
       "sub_roll": {
         "type": "1d6",
         "1-5": "1 oxygen supply hit",
-        "6": "Fire, and Tail oxygen out - roll to extinguish on Table BL-3"
+        "6": "Fire, and Tail oxygen out - roll to extinguish on Table B1-3"
       },
       "notes": ["See rules section Oxygen Out"]
     },

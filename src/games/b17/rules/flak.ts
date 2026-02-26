@@ -13,7 +13,7 @@
  *
  * Flak resolution chain:
  *   O-2 → flak intensity → O-3 (flak to hit, 3 rolls) → O-4 (shell hits per flak hit)
- *   → O-5 (area affected per shell hit) → damage tables (P-1..P-6, BL-1, BL-2)
+ *   → O-5 (area affected per shell hit) → damage tables (P-1..P-6, B1-1, B1-2)
  */
 
 import type { RNG } from '../../../engine/rng.js';

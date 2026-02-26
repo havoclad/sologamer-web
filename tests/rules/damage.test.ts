@@ -54,7 +54,7 @@ describe('rollHitLocation (B-5)', () => {
     for (let seed = 0; seed < 500; seed++) {
       const result = rollHitLocation('12 High', createRNG(seed), tables);
       if (result.location === 'Port Wing' || result.location === 'Starboard Wing') {
-        expect(result.damageTable).toBe('BL-1');
+        expect(result.damageTable).toBe('B1-1');
         return;
       }
     }
@@ -110,33 +110,33 @@ describe('rollCompartmentDamage', () => {
   });
 
   it('various tables all return valid results', () => {
-    for (const table of ['P-1', 'P-2', 'P-3', 'P-4', 'P-5', 'P-6', 'BL-1']) {
+    for (const table of ['P-1', 'P-2', 'P-3', 'P-4', 'P-5', 'P-6', 'B1-1']) {
       const rng = createRNG(42);
       const result = rollCompartmentDamage(table, rng, tables);
       expect(result.result).toBeTruthy();
     }
   });
 
-  it('BL-1 roll 2 = Wing Root, not superficial (regression)', () => {
-    // Seed 20 produces twod6()=2 on BL-1
-    const result = rollCompartmentDamage('BL-1', createRNG(20), tables);
+  it('B1-1 roll 2 = Wing Root, not superficial (regression)', () => {
+    // Seed 20 produces twod6()=2 on B1-1
+    const result = rollCompartmentDamage('B1-1', createRNG(20), tables);
     expect(result.result).toBe('Wing Root');
     expect(result.effects.some(e => e.type === 'wing_root_hit')).toBe(true);
     expect(result.effects.some(e => e.type === 'superficial')).toBe(false);
   });
 
-  it('BL-1 roll 7 = Superficial Damage (actual superficial)', () => {
-    // Seed 1 produces twod6()=7 on BL-1
-    const result = rollCompartmentDamage('BL-1', createRNG(1), tables);
+  it('B1-1 roll 7 = Superficial Damage (actual superficial)', () => {
+    // Seed 1 produces twod6()=7 on B1-1
+    const result = rollCompartmentDamage('B1-1', createRNG(1), tables);
     expect(result.result).toBe('Superficial Damage');
     expect(result.effects.some(e => e.type === 'superficial')).toBe(true);
   });
 
-  it('BL-2 entries are not superficial (regression)', () => {
-    // All BL-2 results except roll 12 (Electrical System → destroyed) are system damage
-    // None should be marked superficial since BL-2 has no "Superficial" entries
+  it('B1-2 entries are not superficial (regression)', () => {
+    // All B1-2 results except roll 12 (Electrical System → destroyed) are system damage
+    // None should be marked superficial since B1-2 has no "Superficial" entries
     for (let seed = 0; seed < 500; seed++) {
-      const result = rollCompartmentDamage('BL-2', createRNG(seed), tables);
+      const result = rollCompartmentDamage('B1-2', createRNG(seed), tables);
       if (result.result !== 'Superficial') {
         expect(result.effects.some(e => e.type === 'superficial')).toBe(false);
       }
@@ -144,13 +144,13 @@ describe('rollCompartmentDamage', () => {
   });
 });
 
-describe('BL-1 fuel tank and engine sub-rolls', () => {
-  it('BL-1 roll 10 (Fuel Tank) produces follow_up_table effect', () => {
-    // We need a seed that produces twod6()=10 on BL-1
+describe('B1-1 fuel tank and engine sub-rolls', () => {
+  it('B1-1 roll 10 (Fuel Tank) produces follow_up_table effect', () => {
+    // We need a seed that produces twod6()=10 on B1-1
     // createFixedRng approach: find seed that gives 10
     for (let seed = 0; seed < 500; seed++) {
       const rng = createRNG(seed);
-      const result = rollCompartmentDamage('BL-1', rng, tables);
+      const result = rollCompartmentDamage('B1-1', rng, tables);
       if (result.result === 'Fuel Tank') {
         const followUp = result.effects.find(e => e.type === 'follow_up_table');
         expect(followUp).toBeDefined();
@@ -160,13 +160,13 @@ describe('BL-1 fuel tank and engine sub-rolls', () => {
       }
     }
     // If no seed produced a Fuel Tank result, that's a problem
-    throw new Error('Could not find a seed producing BL-1 Fuel Tank result');
+    throw new Error('Could not find a seed producing B1-1 Fuel Tank result');
   });
 
-  it('BL-1 roll 9 (Engines) produces follow_up_table effect', () => {
+  it('B1-1 roll 9 (Engines) produces follow_up_table effect', () => {
     for (let seed = 0; seed < 500; seed++) {
       const rng = createRNG(seed);
-      const result = rollCompartmentDamage('BL-1', rng, tables);
+      const result = rollCompartmentDamage('B1-1', rng, tables);
       if (result.result === 'Engines') {
         const followUp = result.effects.find(e => e.type === 'follow_up_table');
         expect(followUp).toBeDefined();
@@ -175,18 +175,18 @@ describe('BL-1 fuel tank and engine sub-rolls', () => {
         return;
       }
     }
-    throw new Error('Could not find a seed producing BL-1 Engines result');
+    throw new Error('Could not find a seed producing B1-1 Engines result');
   });
 });
 
-describe('rollCrewWound (BL-4)', () => {
+describe('rollCrewWound (B1-4)', () => {
   it('returns light, serious, or kia', () => {
     const rng = createRNG(42);
     const result = rollCrewWound(rng, tables);
     expect(['light', 'serious', 'kia']).toContain(result);
   });
 
-  it('distribution: 1-3 light, 4-5 serious, 6 KIA per BL-4', () => {
+  it('distribution: 1-3 light, 4-5 serious, 6 KIA per B1-4', () => {
     let light = 0, serious = 0, kia = 0;
     for (let seed = 0; seed < 600; seed++) {
       const result = rollCrewWound(createRNG(seed), tables);
@@ -213,11 +213,11 @@ describe('accumulateWound', () => {
     expect(accumulateWound('none', 'kia')).toBe('kia');
   });
 
-  it('light + serious = kia per BL-4', () => {
+  it('light + serious = kia per B1-4', () => {
     expect(accumulateWound('light', 'serious')).toBe('kia');
   });
 
-  it('serious + light = kia per BL-4', () => {
+  it('serious + light = kia per B1-4', () => {
     expect(accumulateWound('serious', 'light')).toBe('kia');
   });
 
@@ -253,14 +253,14 @@ describe('engine helpers', () => {
   });
 });
 
-describe('attemptExtinguishFire (BL-3)', () => {
+describe('attemptExtinguishFire (B1-3)', () => {
   it('returns true or false', () => {
     const rng = createRNG(42);
     const result = attemptExtinguishFire(rng, tables);
     expect(typeof result).toBe('boolean');
   });
 
-  it('roughly 4/6 success rate per BL-3 (1-4 = out, 5-6 = continues)', () => {
+  it('roughly 4/6 success rate per B1-3 (1-4 = out, 5-6 = continues)', () => {
     let successes = 0;
     for (let seed = 0; seed < 600; seed++) {
       if (attemptExtinguishFire(createRNG(seed), tables)) successes++;

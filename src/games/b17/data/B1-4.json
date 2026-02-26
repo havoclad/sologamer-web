@@ -1,5 +1,5 @@
 {
-  "Title": "BL-4 WOUNDS",
+  "Title": "B1-4 WOUNDS",
   "table_type": "roll", 
   "rolltype": "1d6",
   "determines": "crew_wounds",

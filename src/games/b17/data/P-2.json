@@ -13,25 +13,25 @@
     },
     "3": {
       "result": "Pilot and Co-Pilot",
-      "description": "Roll wound for each separately on Table BL-4",
+      "description": "Roll wound for each separately on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "targets": ["Pilot", "Co-Pilot"]
       }
     },
     "4": {
       "result": "Pilot",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Pilot"
       }
     },
     "5": {
       "result": "Co-Pilot",
-      "description": "Roll for wound on Table BL-4",
+      "description": "Roll for wound on Table B1-4",
       "follow_up": {
-        "table": "BL-4",
+        "table": "B1-4",
         "target": "Co-Pilot"
       }
     },
@@ -45,19 +45,19 @@
     },
     "8": {
       "result": "Top Turret",
-      "description": "Roll 1D: 1,2 = guns inoperable; 3-5 = Engineer rolls for wound on Table BL-4; 6 = guns inoperable and Engineer rolls for wound",
+      "description": "Roll 1D: 1,2 = guns inoperable; 3-5 = Engineer rolls for wound on Table B1-4; 6 = guns inoperable and Engineer rolls for wound",
       "sub_roll": {
         "type": "1d6",
         "1-2": "Top turret guns inoperable",
-        "3-5": "Engineer rolls for wound on Table BL-4",
-        "6": "Top turret guns inoperable and Engineer rolls for wound on Table BL-4"
+        "3-5": "Engineer rolls for wound on Table B1-4",
+        "6": "Top turret guns inoperable and Engineer rolls for wound on Table B1-4"
       }
     },
     "9": {
       "result": "Instruments",
-      "description": "Roll for damage on Table BL-2",
+      "description": "Roll for damage on Table B1-2",
       "follow_up": {
-        "table": "BL-2"
+        "table": "B1-2"
       }
     },
     "10": {
@@ -69,7 +69,7 @@
         "2": "Pilot oxygen out",
         "3": "Co-Pilot oxygen out",
         "4-5": "Engineer oxygen out",
-        "6": "Fire and all Pilot Compartment oxygen out. Roll to extinguish fire on Table BL-3"
+        "6": "Fire and all Pilot Compartment oxygen out. Roll to extinguish fire on Table B1-3"
       },
       "notes": ["See rules section Oxygen Out"]
     },

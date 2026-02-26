@@ -20,8 +20,8 @@
  *
  * Per G-9: roll result determines crew/aircraft fate:
  *   ≤ -3: Crew KIA, plane wrecked
- *   -2: Crew rolls for wounds (BL-4 +1), plane wrecked
- *   -1: Crew rolls for wounds (BL-4), plane wrecked
+ *   -2: Crew rolls for wounds (B1-4 +1), plane wrecked
+ *   -1: Crew rolls for wounds (B1-4), plane wrecked
  *   0: Crew safe, plane irreparably damaged
  *   1: Crew safe, plane repairable by next mission
  *   2+: Crew and plane safe
@@ -162,7 +162,7 @@ export function resolveLandLanding(
     planeDestroyed = true;
   } else if (modifiedRoll === -2) {
     outcome = 'crew_wounded_plane_wrecked';
-    woundRollModifier = 1; // BL-4 +1 per G-9
+    woundRollModifier = 1; // B1-4 +1 per G-9
     planeDestroyed = true;
     crewWounds = rollLandingWounds(crew, rng, tables, woundRollModifier);
   } else if (modifiedRoll === -1) {
@@ -205,7 +205,7 @@ function rollLandingWounds(
     if (member.status !== 'active') continue;
     if (member.wounds === 'kia') continue;
 
-    // Roll on BL-4 with modifier
+    // Roll on B1-4 with modifier
     const wound = rollCrewWound(rng, tables);
     if (wound !== 'none') {
       wounds.push({ position: member.position, wound });

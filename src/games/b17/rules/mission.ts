@@ -618,7 +618,7 @@ function applyFlakDamage(
   const tableMap: Record<string, string> = {
     'Nose': 'P-1', 'Pilot Compt.': 'P-2', 'Bomb Bay': 'P-3',
     'Radio Room': 'P-4', 'Waist': 'P-5', 'Tail': 'P-6',
-    'Port Wing': 'BL-1', 'Starboard Wing': 'BL-1',
+    'Port Wing': 'B1-1', 'Starboard Wing': 'B1-1',
   };
 
   const damageTable = tableMap[area];
