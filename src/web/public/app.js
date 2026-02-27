@@ -1011,8 +1011,25 @@ function updateMapFromEvent(evt) {
 
 // ─── Combat View ───
 function updateCombatFromEvent(evt) {
-  if (!evt.combatState) return;
-  renderCombatDiagram(evt.combatState.fighters);
+  if (evt.combatState) {
+    renderCombatDiagram(evt.combatState.fighters);
+    return;
+  }
+  // Fallback: parse fighter positions from message text (for events without combatState)
+  if (evt.category !== 'combat' || !evt.message) return;
+  const msg = evt.message;
+  if (msg.includes('fighter:') || msg.includes('fighters:') || msg.includes('fighter attacking') || msg.includes('fighters attacking') || msg.includes('pressing the attack:')) {
+    const posPattern = /(\w+\d*)\s+at\s+([\d:]+\s+(?:High|Level|Low)|Vertical\s+Dive|Vertical\s+Climb)/g;
+    let match;
+    const fighters = [];
+    let id = 0;
+    while ((match = posPattern.exec(msg)) !== null) {
+      fighters.push({ id: id++, type: match[1], position: match[2] });
+    }
+    renderCombatDiagram(fighters);
+  } else if (msg.includes('All fighters driven off') || msg.includes('No enemy fighters')) {
+    renderCombatDiagram([]);
+  }
 }
 
 function renderCombatDiagram(fighters) {
