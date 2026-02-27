@@ -97,6 +97,21 @@ export interface AircraftState {
   guns: import('./rules/guns.js').Gun[];
   /** @deprecated Use guns array instead. Computed from guns for backward compat. */
   ammo: AmmoState;
+
+  // ── Damage sub-roll tracking ──
+  navigatorEquipInop: boolean;
+  bombControlsInop: boolean;
+  autopilotInop: boolean;
+  tailWheelDamaged: boolean;
+  brakesOut: boolean;
+  landingGearInop: boolean;
+  ballTurretTrapped: boolean;
+  portFlapInop: boolean;
+  starboardFlapInop: boolean;
+  portAileronInop: boolean;
+  starboardAileronInop: boolean;
+  portElevatorInop: boolean;
+  starboardElevatorInop: boolean;
 }
 
 // ─── Mission ───
@@ -120,6 +135,7 @@ export interface MissionState {
   aborted: boolean;
   evasiveAction: boolean;
   landingModifiers: number;
+  bombRunModifier: number;
 }
 
 // ─── Campaign ───

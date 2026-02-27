@@ -733,7 +733,7 @@ export class GameSession {
       squadron: squadronPosition?.position as any ?? 'lead',
       weather: 'clear', outOfFormation: false, altitude: 20000,
       bombsAboard: true, bombsDropped: false, aborted: false,
-      evasiveAction: false, landingModifiers: 0,
+      evasiveAction: false, landingModifiers: 0, bombRunModifier: 0,
     };
     this.state.mission = mission;
     this.state.campaign.aircraft.guns = initializeGuns();

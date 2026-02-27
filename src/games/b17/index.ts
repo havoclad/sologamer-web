@@ -35,6 +35,19 @@ function createDefaultAircraft(): AircraftState {
     fireExtinguishersUsed: 0,
     guns,
     ammo: Object.fromEntries(guns.map(g => [g.id, g.ammo])) as any,
+    navigatorEquipInop: false,
+    bombControlsInop: false,
+    autopilotInop: false,
+    tailWheelDamaged: false,
+    brakesOut: false,
+    landingGearInop: false,
+    ballTurretTrapped: false,
+    portFlapInop: false,
+    starboardFlapInop: false,
+    portAileronInop: false,
+    starboardAileronInop: false,
+    portElevatorInop: false,
+    starboardElevatorInop: false,
   };
 }
 
