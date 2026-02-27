@@ -10,6 +10,7 @@ import type {
   B17GameState, CampaignState, AircraftState, CrewMember, CrewPosition,
 } from './types.js';
 import { initializeGuns } from './rules/guns.js';
+import { createCrewMember } from './rules/crew.js';
 
 const CREW_POSITIONS: CrewPosition[] = [
   'pilot', 'copilot', 'navigator', 'bombardier',
@@ -38,15 +39,9 @@ function createDefaultAircraft(): AircraftState {
 }
 
 function createDefaultCrew(): CrewMember[] {
-  return CREW_POSITIONS.map(pos => ({
-    position: pos,
-    name: `Crew ${pos}`,
-    wounds: 'none',
-    frostbite: false,
-    kills: 0,
-    missions: 0,
-    status: 'active',
-  }));
+  return CREW_POSITIONS.map((pos, i) =>
+    createCrewMember(`crew-${String(i + 1).padStart(3, '0')}`, `Crew ${pos}`, pos)
+  );
 }
 
 export function createInitialB17State(): B17GameState {

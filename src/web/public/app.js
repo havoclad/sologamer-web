@@ -98,7 +98,7 @@ function updateStatusFromEvent(evt) {
   // Kills & losses from crew state snapshots
   if (evt.stateSnapshot?.crew) {
     statusKills = evt.stateSnapshot.crew.reduce((sum, c) => sum + (c.kills || 0), 0);
-    statusLosses = evt.stateSnapshot.crew.filter(c => c.wounds === 'kia' || c.status === 'kia').length;
+    statusLosses = evt.stateSnapshot.crew.filter(c => c.woundSeverity === 'kia' || c.status === 'kia').length;
   }
 
   // Phase-based zone info (ZONE headers)
@@ -837,16 +837,16 @@ function renderCrew(crew) {
     if (!crew) return;
   }
   crewGrid.innerHTML = crew.map(c => {
-    const cls = c.wounds === 'kia' ? 'kia' :
-      c.wounds === 'serious' || c.wounds === 'mortal' ? 'serious' :
-      c.wounds === 'light' ? 'wounded' : '';
-    const statusCls = c.wounds === 'none' && c.status === 'active' ? 'ok' :
-      c.wounds === 'kia' || c.status === 'kia' ? 'down' :
-      c.wounds !== 'none' ? 'wound' : 'ok';
-    const statusText = c.wounds === 'kia' ? 'KIA' :
+    const cls = c.woundSeverity === 'kia' ? 'kia' :
+      c.woundSeverity === 'serious' ? 'serious' :
+      c.woundSeverity === 'light' ? 'wounded' : '';
+    const statusCls = c.woundSeverity === 'none' && c.status === 'active' ? 'ok' :
+      c.woundSeverity === 'kia' || c.status === 'kia' ? 'down' :
+      c.woundSeverity !== 'none' ? 'wound' : 'ok';
+    const statusText = c.woundSeverity === 'kia' ? 'KIA' :
       c.status === 'pow' ? 'POW' :
-      c.wounds === 'serious' ? 'SERIOUS WOUND' :
-      c.wounds === 'light' ? 'LIGHT WOUND' :
+      c.woundSeverity === 'serious' ? 'SERIOUS WOUND' :
+      c.woundSeverity === 'light' ? 'LIGHT WOUND' :
       c.frostbite ? 'FROSTBITE' : 'OK';
     return `
       <div class="crew-card ${cls}">

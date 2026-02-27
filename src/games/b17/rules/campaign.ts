@@ -18,6 +18,7 @@ import type {
 import { createInitialB17State } from '../index.js';
 import { runMission, type CompleteMissionResult, type MissionOutcome } from './mission.js';
 import { rollFrostbiteRecovery } from './damage.js';
+import { createReplacement } from './crew.js';
 
 // ─── Campaign types ───
 
@@ -49,14 +50,19 @@ const DEFAULT_CREW_POSITIONS: CrewPosition[] = [
 ];
 
 function createFreshCrew(names?: Record<CrewPosition, string>): CrewMember[] {
-  return DEFAULT_CREW_POSITIONS.map(pos => ({
+  return DEFAULT_CREW_POSITIONS.map((pos, i) => ({
+    id: `crew-${String(i + 1).padStart(3, '0')}`,
     position: pos,
     name: names?.[pos] ?? `Crew ${pos}`,
-    wounds: 'none' as const,
+    woundSeverity: 'none' as const,
+    lightWounds: 0,
     frostbite: false,
     kills: 0,
     missions: 0,
     status: 'active' as const,
+    isOriginal: true,
+    currentGunPosition: null,
+    aceForADay: false,
   }));
 }
 
@@ -81,49 +87,23 @@ export function processPostMission(
   const replacements: string[] = [];
   const updatedCrew: CrewMember[] = [];
 
+  let nextReplacementId = 100;
   for (const member of crew) {
-    if (member.wounds === 'kia') {
-      // Replace KIA crew
-      const replacement: CrewMember = {
-        position: member.position,
-        name: `Replacement ${member.position}`,
-        wounds: 'none',
-        frostbite: false,
-        kills: 0,
-        missions: 0,
-        status: 'active',
-      };
+    if (member.woundSeverity === 'kia') {
+      const replacement = createReplacement(`crew-r${nextReplacementId++}`, `Replacement ${member.position}`, member.position);
       updatedCrew.push(replacement);
       replacements.push(`${member.name} (${member.position}) KIA — replaced`);
       continue;
     }
 
-    if (member.wounds === 'serious') {
-      // Roll for survival: 1D, 1-2 = dies of wounds, 3-6 = survives (hospitalized)
+    if (member.woundSeverity === 'serious') {
       const survivalRoll = rng.d6();
       if (survivalRoll <= 2) {
-        const replacement: CrewMember = {
-          position: member.position,
-          name: `Replacement ${member.position}`,
-          wounds: 'none',
-          frostbite: false,
-          kills: 0,
-          missions: 0,
-          status: 'active',
-        };
+        const replacement = createReplacement(`crew-r${nextReplacementId++}`, `Replacement ${member.position}`, member.position);
         updatedCrew.push(replacement);
         replacements.push(`${member.name} (${member.position}) died of wounds — replaced`);
       } else {
-        // Hospitalized — replace for next mission
-        const replacement: CrewMember = {
-          position: member.position,
-          name: `Replacement ${member.position}`,
-          wounds: 'none',
-          frostbite: false,
-          kills: 0,
-          missions: 0,
-          status: 'active',
-        };
+        const replacement = createReplacement(`crew-r${nextReplacementId++}`, `Replacement ${member.position}`, member.position);
         updatedCrew.push(replacement);
         replacements.push(`${member.name} (${member.position}) hospitalized — replaced`);
       }
@@ -134,25 +114,18 @@ export function processPostMission(
     if (member.frostbite) {
       const recovery = rollFrostbiteRecovery(rng);
       if (recovery === 'grounded') {
-        const replacement: CrewMember = {
-          position: member.position,
-          name: `Replacement ${member.position}`,
-          wounds: 'none',
-          frostbite: false,
-          kills: 0,
-          missions: 0,
-          status: 'active',
-        };
+        const replacement = createReplacement(`crew-r${nextReplacementId++}`, `Replacement ${member.position}`, member.position);
         updatedCrew.push(replacement);
         replacements.push(`${member.name} (${member.position}) grounded by frostbite — replaced`);
         continue;
       }
     }
 
-    // Surviving crew: increment missions, heal light wounds
+    // Surviving crew: increment missions, heal wounds
     const healed: CrewMember = {
       ...member,
-      wounds: 'none',
+      woundSeverity: 'none',
+      lightWounds: 0,
       frostbite: false,
       missions: member.missions + 1,
     };
@@ -207,7 +180,7 @@ export function runCampaign(
     }
 
     // Process crew
-    const crewLostThisMission = result.updatedCrew.filter(c => c.wounds === 'kia').length;
+    const crewLostThisMission = result.updatedCrew.filter(c => c.woundSeverity === 'kia').length;
     totalCrewLost += crewLostThisMission;
 
     const postMission = processPostMission(result.updatedCrew, rng);

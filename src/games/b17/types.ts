@@ -9,17 +9,42 @@ export type CrewPosition =
   | 'engineer' | 'radioman'
   | 'ball_turret' | 'left_waist' | 'right_waist' | 'tail_gunner';
 
-export type WoundSeverity = 'none' | 'light' | 'serious' | 'mortal' | 'kia';
+export type WoundSeverity = 'none' | 'light' | 'serious' | 'kia';
+
+/** Campaign-level crew status. Determines availability for future missions. */
+export type CrewStatus =
+  | 'active'      // available for missions
+  | 'hospital'    // recovering from serious wounds (survival roll passed)
+  | 'grounded'    // permanent frostbite — cannot fly again
+  | 'pow'         // prisoner of war
+  | 'mia'         // missing in action
+  | 'kia'         // killed in action
+  | 'evaded';     // evaded capture, returned via Underground
+
+export type { GunPosition } from './rules/combat.js';
 
 export interface CrewMember {
-  position: CrewPosition;
-  name: string;
-  wounds: WoundSeverity;
-  frostbite: boolean;
-  kills: number;
-  missions: number;
-  status: 'active' | 'hospital' | 'pow' | 'kia' | 'mia';
+  // Identity
+  id: string;                    // unique, stable id (e.g., 'crew-001')
+  name: string;                  // display name
+  position: CrewPosition;        // assigned/natural crew position
+
+  // Campaign State (persists across missions)
+  status: CrewStatus;            // default: 'active'
+  missions: number;              // missions completed, default: 0
+  kills: number;                 // confirmed fighter kills, default: 0
+  isOriginal: boolean;           // true for starting crew, false for replacements
+
+  // Mission State (reset at start of each mission)
+  woundSeverity: WoundSeverity;  // worst wound this mission, default: 'none'
+  lightWounds: number;           // count of light wounds, 0–3. At 3 → escalate to serious. default: 0
+  frostbite: boolean;            // frostbitten this mission, default: false
+  currentGunPosition: import('./rules/combat.js').GunPosition | null;  // gun currently operating
+  aceForADay: boolean;           // random event: temporary ace bonus this mission, default: false
 }
+
+/** @deprecated Use woundSeverity field. Kept for old code that references 'mortal'. */
+export type LegacyWoundSeverity = WoundSeverity | 'mortal';
 
 // ─── Aircraft ───
 

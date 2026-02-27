@@ -10,8 +10,10 @@ function makeCrew(overrides: Partial<CrewMember>[] = []): CrewMember[] {
   const positions = ['pilot', 'copilot', 'navigator', 'bombardier', 'engineer',
     'radioman', 'ball_turret', 'left_waist', 'right_waist', 'tail_gunner'] as const;
   return positions.map((p, i) => ({
-    position: p, name: `Crew ${p}`, wounds: 'none' as const,
+    position: p, name: `Crew ${p}`, id: `crew-${p}`,
+    woundSeverity: 'none' as const, lightWounds: 0,
     frostbite: false, kills: 0, missions: 0, status: 'active' as const,
+    isOriginal: true, currentGunPosition: null, aceForADay: false,
     ...overrides[i],
   }));
 }
@@ -24,7 +26,7 @@ describe('resolveControlledBailout', () => {
   });
 
   it('seriously wounded cannot bail out per G-6 notes', () => {
-    const crew = makeCrew([{ wounds: 'serious' } as any]);
+    const crew = makeCrew([{ woundSeverity: 'serious' } as any]);
     const result = resolveControlledBailout(crew, 'Germany', 4, true, createRNG(42));
     expect(result.crewResults[0].bailedOut).toBe(false);
     expect(result.crewResults[0].fate).toBe('kia');

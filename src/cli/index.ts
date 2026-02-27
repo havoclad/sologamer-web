@@ -416,7 +416,7 @@ function flyMission(
             if (!crewPos) continue;
             const crewMember = getCrewByPosition(state.campaign.crew, crewPos);
             if (!crewMember || crewMember.status !== 'active') continue;
-            if (crewMember.wounds === 'serious' || crewMember.wounds === 'kia') continue;
+            if (crewMember.woundSeverity === 'serious' || crewMember.woundSeverity === 'kia') continue;
 
             const fireResult = resolveDefensiveFire(
               hitReq, rng, false, mission.evasiveAction, false,
@@ -649,7 +649,7 @@ function flyMission(
               const crewPos = GUN_TO_CREW[gun];
               if (!crewPos) continue;
               const cm = getCrewByPosition(state.campaign.crew, crewPos);
-              if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') continue;
+              if (!cm || cm.status !== 'active' || cm.woundSeverity === 'serious' || cm.woundSeverity === 'kia') continue;
 
               const fr = resolveDefensiveFire(hitReq, rng, false, mission.evasiveAction, false, cm.frostbite, false);
               if (fr.hit) {
@@ -730,7 +730,7 @@ function flyMission(
       // Roll for crew injuries on crash
       for (const crew of state.campaign.crew) {
         if (crew.status === 'active' && rng.d6() <= 2) {
-          crew.wounds = accumulateWound(crew.wounds, 'light');
+          crew.woundSeverity = accumulateWound(crew.woundSeverity, 'light');
           bad(`    ${crew.name} injured in crash!`);
         }
       }
@@ -765,11 +765,11 @@ function flyMission(
 
   const crewLosses: MissionResult['crewLosses'] = [];
   for (const crew of state.campaign.crew) {
-    if (crew.status !== 'active' || crew.wounds === 'kia' || crew.wounds === 'serious') {
+    if (crew.status !== 'active' || crew.woundSeverity === 'kia' || crew.woundSeverity === 'serious') {
       crewLosses.push({
         name: crew.name,
         position: POSITION_LABELS[crew.position],
-        status: crew.wounds === 'kia' ? 'KIA' : crew.wounds === 'serious' ? 'Seriously wounded' : crew.status.toUpperCase(),
+        status: crew.woundSeverity === 'kia' ? 'KIA' : crew.woundSeverity === 'serious' ? 'Seriously wounded' : crew.status.toUpperCase(),
       });
     }
   }
@@ -816,7 +816,7 @@ function resolveCompartmentHit(
         if (crew) {
           let severity: WoundSeverity;
           try { severity = rollCrewWound(rng, tables); } catch { severity = 'light'; }
-          crew.wounds = accumulateWound(crew.wounds, severity);
+          crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
           if (severity === 'kia') {
             crew.status = 'kia';
             bad(`      ${BOLD}${crew.name} (${POSITION_LABELS[pos]}) — KIA!${RESET}`);
@@ -881,7 +881,7 @@ function resolveCompartmentHit(
 
 function isCrewDown(crew: CrewMember[], pos: CrewPosition): boolean {
   const member = crew.find(c => c.position === pos);
-  return !member || member.status !== 'active' || member.wounds === 'serious' || member.wounds === 'kia';
+  return !member || member.status !== 'active' || member.woundSeverity === 'serious' || member.woundSeverity === 'kia';
 }
 
 // ─── Campaign summary ───
@@ -927,9 +927,9 @@ function printCampaignSummary(state: B17GameState, result: MissionResult): void 
   // Crew status
   subheader('Crew Status');
   for (const crew of state.campaign.crew) {
-    const statusColor = crew.status === 'active' && crew.wounds === 'none' ? GREEN
+    const statusColor = crew.status === 'active' && crew.woundSeverity === 'none' ? GREEN
       : crew.status === 'active' ? YELLOW : RED;
-    const woundStr = crew.wounds !== 'none' ? ` (${crew.wounds} wound)` : '';
+    const woundStr = crew.woundSeverity !== 'none' ? ` (${crew.woundSeverity} wound)` : '';
     const statusStr = crew.status !== 'active' ? ` [${crew.status.toUpperCase()}]` : '';
     console.log(`    ${statusColor}${POSITION_LABELS[crew.position]}: ${crew.name}${woundStr}${statusStr} — ${crew.missions} missions, ${crew.kills} kills${RESET}`);
   }

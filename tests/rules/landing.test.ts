@@ -25,8 +25,10 @@ function defaultInputs(): LandingModifierInputs {
 function makeCrew(): CrewMember[] {
   return ['pilot', 'copilot', 'navigator', 'bombardier', 'engineer',
     'radioman', 'ball_turret', 'left_waist', 'right_waist', 'tail_gunner'].map(p => ({
-    position: p as any, name: `Crew ${p}`, wounds: 'none' as const,
+    position: p as any, name: `Crew ${p}`, id: `crew-${p}`,
+    woundSeverity: 'none' as const, lightWounds: 0,
     frostbite: false, kills: 0, missions: 0, status: 'active' as const,
+    isOriginal: true, currentGunPosition: null, aceForADay: false,
   }));
 }
 

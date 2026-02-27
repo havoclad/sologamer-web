@@ -74,7 +74,7 @@ export function resolveControlledBailout(
   const crewResults: BailoutCrewResult[] = [];
 
   for (const member of crew) {
-    if (member.wounds === 'kia' || member.status === 'kia') {
+    if (member.woundSeverity === 'kia' || member.status === 'kia') {
       crewResults.push({
         position: member.position,
         name: member.name,
@@ -86,7 +86,7 @@ export function resolveControlledBailout(
     }
 
     // Seriously wounded may not bail out per G-6 notes
-    if (member.wounds === 'serious') {
+    if (member.woundSeverity === 'serious') {
       crewResults.push({
         position: member.position,
         name: member.name,
@@ -112,7 +112,7 @@ export function resolveControlledBailout(
     }
 
     // Successful bailout — determine fate based on terrain
-    const fate = resolveBailoutFate(overTerrain, zone, radioOperating, member.wounds, rng);
+    const fate = resolveBailoutFate(overTerrain, zone, radioOperating, member.woundSeverity, rng);
     crewResults.push({
       position: member.position,
       name: member.name,
@@ -141,7 +141,7 @@ export function resolveUncontrolledBailout(
   const crewResults: BailoutCrewResult[] = [];
 
   for (const member of crew) {
-    if (member.wounds === 'kia' || member.status === 'kia') {
+    if (member.woundSeverity === 'kia' || member.status === 'kia') {
       crewResults.push({
         position: member.position,
         name: member.name,
@@ -153,7 +153,7 @@ export function resolveUncontrolledBailout(
     }
 
     // Seriously wounded may not bail out
-    if (member.wounds === 'serious') {
+    if (member.woundSeverity === 'serious') {
       crewResults.push({
         position: member.position,
         name: member.name,
@@ -166,7 +166,7 @@ export function resolveUncontrolledBailout(
 
     const roll = rng.d6();
     // Light wound modifier: -1 per G-7 notes
-    const modifier = member.wounds === 'light' ? -1 : 0;
+    const modifier = member.woundSeverity === 'light' ? -1 : 0;
     const effectiveRoll = roll + modifier;
 
     // 6 always succeeds (natural 6)
@@ -183,7 +183,7 @@ export function resolveUncontrolledBailout(
       continue;
     }
 
-    const fate = resolveBailoutFate(overTerrain, zone, radioOperating, member.wounds, rng);
+    const fate = resolveBailoutFate(overTerrain, zone, radioOperating, member.woundSeverity, rng);
     crewResults.push({
       position: member.position,
       name: member.name,
@@ -284,7 +284,7 @@ export function resolveDitchingSurvival(
   const results: BailoutCrewResult[] = [];
 
   for (const member of crew) {
-    if (member.wounds === 'kia' || member.status === 'kia') {
+    if (member.woundSeverity === 'kia' || member.status === 'kia') {
       results.push({
         position: member.position,
         name: member.name,

@@ -117,7 +117,7 @@ function cloneAircraft(ac: AircraftState): AircraftState {
 }
 
 function cloneCrew(crew: CrewMember[]): CrewMember[] {
-  return crew.map(c => ({ ...c }));
+  return crew.map(c => ({ ...c, currentGunPosition: c.currentGunPosition }));
 }
 
 // ─── Main orchestrator ───
@@ -159,15 +159,15 @@ export function runMission(
   // Track who's flying
   const pilotAlive = () => {
     const p = mCrew.find(c => c.position === 'pilot');
-    return p && p.wounds !== 'kia' && p.wounds !== 'serious';
+    return p && p.woundSeverity !== 'kia' && p.woundSeverity !== 'serious';
   };
   const copilotAlive = () => {
     const c = mCrew.find(c => c.position === 'copilot');
-    return c && c.wounds !== 'kia' && c.wounds !== 'serious';
+    return c && c.woundSeverity !== 'kia' && c.woundSeverity !== 'serious';
   };
   const navigatorDown = () => {
     const n = mCrew.find(c => c.position === 'navigator');
-    return !n || n.wounds === 'kia' || n.wounds === 'serious';
+    return !n || n.woundSeverity === 'kia' || n.woundSeverity === 'serious';
   };
 
   const emit = (phase: string, message: string, zone?: number, direction?: 'outbound' | 'inbound', data?: Record<string, unknown>) => {
@@ -368,7 +368,7 @@ export function runMission(
     // Frostbite check per §11.0
     if (ac.heatingOut) {
       for (const member of mCrew) {
-        if (member.status === 'active' && !member.frostbite && member.wounds !== 'kia') {
+        if (member.status === 'active' && !member.frostbite && member.woundSeverity !== 'kia') {
           if (rollFrostbite(rng)) {
             member.frostbite = true;
             emit('FROSTBITE', `${member.name} (${member.position}) suffers frostbite`, currentZone, direction);
@@ -405,14 +405,14 @@ export function runMission(
 
     if (landResult.outcome === 'crew_kia_plane_wrecked') {
       planeDestroyed = true;
-      for (const m of mCrew) { if (m.status === 'active') m.wounds = 'kia'; }
+      for (const m of mCrew) { if (m.status === 'active') m.woundSeverity = 'kia'; }
     }
 
     if (landResult.crewWounds.length > 0) {
       for (const w of landResult.crewWounds) {
         const member = mCrew.find(c => c.position === w.position);
         if (member) {
-          member.wounds = w.wound;
+          member.woundSeverity = w.wound as any;
           emit('LANDING', `${member.name} wounded in landing: ${w.wound}`);
         }
       }
@@ -436,7 +436,7 @@ export function runMission(
   const crewFates = mCrew.map(c => ({
     position: c.position,
     name: c.name,
-    fate: c.wounds === 'kia' ? 'KIA' : c.status !== 'active' ? c.status : 'survived',
+    fate: c.woundSeverity === 'kia' ? 'KIA' : c.status !== 'active' ? c.status : 'survived',
   }));
 
   emit('DEBRIEF', `Mission #${missionNumber} complete: ${victory}`, undefined, undefined, {
@@ -640,8 +640,8 @@ function applyFlakDamage(
         const crewInArea = getCrewInCompartment(area, crew);
         if (crewInArea.length > 0) {
           const target = crewInArea[rng.int(0, crewInArea.length - 1)];
-          if (target.wounds !== 'kia') {
-            target.wounds = wound;
+          if (target.woundSeverity !== 'kia') {
+            target.woundSeverity = wound as any;
             emit(`${target.name} (${target.position}) wounded: ${wound}`);
           }
         }
@@ -688,7 +688,7 @@ function getCrewInCompartment(area: HitLocation, crew: CrewMember[]): CrewMember
   };
 
   const positions = mapping[area] ?? [];
-  return crew.filter(c => positions.includes(c.position) && c.status === 'active' && c.wounds !== 'kia');
+  return crew.filter(c => positions.includes(c.position) && c.status === 'active' && c.woundSeverity !== 'kia');
 }
 
 // ─── Emergency landing/bailout ───
@@ -730,7 +730,7 @@ function resolveEmergencyLanding(
     const result = resolveWaterLanding(waterMod, zone, false, rng, tables);
     emit(`Water landing: ${result.outcome}`);
     if (result.outcome === 'crew_lost' || result.outcome === 'explosion_all_destroyed') {
-      for (const m of crew) { if (m.status === 'active') m.wounds = 'kia'; }
+      for (const m of crew) { if (m.status === 'active') m.woundSeverity = 'kia'; }
     }
     return { planeDestroyed: true };
   }
@@ -752,7 +752,7 @@ function resolveEmergencyLanding(
   const result = resolveLandLanding(landMod, crew, rng, tables);
   emit(`Crash landing: ${result.outcome}`);
   if (result.outcome === 'crew_kia_plane_wrecked') {
-    for (const m of crew) { if (m.status === 'active') m.wounds = 'kia'; }
+    for (const m of crew) { if (m.status === 'active') m.woundSeverity = 'kia'; }
   }
   return { planeDestroyed: true };
 }
@@ -760,7 +760,7 @@ function resolveEmergencyLanding(
 // ─── Helpers ───
 
 function isAllCrewDead(crew: CrewMember[]): boolean {
-  return crew.every(c => c.wounds === 'kia' || c.status === 'kia');
+  return crew.every(c => c.woundSeverity === 'kia' || c.status === 'kia');
 }
 
 function makeFallbackResult(

@@ -57,7 +57,7 @@ export function isGunEligible(gun: Gun, crew: CrewMember[]): boolean {
   if (gun.disabled || gun.jammed || gun.ammo <= 0) return false;
   const member = crew.find(c => c.position === gun.crewPosition);
   if (!member) return false;
-  return member.status === 'active' && member.wounds !== 'serious' && member.wounds !== 'kia';
+  return member.status === 'active' && member.woundSeverity !== 'serious' && member.woundSeverity !== 'kia';
 }
 
 /** Mark a gun as permanently disabled (inoperable). */

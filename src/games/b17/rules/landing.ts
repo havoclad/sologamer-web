@@ -203,7 +203,7 @@ function rollLandingWounds(
 
   for (const member of crew) {
     if (member.status !== 'active') continue;
-    if (member.wounds === 'kia') continue;
+    if (member.woundSeverity === 'kia') continue;
 
     // Roll on B1-4 with modifier
     const wound = rollCrewWound(rng, tables);

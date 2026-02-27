@@ -174,7 +174,7 @@ function getCrewByPosition(crew: CrewMember[], pos: CrewPosition): CrewMember | 
 
 function isCrewDown(crew: CrewMember[], pos: CrewPosition): boolean {
   const m = crew.find(c => c.position === pos);
-  return !m || m.status !== 'active' || m.wounds === 'serious' || m.wounds === 'kia';
+  return !m || m.status !== 'active' || m.woundSeverity === 'serious' || m.woundSeverity === 'kia';
 }
 
 function cloneCrew(crew: CrewMember[]): CrewMember[] {
@@ -1107,7 +1107,7 @@ export class GameSession {
           [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
         for (const crew of this.state.campaign.crew) {
           if (crew.status === 'active' && rng.d6() <= 2) {
-            crew.wounds = accumulateWound(crew.wounds, 'light');
+            crew.woundSeverity = accumulateWound(crew.woundSeverity, 'light');
             this.emit('LANDING', `${crew.name} injured in crash!`, 'damage', 'bad', 1, 'inbound');
           }
         }
@@ -1115,7 +1115,7 @@ export class GameSession {
     } else {
       this.emit('BAILOUT', `${this.state.campaign.planeName} has been shot down!`, 'landing', 'critical', undefined, undefined, undefined, true);
       for (const crew of this.state.campaign.crew) {
-        if (crew.status === 'active' && crew.wounds !== 'kia') {
+        if (crew.status === 'active' && crew.woundSeverity !== 'kia') {
           const bailRoll = rng.d6();
           if (bailRoll <= 3) {
             crew.status = 'pow';
@@ -1125,7 +1125,7 @@ export class GameSession {
             this.emit('BAILOUT', `${crew.name}: Evaded capture!`, 'landing', 'good',
               undefined, undefined, [{ table: 'G-6', rollType: '1d6', rolled: bailRoll, result: 'Evaded' }]);
           } else {
-            crew.status = 'kia'; crew.wounds = 'kia';
+            crew.status = 'kia'; crew.woundSeverity = 'kia';
             this.emit('BAILOUT', `${crew.name}: KIA`, 'landing', 'critical',
               undefined, undefined, [{ table: 'G-6', rollType: '1d6', rolled: bailRoll, result: 'KIA' }]);
           }
@@ -1399,7 +1399,7 @@ export class GameSession {
       // Filter guns by crew availability, ammo, and gun operability
       const eligibleGuns = gunEntries.filter(ge => {
         const cm = getCrewByPosition(crew, ge.crewPos);
-        if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') return false;
+        if (!cm || cm.status !== 'active' || cm.woundSeverity === 'serious' || cm.woundSeverity === 'kia') return false;
         const gunObj = getGun(aircraft.guns, ge.gun);
         if (gunObj.ammo <= 0 || gunObj.disabled || gunObj.jammed) return false;
         if (ge.gun === 'Ball_Turret' && aircraft.ballTurretInop) return false;
@@ -1598,7 +1598,7 @@ export class GameSession {
         // Check tail gunner is still alive and gun is still operational
         const tailGunner = getCrewByPosition(crew, 'tail_gunner');
         const tailGunObj = getGun(aircraft.guns, 'Tail');
-        if (tailGunner && tailGunner.status === 'active' && tailGunner.wounds !== 'serious' && tailGunner.wounds !== 'kia' && !tailGunObj.disabled) {
+        if (tailGunner && tailGunner.status === 'active' && tailGunner.woundSeverity !== 'serious' && tailGunner.woundSeverity !== 'kia' && !tailGunObj.disabled) {
           this.emit('COMBAT', `Tail guns firing (delayed) — ${plural(delayedAllocations.length, 'target')}`, 'combat', 'info', zone, direction);
           for (const alloc of delayedAllocations) {
             yield* this._resolveGunFire(alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
@@ -1875,7 +1875,7 @@ export class GameSession {
         case 'crew_wound': {
           const pos = effect.position as CrewPosition;
           const crew = getCrewByPosition(this.state.campaign.crew, pos);
-          if (crew && crew.wounds !== 'kia') {
+          if (crew && crew.woundSeverity !== 'kia') {
             // Yield for wound severity roll
             const woundRollValue: number = yield* this._yieldCombatRoll(
               'B1-4', 'Wound Severity',
@@ -1889,7 +1889,7 @@ export class GameSession {
 
             let severity: WoundSeverity;
             try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
-            crew.wounds = accumulateWound(crew.wounds, severity);
+            crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
             if (severity === 'kia') crew.status = 'kia';
             const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
             this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
@@ -2099,7 +2099,7 @@ export class GameSession {
 
             for (const pos of woundTargets) {
               const crew = getCrewByPosition(this.state.campaign.crew, pos);
-              if (crew && crew.wounds !== 'kia') {
+              if (crew && crew.woundSeverity !== 'kia') {
                 const woundRollValue: number = yield* this._yieldCombatRoll(
                   'B1-4', 'Wound Severity',
                   `Wound severity for ${crew.name} (${POSITION_LABELS[pos]})`, '1d6',
@@ -2112,7 +2112,7 @@ export class GameSession {
 
                 let severity: WoundSeverity;
                 try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
-                crew.wounds = accumulateWound(crew.wounds, severity);
+                crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
                 if (severity === 'kia') crew.status = 'kia';
                 const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
                 this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
@@ -2173,10 +2173,10 @@ export class GameSession {
         case 'crew_wound': {
           const pos = effect.position as CrewPosition;
           const crew = getCrewByPosition(this.state.campaign.crew, pos);
-          if (crew && crew.wounds !== 'kia') {
+          if (crew && crew.woundSeverity !== 'kia') {
             let severity: WoundSeverity;
             try { severity = rollCrewWound(rng, tables); } catch { severity = 'light'; }
-            crew.wounds = accumulateWound(crew.wounds, severity);
+            crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
             if (severity === 'kia') crew.status = 'kia';
             const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
             this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,

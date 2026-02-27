@@ -7,13 +7,18 @@ import type { CrewMember } from '../../src/games/b17/types.js';
 
 function makeCrew(overrides: Partial<CrewMember> = {}): CrewMember {
   return {
+    id: 'crew-test',
     position: 'tail_gunner',
     name: 'Sgt Test',
-    wounds: 'none',
+    woundSeverity: 'none',
+    lightWounds: 0,
     frostbite: false,
     kills: 0,
     missions: 0,
     status: 'active',
+    isOriginal: true,
+    currentGunPosition: null,
+    aceForADay: false,
     ...overrides,
   };
 }
@@ -67,7 +72,7 @@ describe('getGun', () => {
 describe('isGunEligible', () => {
   it('eligible when gun is operational and crew is active', () => {
     const gun = getGun(initializeGuns(), 'Tail');
-    const crew = [makeCrew({ position: 'tail_gunner', status: 'active', wounds: 'none' })];
+    const crew = [makeCrew({ position: 'tail_gunner', status: 'active', woundSeverity: 'none' })];
     expect(isGunEligible(gun, crew)).toBe(true);
   });
 
@@ -95,13 +100,13 @@ describe('isGunEligible', () => {
 
   it('ineligible when crew is KIA', () => {
     const gun = getGun(initializeGuns(), 'Tail');
-    const crew = [makeCrew({ status: 'kia', wounds: 'kia' })];
+    const crew = [makeCrew({ status: 'kia', woundSeverity: 'kia' })];
     expect(isGunEligible(gun, crew)).toBe(false);
   });
 
   it('ineligible when crew has serious wounds', () => {
     const gun = getGun(initializeGuns(), 'Tail');
-    const crew = [makeCrew({ wounds: 'serious' })];
+    const crew = [makeCrew({ woundSeverity: 'serious' })];
     expect(isGunEligible(gun, crew)).toBe(false);
   });
 
