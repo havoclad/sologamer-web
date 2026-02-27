@@ -1753,12 +1753,12 @@ export class GameSession {
 
     // If only one possible set of removals, skip the choice
     if (actualCount >= removable.length) {
-      this.emit('COMBAT', `Friendly fighters drive off ${removable.length} enemy!`, 'combat', 'good', zone, direction,
+      this.emit('COMBAT', `Friendly fighters drive off ${removable.length} ${removable.length === 1 ? 'enemy' : 'enemies'}!`, 'combat', 'good', zone, direction,
         [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
       return nonRemovable;
     }
 
-    this.emit('COMBAT', `Friendly fighters can drive off ${actualCount} enemy — choose which to remove`, 'combat', 'good', zone, direction,
+    this.emit('COMBAT', `Friendly fighters can drive off ${actualCount} ${actualCount === 1 ? 'enemy' : 'enemies'} — choose which to remove`, 'combat', 'good', zone, direction,
       [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `${actualCount} driven off (${coverLevel} cover)` }]);
 
     // Yield a choice for the player — include field-of-fire info so they can make informed decisions
