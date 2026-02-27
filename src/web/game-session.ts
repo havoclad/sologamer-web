@@ -1112,6 +1112,16 @@ export class GameSession {
           }
         }
       }
+
+      // Ball turret trapped + landing gear inop = Ball Gunner KIA
+      if (ac.ballTurretTrapped && ac.landingGearInop) {
+        const ballGunner = getCrewByPosition(this.state.campaign.crew, 'ball_turret');
+        if (ballGunner && ballGunner.woundSeverity !== 'kia') {
+          ballGunner.woundSeverity = 'kia';
+          ballGunner.status = 'kia';
+          this.emit('LANDING', `${ballGunner.name} (Ball Gunner) killed — trapped in turret with landing gear inoperable!`, 'damage', 'critical', 1, 'inbound', undefined, true);
+        }
+      }
     } else {
       this.emit('BAILOUT', `${this.state.campaign.planeName} has been shot down!`, 'landing', 'critical', undefined, undefined, undefined, true);
       for (const crew of this.state.campaign.crew) {
@@ -1266,16 +1276,18 @@ export class GameSession {
     }
 
     // ── O-6: Bomb run on/off target ──
-    const bombRunPending = this.createPendingRoll('O-6', `Bomb run — on or off target?`);
+    const bombRunMod = mission.bombRunModifier || 0;
+    const bombRunPending = this.createPendingRoll('O-6', `Bomb run — on or off target?`, bombRunMod);
     const bombRunRoll: number = (yield { type: 'pending', roll: bombRunPending, events: this.eventBuffer }) ?? autoRoll(bombRunPending.diceType, rng);
     this.eventBuffer = [];
 
-    const bombRunResult = tables.lookupWithValue('O-6', bombRunRoll);
+    const modifiedBombRun = bombRunRoll + bombRunMod;
+    const bombRunResult = tables.lookupWithValue('O-6', modifiedBombRun);
     const onTarget = bombRunResult?.entry?.bomb_run_on_target as string ?? 'Off';
     const onOff = onTarget === 'On' ? 'ON target' : 'OFF target';
 
-    this.emit('BOMB_RUN', `Bomb run: ${onOff}!`, 'bombing', onTarget === 'On' ? 'good' : 'warn', zone, 'outbound',
-      [{ table: 'O-6', rollType: '1d6', rolled: bombRunRoll, result: onOff, description: 'Bomb run accuracy' }]);
+    this.emit('BOMB_RUN', `Bomb run: ${onOff}!${bombRunMod ? ` (roll ${bombRunRoll}, modifier ${bombRunMod})` : ''}`, 'bombing', onTarget === 'On' ? 'good' : 'warn', zone, 'outbound',
+      [{ table: 'O-6', rollType: '1d6', rolled: bombRunRoll, modifier: bombRunMod, modifiedRoll: modifiedBombRun, result: onOff, description: 'Bomb run accuracy' }]);
 
     // ── O-7: Bombing accuracy ──
     const accuracyPending = this.createPendingRoll('O-7', `Bombing accuracy (${onOff})`, 0, onTarget);
