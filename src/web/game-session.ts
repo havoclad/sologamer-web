@@ -2122,8 +2122,15 @@ export class GameSession {
                   ], true);
               }
             }
+          } else if (subRoll && subRoll.type === '1d6') {
+            // ── Generic 1d6 sub-roll ──
+            yield* this._resolveGenericSubRoll(
+              damageTable, dmgDiceType, dmgRollValue, dmg,
+              location, subRoll, rollEntry,
+              zone, direction,
+            );
           } else {
-            // Generic follow-up — just emit info
+            // True generic fallback (no sub-roll data)
             this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
               [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
           }
@@ -2147,6 +2154,266 @@ export class GameSession {
           }
           break;
         }
+      }
+    }
+  }
+
+  // ── Generic 1d6 sub-roll handler ──
+  private *_resolveGenericSubRoll(
+    damageTable: string, dmgDiceType: string, dmgRollValue: number,
+    dmg: DamageResult, location: string,
+    subRoll: Record<string, any>, _rollEntry: any,
+    zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, void, number | number[] | undefined> {
+    // Build display rows from sub_roll keys
+    const rows: PendingRoll['tableRows'] = Object.entries(subRoll)
+      .filter(([k]) => k !== 'type')
+      .map(([k, v]) => ({ roll: k, columns: { result: v as string } }));
+
+    // Prompt player for the 1d6 sub-roll
+    const subRollValue: number = yield* this._yieldCombatRoll(
+      damageTable, `${dmg.result}`,
+      `${location}: ${dmg.result} — roll for specific effect`, '1d6',
+      rows,
+    );
+
+    // Find matching outcome
+    const outcome = this._matchSubRollOutcome(subRoll, subRollValue);
+
+    // Apply effect to state
+    yield* this._applySubRollEffect(
+      damageTable, dmgDiceType, dmgRollValue, dmg,
+      location, subRollValue, outcome,
+      zone, direction,
+    );
+  }
+
+  private _matchSubRollOutcome(subRoll: Record<string, any>, value: number): string {
+    for (const [key, result] of Object.entries(subRoll)) {
+      if (key === 'type') continue;
+      const match = key.match(/^(\d+)(?:-(\d+))?$/);
+      if (!match) continue;
+      const lo = parseInt(match[1]);
+      const hi = match[2] ? parseInt(match[2]) : lo;
+      if (value >= lo && value <= hi) return result as string;
+    }
+    return 'No effect';
+  }
+
+  private *_applySubRollEffect(
+    damageTable: string, dmgDiceType: string, dmgRollValue: number,
+    dmg: DamageResult, location: string,
+    subRollValue: number, outcome: string,
+    zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, void, number | number[] | undefined> {
+    const ac = this.state.campaign.aircraft;
+    const mission = this.state.mission;
+    const outcomeLower = outcome.toLowerCase();
+    let severity: 'info' | 'warn' | 'bad' | 'critical' | 'good' = 'warn';
+    let isImportant = false;
+
+    // ── B-17 destroyed (bombs detonate) ──
+    if (outcomeLower.includes('destroyed') || outcomeLower.includes('detonate')) {
+      severity = 'critical'; isImportant = true;
+      this.emit('DAMAGE', `${location}: ${outcome}`, 'damage', severity, zone, direction,
+        [
+          { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+          { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+        ], isImportant);
+      return;
+    }
+
+    // ── Gun damage ──
+    if ((outcomeLower.includes('gun') && outcomeLower.includes('inoperable')) || outcomeLower.includes('guns out')) {
+      let gunId: import('../games/b17/rules/combat.js').GunPosition | null = null;
+      if (outcomeLower.includes('nose gun')) gunId = 'Nose';
+      else if (outcomeLower.includes('port cheek')) gunId = 'Port_Cheek';
+      else if (outcomeLower.includes('starboard cheek')) gunId = 'Starboard_Cheek';
+      else if (outcomeLower.includes('top turret')) gunId = 'Top_Turret';
+      else if (outcomeLower.includes('ball turret')) gunId = 'Ball_Turret';
+      else if (outcomeLower.includes('port waist') || outcomeLower.includes('port gun')) gunId = 'Port_Waist';
+      else if (outcomeLower.includes('starboard waist') || outcomeLower.includes('starboard gun')) gunId = 'Starboard_Waist';
+      else if (outcomeLower.includes('tail')) gunId = 'Tail';
+      else if (outcomeLower.includes('radio')) gunId = 'Radio';
+      if (gunId) {
+        disableGun(ac.guns, gunId);
+        // For top turret + wound combo (P-2 roll 8, sub-roll 6)
+        if (outcomeLower.includes('wound') || outcomeLower.includes('b1-4')) {
+          severity = 'bad'; isImportant = true;
+          this.emit('DAMAGE', `${location}: ${outcome}`, 'damage', severity, zone, direction,
+            [
+              { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+              { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+            ], isImportant);
+          // Chain to wound resolution
+          yield* this._resolveSubRollWound(outcomeLower, damageTable, dmgDiceType, dmgRollValue, zone, direction);
+          return;
+        }
+      }
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Crew wound (no gun damage) ──
+    else if (outcomeLower.includes('wound') || outcomeLower.includes('b1-4')) {
+      severity = 'bad'; isImportant = true;
+      this.emit('DAMAGE', `${location}: ${outcome}`, 'damage', severity, zone, direction,
+        [
+          { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+          { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+        ], isImportant);
+      yield* this._resolveSubRollWound(outcomeLower, damageTable, dmgDiceType, dmgRollValue, zone, direction);
+      return;
+    }
+    // ── Bomb bay doors inoperable ──
+    else if (outcomeLower.includes('bomb bay doors inoperable') || outcomeLower.includes('bomb bay doors') && outcomeLower.includes('inoperable')) {
+      ac.bombBayDoorsInop = true;
+      if (mission) mission.bombsAboard = true; // can't drop
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Bomb controls inoperable (bomb run -3) ──
+    else if (outcomeLower.includes('bomb controls inoperable') || outcomeLower.includes('bombs must be dropped manually')) {
+      ac.bombControlsInop = true;
+      if (mission) mission.bombRunModifier -= 3;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Autopilot inoperable (bomb run -2) ──
+    else if (outcomeLower.includes('autopilot') && outcomeLower.includes('inoperable')) {
+      ac.autopilotInop = true;
+      if (mission) mission.bombRunModifier -= 2;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Tailwheel damaged (landing -1) ──
+    else if (outcomeLower.includes('tailwheel damaged')) {
+      ac.tailWheelDamaged = true;
+      if (mission) mission.landingModifiers -= 1;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Brakes out (landing -1) ──
+    else if (outcomeLower.includes('brakes out')) {
+      ac.brakesOut = true;
+      if (mission) mission.landingModifiers -= 1;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Landing gear inoperable (landing -3) ──
+    else if (outcomeLower.includes('landing gear inoperable')) {
+      ac.landingGearInop = true;
+      if (mission) mission.landingModifiers -= 3;
+      severity = 'critical'; isImportant = true;
+    }
+    // ── Wing flap inoperable (landing -1) ──
+    else if (outcomeLower.includes('flap inoperable') || outcomeLower.includes('wing flap inoperable')) {
+      const isPort = location === 'Port Wing';
+      if (isPort) ac.portFlapInop = true; else ac.starboardFlapInop = true;
+      if (mission) mission.landingModifiers -= 1;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Aileron inoperable (landing -1) ──
+    else if (outcomeLower.includes('aileron inoperable')) {
+      const isPort = location === 'Port Wing';
+      if (isPort) ac.portAileronInop = true; else ac.starboardAileronInop = true;
+      if (mission) mission.landingModifiers -= 1;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Elevator inoperable ──
+    else if (outcomeLower.includes('elevator inoperable')) {
+      if (outcomeLower.includes('port')) ac.portElevatorInop = true;
+      else ac.starboardElevatorInop = true;
+      // Both elevators inop = landing -1 (only apply once)
+      if (ac.portElevatorInop && ac.starboardElevatorInop && mission) {
+        // Check if we already applied the combined penalty
+        // (individual elevator hits don't have their own penalty per rules)
+        mission.landingModifiers -= 1;
+      }
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Tailplane root hit ──
+    else if (outcomeLower.includes('tailplane root')) {
+      severity = 'bad'; isImportant = true;
+      // TODO: cumulative tracking — 3 hits = tailplane rips off
+    }
+    // ── Ball turret mechanism inoperable (trapped) ──
+    else if (outcomeLower.includes('trapped') || (outcomeLower.includes('turret mechanism') && outcomeLower.includes('inoperable'))) {
+      ac.ballTurretTrapped = true;
+      ac.ballTurretInop = true;
+      disableGun(ac.guns, 'Ball_Turret');
+      severity = 'critical'; isImportant = true;
+    }
+    // ── Navigator equipment inoperable ──
+    else if (outcomeLower.includes('navigator') && outcomeLower.includes('equipment inoperable')) {
+      ac.navigatorEquipInop = true;
+      severity = 'bad'; isImportant = true;
+    }
+    // ── Fire + oxygen out ──
+    else if (outcomeLower.includes('fire')) {
+      ac.oxygenOut = true;
+      severity = 'critical'; isImportant = true;
+      // TODO: trigger fire extinguish sequence (B1-3)
+    }
+    // ── Oxygen hit (no fire) ──
+    else if (outcomeLower.includes('oxygen')) {
+      // Individual crew oxygen tracking — for now just set global flag
+      ac.oxygenOut = true;
+      severity = 'warn';
+    }
+    // ── Heat out ──
+    else if (outcomeLower.includes('heat out')) {
+      ac.heatingOut = true;
+      severity = 'warn';
+    }
+    // ── No effect / superficial ──
+    else if (outcomeLower.includes('no effect') || outcomeLower.includes('superficial')) {
+      severity = 'info';
+    }
+
+    this.emit('DAMAGE', `${location}: ${outcome}`, 'damage', severity, zone, direction,
+      [
+        { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+        { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+      ], isImportant);
+  }
+
+  /** Resolve a crew wound triggered by a sub-roll outcome */
+  private *_resolveSubRollWound(
+    outcomeLower: string,
+    damageTable: string, dmgDiceType: string, dmgRollValue: number,
+    zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, void, number | number[] | undefined> {
+    const rng = this.rng;
+    const tables = this.tables;
+    const woundTargets: CrewPosition[] = [];
+
+    if (outcomeLower.includes('ball gunner') || outcomeLower.includes('ball turret')) woundTargets.push('ball_turret');
+    else if (outcomeLower.includes('engineer')) woundTargets.push('engineer');
+    else if (outcomeLower.includes('port') && outcomeLower.includes('gunner')) woundTargets.push('left_waist');
+    else if (outcomeLower.includes('starboard') && outcomeLower.includes('gunner')) woundTargets.push('right_waist');
+    else if (outcomeLower.includes('tail gunner')) woundTargets.push('tail_gunner');
+    else if (outcomeLower.includes('radio')) woundTargets.push('radioman');
+    else if (outcomeLower.includes('navigator')) woundTargets.push('navigator');
+    else if (outcomeLower.includes('bombardier')) woundTargets.push('bombardier');
+    else if (outcomeLower.includes('pilot')) woundTargets.push('pilot');
+
+    for (const pos of woundTargets) {
+      const crew = getCrewByPosition(this.state.campaign.crew, pos);
+      if (crew && crew.woundSeverity !== 'kia') {
+        const woundRollValue: number = yield* this._yieldCombatRoll(
+          'B1-4', 'Wound Severity',
+          `Wound severity for ${crew.name} (${POSITION_LABELS[pos]})`, '1d6',
+          [
+            { roll: '1-3', columns: { result: 'Light wound' } },
+            { roll: '4-5', columns: { result: 'Serious wound' } },
+            { roll: '6', columns: { result: 'KIA' } },
+          ],
+        );
+
+        let severity: WoundSeverity;
+        try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
+        crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
+        if (severity === 'kia') crew.status = 'kia';
+        const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
+        this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+          [
+            { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Sub-roll wound', description: 'Damage sub-roll' },
+            { table: 'B1-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
+          ], true);
       }
     }
   }
