@@ -155,6 +155,7 @@ btnStart.addEventListener('click', async () => {
   if (data.ok) {
     gameState = data.state;
     allEvents = [];
+    window._compartmentHits = {};
     startScreen.classList.remove('active');
     gameScreen.classList.add('active');
     $('plane-name').textContent = gameState.campaign.planeName;
@@ -163,6 +164,7 @@ btnStart.addEventListener('click', async () => {
     updateMissionCount();
     renderCrew();
     renderAircraft();
+    renderCombatDiagram([]);
     renderMap(null, 1, 5);
     eventLog.innerHTML = '';
     btnFly.style.display = '';
@@ -700,9 +702,11 @@ btnRestart.addEventListener('click', () => {
   startScreen.classList.add('active');
   gameState = null;
   allEvents = [];
+  window._compartmentHits = {};
   if (autoPlayTimer) clearTimeout(autoPlayTimer);
   rollPanel.innerHTML = '';
   rollPanel.style.display = 'none';
+  renderCombatDiagram([]);
 });
 
 // ─── Auto-play events with delay (for autoplay mode) ───
