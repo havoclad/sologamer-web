@@ -887,12 +887,19 @@ function renderAircraft(ac) {
 
   const damages = [];
   if (ac.fuelLeak) damages.push('Fuel Leak');
-  if (ac.fuelFire) damages.push('Fuel Fire');
+  if (ac.fuelFire) damages.push('🔥 Fuel Fire');
   if (ac.oxygenOut) damages.push('Oxygen Out');
   if (ac.heatingOut) damages.push('Heating Out');
   if (ac.ballTurretInop) damages.push('Ball Turret Inop');
+  if (ac.ballTurretTrapped) damages.push('⚠ Ball Gunner Trapped');
   if (ac.radioOut) damages.push('Radio Out');
-  if (ac.tailWheelInop) damages.push('Tail Wheel Inop');
+  if (ac.tailWheelInop || ac.tailWheelDamaged) damages.push('Tail Wheel Damaged');
+  if (ac.navigatorEquipInop) damages.push('Navigator Equip Inop');
+  if (ac.bombControlsInop) damages.push('Bomb Controls Inop');
+  if (ac.autopilotInop) damages.push('Autopilot Inop');
+  if (ac.bombBayDoorsInop) damages.push('Bomb Bay Doors Inop');
+  if (ac.brakesOut) damages.push('Brakes Out');
+  if (ac.landingGearInop) damages.push('⚠ Landing Gear Inop');
   // Check for disabled guns via guns array
   if (ac.guns) {
     for (const gun of ac.guns) {
@@ -900,14 +907,32 @@ function renderAircraft(ac) {
       if (gun.jammed) damages.push(`${gun.name} Jammed`);
     }
   }
+  // Control surfaces
   if (ac.controlDamage?.rudder) damages.push('Rudder Damage');
-  if (ac.controlDamage?.elevator) damages.push('Elevator Damage');
-  if (ac.controlDamage?.ailerons) damages.push('Aileron Damage');
+  if (ac.portElevatorInop) damages.push('Port Elevator Inop');
+  if (ac.starboardElevatorInop) damages.push('Stbd Elevator Inop');
+  if (ac.portFlapInop) damages.push('Port Flap Inop');
+  if (ac.starboardFlapInop) damages.push('Stbd Flap Inop');
+  if (ac.portAileronInop) damages.push('Port Aileron Inop');
+  if (ac.starboardAileronInop) damages.push('Stbd Aileron Inop');
+  if (ac.controlDamage?.elevator && !ac.portElevatorInop && !ac.starboardElevatorInop) damages.push('Elevator Damage');
+  if (ac.controlDamage?.ailerons && !ac.portAileronInop && !ac.starboardAileronInop) damages.push('Aileron Damage');
 
   if (damages.length > 0) {
     html += `<div class="system-damage">⚠ ${damages.join(' · ')}</div>`;
   } else {
     html += `<div style="color:var(--good); margin-top:4px">All systems operational</div>`;
+  }
+
+  // ─── Landing & Bomb Run Modifiers ───
+  const mission = gameState?.mission;
+  const landingMod = mission?.landingModifiers || 0;
+  const bombRunMod = mission?.bombRunModifier || 0;
+  if (landingMod !== 0 || bombRunMod !== 0) {
+    html += `<div class="modifier-section" style="margin-top:6px; padding:4px 8px; background:rgba(255,165,0,0.1); border-radius:4px;">`;
+    if (landingMod !== 0) html += `<div style="color:var(--warn)">Landing modifier: ${landingMod}</div>`;
+    if (bombRunMod !== 0) html += `<div style="color:var(--warn)">Bomb run modifier: ${bombRunMod}</div>`;
+    html += `</div>`;
   }
 
   // ─── Compartment damage tracking ───
