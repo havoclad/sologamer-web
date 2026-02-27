@@ -1037,7 +1037,7 @@ function renderCombatDiagram(msg) {
     html += `<text x="${lx}" y="${ly + 3}" text-anchor="middle" fill="#5a5a3a" font-size="8" font-family="monospace">${label}</text>`;
   }
 
-  const posPattern = /at\s+([\d:]+\s+(?:High|Level|Low))/g;
+  const posPattern = /at\s+([\d:]+\s+(?:High|Level|Low)|Vertical\s+Dive|Vertical\s+Climb)/g;
   let match;
   const fighterPositions = [];
   while ((match = posPattern.exec(msg)) !== null) {
@@ -1046,13 +1046,24 @@ function renderCombatDiagram(msg) {
 
   for (let i = 0; i < fighterPositions.length; i++) {
     const pos = fighterPositions[i];
-    const clockMatch = pos.match(/([\d:]+)/);
-    if (!clockMatch) continue;
-    const clock = clockMatch[1];
-    const baseAngle = clockPositions[clock] ?? 0;
-    const rad = (baseAngle + i * 5) * Math.PI / 180;
-    const fx = cx + Math.cos(rad) * r;
-    const fy = cy + Math.sin(rad) * r;
+    let fx, fy;
+    if (pos.startsWith('Vertical Dive')) {
+      // Below the B-17
+      fx = cx + (i - fighterPositions.length/2) * 15;
+      fy = cy + r - 20;
+    } else if (pos.startsWith('Vertical Climb')) {
+      // Above the B-17
+      fx = cx + (i - fighterPositions.length/2) * 15;
+      fy = cy - r + 20;
+    } else {
+      const clockMatch = pos.match(/([\d:]+)/);
+      if (!clockMatch) continue;
+      const clock = clockMatch[1];
+      const baseAngle = clockPositions[clock] ?? 0;
+      const rad = (baseAngle + i * 5) * Math.PI / 180;
+      fx = cx + Math.cos(rad) * r;
+      fy = cy + Math.sin(rad) * r;
+    }
     html += `<circle cx="${fx}" cy="${fy}" r="6" fill="#c04030" stroke="#ff6050" stroke-width="1"/>`;
     html += `<text x="${fx}" y="${fy + 3}" text-anchor="middle" fill="white" font-size="7" font-family="monospace">✕</text>`;
   }
