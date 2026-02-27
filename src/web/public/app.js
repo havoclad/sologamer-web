@@ -885,6 +885,13 @@ function renderAircraft(ac) {
   if (ac.ballTurretInop) damages.push('Ball Turret Inop');
   if (ac.radioOut) damages.push('Radio Out');
   if (ac.tailWheelInop) damages.push('Tail Wheel Inop');
+  // Check for disabled guns via guns array
+  if (ac.guns) {
+    for (const gun of ac.guns) {
+      if (gun.disabled) damages.push(`${gun.name} Inop`);
+      if (gun.jammed) damages.push(`${gun.name} Jammed`);
+    }
+  }
   if (ac.controlDamage?.rudder) damages.push('Rudder Damage');
   if (ac.controlDamage?.elevator) damages.push('Elevator Damage');
   if (ac.controlDamage?.ailerons) damages.push('Aileron Damage');
@@ -924,13 +931,24 @@ function renderAircraft(ac) {
     }
   }
 
-  if (ac.ammo) {
+  if (ac.guns) {
+    html += `<div class="ammo-section"><div class="ammo-header">Ammunition</div><div class="ammo-grid">`;
+    for (const gun of ac.guns) {
+      const pct = Math.round((gun.ammo / gun.ammoCapacity) * 100);
+      const barCls = gun.disabled ? 'ammo-critical' : gun.jammed ? 'ammo-low' : pct > 50 ? 'ammo-ok' : pct > 20 ? 'ammo-low' : 'ammo-critical';
+      const statusSuffix = gun.disabled ? ' ✕' : gun.jammed ? ' ⚠' : '';
+      html += `<div class="ammo-row">
+        <span class="ammo-gun">${gun.name}${statusSuffix}</span>
+        <div class="ammo-bar-bg"><div class="ammo-bar ${barCls}" style="width:${pct}%"></div></div>
+        <span class="ammo-count">${gun.ammo}</span>
+      </div>`;
+    }
+    html += `</div></div>`;
+  } else if (ac.ammo) {
+    // Legacy fallback
     html += `<div class="ammo-section"><div class="ammo-header">Ammunition</div><div class="ammo-grid">`;
     for (const [gun, remaining] of Object.entries(ac.ammo)) {
-      const maxAmmo = {
-        Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16,
-        Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16,
-      }[gun] || 12;
+      const maxAmmo = { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 }[gun] || 12;
       const pct = Math.round((remaining / maxAmmo) * 100);
       const barCls = pct > 50 ? 'ammo-ok' : pct > 20 ? 'ammo-low' : 'ammo-critical';
       html += `<div class="ammo-row">

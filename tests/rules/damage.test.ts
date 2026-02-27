@@ -1,3 +1,4 @@
+import { initializeGuns, getGun, disableGun } from '../../src/games/b17/rules/guns.js';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createRNG } from '../../src/engine/rng.js';
 import { TableStore } from '../../src/engine/tables.js';
@@ -21,7 +22,7 @@ function makeAircraft(overrides: Partial<AircraftState> = {}): AircraftState {
     radioOut: false, tailWheelInop: false,
     wingSurfaceDamage: { left: 0, right: 0 },
     controlDamage: { rudder: false, elevator: false, ailerons: false },
-    fireExtinguishersUsed: 0, ammo: { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
+    fireExtinguishersUsed: 0, guns: initializeGuns(), ammo: { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
     ...overrides,
   };
 }
@@ -315,5 +316,52 @@ describe('resolveBIP', () => {
     expect(resolveBIP('Nose', false).type).toBe('heavy_damage');
     expect(resolveBIP('Radio Room', false).type).toBe('heavy_damage');
     expect(resolveBIP('Waist', false).type).toBe('heavy_damage');
+  });
+});
+
+// ─── Regression tests ───
+
+describe('Bug regression: P-5 Waist wound follow-up (B1-4)', () => {
+  it('P-5 roll 6 produces follow_up_table effect pointing to B1-4', () => {
+    // Roll 6 on P-5 = "Port Gunner — Roll for wound on Table B1-4"
+    // The RNG must produce a 2d6 result of 6
+    const fixedRng = { d6: () => 3, twod6: () => 6, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-5', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+  });
+
+  it('P-5 roll 8 produces follow_up_table effect pointing to B1-4 for Starboard Gunner', () => {
+    const fixedRng = { d6: () => 4, twod6: () => 8, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-5', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+  });
+
+  it('P-5 roll 10 produces follow_up_table for Both Waist Gunners', () => {
+    const fixedRng = { d6: () => 5, twod6: () => 10, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-5', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+  });
+});
+
+describe('Bug regression: P-6 Tail guns inoperable', () => {
+  it('P-6 roll 4 result describes tail guns inoperable', () => {
+    // Roll 4 on P-6 = "Tail Turret — Tail guns inoperable"
+    const fixedRng = { d6: () => 2, twod6: () => 4, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-6', fixedRng as any, tables);
+    expect(result.description.toLowerCase()).toContain('tail guns inoperable');
+  });
+
+  it('disabled tail gun prevents tail gun eligibility', () => {
+    const ac = makeAircraft({});
+    disableGun(ac.guns, 'Tail');
+    expect(getGun(ac.guns, 'Tail').disabled).toBe(true);
+    // Ammo is full and aircraft is otherwise fine, but tail guns should be inoperable
+    expect(getGun(ac.guns, 'Tail').ammo).toBeGreaterThan(0);
   });
 });

@@ -38,6 +38,7 @@ import {
   applyFighterDamage, rollShellHits, rollSuccessiveAttackPosition,
   getSuccessiveAttackers,
 } from './combat.js';
+import { initializeGuns } from './guns.js';
 import {
   rollHitLocation, rollCompartmentDamage, rollCrewWound,
   countEnginesOut, isAllEnginesOut, getEngineLandingModifier,
@@ -110,7 +111,8 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     wingSurfaceDamage: { ...ac.wingSurfaceDamage },
     controlDamage: { ...ac.controlDamage },
     fireExtinguishersUsed: ac.fireExtinguishersUsed,
-    ammo: ac.ammo ? { ...ac.ammo } : { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
+    guns: ac.guns ? ac.guns.map(g => ({ ...g })) : initializeGuns(),
+    ammo: ac.ammo ? { ...ac.ammo } : Object.fromEntries((ac.guns ?? initializeGuns()).map(g => [g.id, g.ammo])) as any,
   };
 }
 

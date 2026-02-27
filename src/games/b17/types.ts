@@ -25,7 +25,11 @@ export interface CrewMember {
 
 export type EngineStatus = 'ok' | 'fire' | 'runaway' | 'oil_leak' | 'supercharger_out' | 'out';
 
-/** Ammo tracking per gun position. Each value = rounds remaining. */
+// Re-export Gun type from guns module
+export type { Gun } from './rules/guns.js';
+
+/** Ammo tracking per gun position. Each value = rounds remaining.
+ *  @deprecated Use aircraft.guns instead. Kept for backward compatibility. */
 export interface AmmoState {
   Nose: number;
   Port_Cheek: number;
@@ -38,7 +42,8 @@ export interface AmmoState {
   Tail: number;
 }
 
-/** Default ammo loadout per gun position (number of shots per mission). */
+/** Default ammo loadout per gun position (number of shots per mission).
+ *  @deprecated Use initializeGuns() instead. */
 export const DEFAULT_AMMO: AmmoState = {
   Nose: 12,
   Port_Cheek: 12,
@@ -64,6 +69,8 @@ export interface AircraftState {
   wingSurfaceDamage: { left: number; right: number };
   controlDamage: { rudder: boolean; elevator: boolean; ailerons: boolean };
   fireExtinguishersUsed: number;
+  guns: import('./rules/guns.js').Gun[];
+  /** @deprecated Use guns array instead. Computed from guns for backward compat. */
   ammo: AmmoState;
 }
 

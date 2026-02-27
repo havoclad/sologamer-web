@@ -10,3 +10,4 @@ export * from './random-events.js';
 export * from './bailout.js';
 export * from './mission.js';
 export * from './campaign.js';
+export * from './guns.js';

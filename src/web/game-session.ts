@@ -13,7 +13,7 @@ import type {
   B17GameState, CrewMember, CrewPosition, AircraftState,
   WoundSeverity, MissionState, AmmoState,
 } from '../games/b17/types.js';
-import { DEFAULT_AMMO } from '../games/b17/types.js';
+import { initializeGuns, getGun, cloneGuns, gunsToAmmo, disableGun, jamGun, type Gun } from '../games/b17/rules/guns.js';
 import type { B17Phase } from '../games/b17/phases.js';
 import {
   getZoneInfo, getTargetZone,
@@ -156,6 +156,7 @@ const GUN_LABELS: Record<string, string> = {
   Radio: 'Radio room gun', Tail: 'Tail guns',
 };
 
+/** @deprecated - Use gun.crewPosition from the Gun object instead */
 const GUN_TO_CREW: Record<string, CrewPosition> = {
   Nose: 'bombardier', Port_Cheek: 'navigator', Starboard_Cheek: 'navigator',
   Top_Turret: 'engineer', Ball_Turret: 'ball_turret',
@@ -181,12 +182,14 @@ function cloneCrew(crew: CrewMember[]): CrewMember[] {
 }
 
 function cloneAircraft(ac: AircraftState): AircraftState {
+  const guns = cloneGuns(ac.guns);
   return {
     ...ac,
     engines: [...ac.engines] as AircraftState['engines'],
     wingSurfaceDamage: { ...ac.wingSurfaceDamage },
     controlDamage: { ...ac.controlDamage },
-    ammo: { ...ac.ammo },
+    guns,
+    ammo: gunsToAmmo(guns) as any,
   };
 }
 
@@ -733,7 +736,8 @@ export class GameSession {
       evasiveAction: false, landingModifiers: 0,
     };
     this.state.mission = mission;
-    this.state.campaign.aircraft.ammo = { ...DEFAULT_AMMO };
+    this.state.campaign.aircraft.guns = initializeGuns();
+    this.state.campaign.aircraft.ammo = gunsToAmmo(this.state.campaign.aircraft.guns) as any;
 
     // Crew roster event
     this.emit('SETUP', 'Crew manifest', 'setup', 'info', undefined, undefined, undefined, true);
@@ -1392,12 +1396,13 @@ export class GameSession {
         }
       }
 
-      // Filter guns by crew availability and ammo
+      // Filter guns by crew availability, ammo, and gun operability
       const eligibleGuns = gunEntries.filter(ge => {
         const cm = getCrewByPosition(crew, ge.crewPos);
         if (!cm || cm.status !== 'active' || cm.wounds === 'serious' || cm.wounds === 'kia') return false;
-        const ammoKey = ge.gun as keyof AmmoState;
-        if (aircraft.ammo[ammoKey] <= 0) return false;
+        const gunObj = getGun(aircraft.guns, ge.gun);
+        if (gunObj.ammo <= 0 || gunObj.disabled || gunObj.jammed) return false;
+        if (ge.gun === 'Ball_Turret' && aircraft.ballTurretInop) return false;
         return true;
       });
 
@@ -1418,14 +1423,14 @@ export class GameSession {
           maxSelections: eligibleGuns.length,
           allocations: eligibleGuns.map(ge => {
             const cm = getCrewByPosition(crew, ge.crewPos)!;
-            const ammoKey = ge.gun as keyof AmmoState;
+            const gunObj = getGun(aircraft.guns, ge.gun);
             // Determine if ALL targets for this gun are delayed (tail special only)
             const allDelayed = ge.targets.every(t => t.isDelayed);
             return {
               gunId: ge.gun,
               gunLabel: GUN_LABELS[ge.gun] || ge.gun,
               crewName: cm.name,
-              ammoRemaining: aircraft.ammo[ammoKey],
+              ammoRemaining: gunObj.ammo,
               isTailSpecial: allDelayed,
               targets: ge.targets.map(t => ({
                 fighterId: t.fighterId,
@@ -1592,8 +1597,8 @@ export class GameSession {
       if (delayedAllocations.length > 0) {
         // Check tail gunner is still alive and gun is still operational
         const tailGunner = getCrewByPosition(crew, 'tail_gunner');
-        const tailAmmo = aircraft.ammo['Tail' as keyof AmmoState];
-        if (tailGunner && tailGunner.status === 'active' && tailGunner.wounds !== 'serious' && tailGunner.wounds !== 'kia') {
+        const tailGunObj = getGun(aircraft.guns, 'Tail');
+        if (tailGunner && tailGunner.status === 'active' && tailGunner.wounds !== 'serious' && tailGunner.wounds !== 'kia' && !tailGunObj.disabled) {
           this.emit('COMBAT', `Tail guns firing (delayed) — ${plural(delayedAllocations.length, 'target')}`, 'combat', 'info', zone, direction);
           for (const alloc of delayedAllocations) {
             yield* this._resolveGunFire(alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
@@ -1669,8 +1674,10 @@ export class GameSession {
     if (isFighterOutOfAction(fighter)) return;
 
     // Deduct ammo when gun actually fires (not at allocation time)
-    const ammoKey = gun as keyof AmmoState;
-    this.state.campaign.aircraft.ammo[ammoKey]--;
+    const gunObj = getGun(this.state.campaign.aircraft.guns, gun);
+    gunObj.ammo--;
+    // Keep legacy ammo in sync
+    this.state.campaign.aircraft.ammo[gun as keyof AmmoState]--;
 
     const defRollValue: number = yield* this._yieldCombatRoll(
       'M-1', 'Defensive Fire',
@@ -1686,7 +1693,7 @@ export class GameSession {
     if (fr.hit) {
       const dmgRollValue: number = yield* this._yieldCombatRoll(
         'M-2', 'Fighter Damage',
-        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${isTwinGunMount(gun) ? ' (twin mount +1)' : ''}`,
+        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${gunObj.twin ? ' (twin mount +1)' : ''}`,
         '1d6',
         [
           { roll: '1-3', columns: { result: 'FCA — continues attack' } },
@@ -1695,7 +1702,7 @@ export class GameSession {
         ],
       );
 
-      const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, isTwinGunMount(gun));
+      const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, gunObj.twin);
       const status = applyFighterDamage(fighter, dmg);
 
       if (status.status === 'destroyed') {
@@ -1766,11 +1773,9 @@ export class GameSession {
         const fieldOfFire = getFieldOfFire(f.position, tables);
         const gunDescs: string[] = [];
         for (const [gun, hitReq] of fieldOfFire) {
-          const crewPos = GUN_TO_CREW[gun];
-          if (!crewPos) continue;
-          if (isCrewDown(this.state.campaign.crew, crewPos)) continue;
-          const ammoKey = gun as keyof AmmoState;
-          if (this.state.campaign.aircraft.ammo[ammoKey] <= 0) continue;
+          const gunObj = getGun(this.state.campaign.aircraft.guns, gun);
+          if (isCrewDown(this.state.campaign.crew, gunObj.crewPosition)) continue;
+          if (gunObj.ammo <= 0 || gunObj.disabled || gunObj.jammed) continue;
           gunDescs.push(`${GUN_LABELS[gun]} (${hitReq}+)`);
         }
         const gunInfo = gunDescs.length > 0 ? ` — ${gunDescs.join(', ')}` : ' — no guns in range';
@@ -2076,6 +2081,47 @@ export class GameSession {
                 this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
               }
             }
+          } else if (effect.table === 'B1-4') {
+            // ── Crew wound follow-up (B1-4) ──
+            // Map follow-up target text to crew positions
+            const targetText = (effect.target ?? rollEntry?.follow_up?.target ?? '') as string;
+            const woundTargets: CrewPosition[] = [];
+            if (/port\s*waist/i.test(targetText)) woundTargets.push('left_waist');
+            else if (/starboard\s*waist/i.test(targetText)) woundTargets.push('right_waist');
+            else if (/both\s*waist/i.test(targetText)) woundTargets.push('left_waist', 'right_waist');
+            else if (/tail/i.test(targetText)) woundTargets.push('tail_gunner');
+            else if (/ball/i.test(targetText)) woundTargets.push('ball_turret');
+            else if (/radio/i.test(targetText)) woundTargets.push('radioman');
+            else if (/navigator/i.test(targetText)) woundTargets.push('navigator');
+            else if (/bombardier/i.test(targetText)) woundTargets.push('bombardier');
+            else if (/pilot/i.test(targetText)) woundTargets.push('pilot');
+            else if (/engineer/i.test(targetText)) woundTargets.push('engineer');
+
+            for (const pos of woundTargets) {
+              const crew = getCrewByPosition(this.state.campaign.crew, pos);
+              if (crew && crew.wounds !== 'kia') {
+                const woundRollValue: number = yield* this._yieldCombatRoll(
+                  'B1-4', 'Wound Severity',
+                  `Wound severity for ${crew.name} (${POSITION_LABELS[pos]})`, '1d6',
+                  [
+                    { roll: '1-3', columns: { result: 'Light wound' } },
+                    { roll: '4-5', columns: { result: 'Serious wound' } },
+                    { roll: '6', columns: { result: 'KIA' } },
+                  ],
+                );
+
+                let severity: WoundSeverity;
+                try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
+                crew.wounds = accumulateWound(crew.wounds, severity);
+                if (severity === 'kia') crew.status = 'kia';
+                const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
+                this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+                  [
+                    { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+                    { table: 'B1-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
+                  ], true);
+              }
+            }
           } else {
             // Generic follow-up — just emit info
             this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
@@ -2083,10 +2129,24 @@ export class GameSession {
           }
           break;
         }
-        default:
-          this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
-            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+        default: {
+          // Check for specific system damage that needs state updates
+          const resultLower = (dmg.result ?? '').toLowerCase();
+          const descLower = (dmg.description ?? '').toLowerCase();
+          if (descLower.includes('tail guns inoperable') || resultLower.includes('tail guns inoperable')) {
+            disableGun(this.state.campaign.aircraft.guns, 'Tail');
+            this.emit('DAMAGE', `${location}: Tail guns inoperable!`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }], true);
+          } else if (descLower.includes('ball turret') && (descLower.includes('guns out') || descLower.includes('inoperable'))) {
+            this.state.campaign.aircraft.ballTurretInop = true;
+            this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }], true);
+          } else {
+            this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+          }
           break;
+        }
       }
     }
   }
@@ -2162,10 +2222,19 @@ export class GameSession {
           this.emit('DAMAGE', `CATASTROPHIC DAMAGE — aircraft destroyed!`, 'damage', 'critical', zone, direction,
             [{ table: damageTable, rollType: '1d6', rolled: 0, result: 'Destroyed' }], true);
           break;
-        default:
-          this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
-            [{ table: damageTable, rollType: '1d6', rolled: 0, result: dmg.result }]);
+        default: {
+          const resultLower = (dmg.result ?? '').toLowerCase();
+          const descLower = (dmg.description ?? '').toLowerCase();
+          if (descLower.includes('tail guns inoperable') || resultLower.includes('tail guns inoperable')) {
+            disableGun(this.state.campaign.aircraft.guns, 'Tail');
+            this.emit('DAMAGE', `${location}: Tail guns inoperable!`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: '1d6', rolled: 0, result: dmg.result }], true);
+          } else {
+            this.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
+              [{ table: damageTable, rollType: '1d6', rolled: 0, result: dmg.result }]);
+          }
           break;
+        }
       }
     }
   }

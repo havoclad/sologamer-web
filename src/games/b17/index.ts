@@ -9,7 +9,7 @@ import { B17_PHASES, type B17Phase } from './phases.js';
 import type {
   B17GameState, CampaignState, AircraftState, CrewMember, CrewPosition,
 } from './types.js';
-import { DEFAULT_AMMO } from './types.js';
+import { initializeGuns } from './rules/guns.js';
 
 const CREW_POSITIONS: CrewPosition[] = [
   'pilot', 'copilot', 'navigator', 'bombardier',
@@ -18,6 +18,7 @@ const CREW_POSITIONS: CrewPosition[] = [
 ];
 
 function createDefaultAircraft(): AircraftState {
+  const guns = initializeGuns();
   return {
     engines: ['ok', 'ok', 'ok', 'ok'],
     fuelLeak: false,
@@ -31,7 +32,8 @@ function createDefaultAircraft(): AircraftState {
     wingSurfaceDamage: { left: 0, right: 0 },
     controlDamage: { rudder: false, elevator: false, ailerons: false },
     fireExtinguishersUsed: 0,
-    ammo: { ...DEFAULT_AMMO },
+    guns,
+    ammo: Object.fromEntries(guns.map(g => [g.id, g.ammo])) as any,
   };
 }
 
