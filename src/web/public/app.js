@@ -703,6 +703,10 @@ btnRestart.addEventListener('click', () => {
   gameState = null;
   allEvents = [];
   window._compartmentHits = {};
+  // Generate a fresh random bomber name for the new campaign
+  if (bomberNames.length) {
+    $('bomber-name').value = bomberNames[Math.floor(Math.random() * bomberNames.length)];
+  }
   if (autoPlayTimer) clearTimeout(autoPlayTimer);
   rollPanel.innerHTML = '';
   rollPanel.style.display = 'none';
