@@ -1011,13 +1011,11 @@ function updateMapFromEvent(evt) {
 
 // ─── Combat View ───
 function updateCombatFromEvent(evt) {
-  if (evt.category !== 'combat' || !evt.message) return;
-  if (evt.message.includes('fighter:') || evt.message.includes('fighters:') || evt.message.includes('fighter attacking') || evt.message.includes('fighters attacking') || evt.message.includes('pressing the attack:')) {
-    renderCombatDiagram(evt.message);
-  }
+  if (!evt.combatState) return;
+  renderCombatDiagram(evt.combatState.fighters);
 }
 
-function renderCombatDiagram(msg) {
+function renderCombatDiagram(fighters) {
   const svg = $('combat-svg');
   const cx = 150, cy = 150, r = 100;
   let html = '';
@@ -1025,41 +1023,32 @@ function renderCombatDiagram(msg) {
   html += `<rect x="${cx-40}" y="${cy-3}" width="80" height="6" fill="#4a4a2a" rx="2"/>`;
   html += `<text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#b89b4a" font-size="10" font-family="monospace">B-17</text>`;
 
-  const clockPositions = {
+  const clockAngles = {
     '12': -90, '1:30': -45, '3': 0, '4:30': 45,
     '6': 90, '7:30': 135, '9': 180, '10:30': -135,
   };
 
-  for (const [label, angle] of Object.entries(clockPositions)) {
+  for (const [label, angle] of Object.entries(clockAngles)) {
     const rad = angle * Math.PI / 180;
     const lx = cx + Math.cos(rad) * (r + 20);
     const ly = cy + Math.sin(rad) * (r + 20);
     html += `<text x="${lx}" y="${ly + 3}" text-anchor="middle" fill="#5a5a3a" font-size="8" font-family="monospace">${label}</text>`;
   }
 
-  const posPattern = /at\s+([\d:]+\s+(?:High|Level|Low)|Vertical\s+Dive|Vertical\s+Climb)/g;
-  let match;
-  const fighterPositions = [];
-  while ((match = posPattern.exec(msg)) !== null) {
-    fighterPositions.push(match[1]);
-  }
-
-  for (let i = 0; i < fighterPositions.length; i++) {
-    const pos = fighterPositions[i];
+  for (let i = 0; i < fighters.length; i++) {
+    const pos = fighters[i].position;
     let fx, fy;
-    if (pos.startsWith('Vertical Dive')) {
-      // Below the B-17
-      fx = cx + (i - fighterPositions.length/2) * 15;
+    if (pos === 'Vertical Dive') {
+      fx = cx + (i - fighters.length/2) * 15;
       fy = cy + r - 20;
-    } else if (pos.startsWith('Vertical Climb')) {
-      // Above the B-17
-      fx = cx + (i - fighterPositions.length/2) * 15;
+    } else if (pos === 'Vertical Climb') {
+      fx = cx + (i - fighters.length/2) * 15;
       fy = cy - r + 20;
     } else {
-      const clockMatch = pos.match(/([\d:]+)/);
-      if (!clockMatch) continue;
-      const clock = clockMatch[1];
-      const baseAngle = clockPositions[clock] ?? 0;
+      // Position format: "12 High", "3 Level", "10:30 Low", etc.
+      const parts = pos.split(' ');
+      const clock = parts.slice(0, -1).join(' '); // everything except altitude
+      const baseAngle = clockAngles[clock] ?? 0;
       const rad = (baseAngle + i * 5) * Math.PI / 180;
       fx = cx + Math.cos(rad) * r;
       fy = cy + Math.sin(rad) * r;
@@ -1069,8 +1058,8 @@ function renderCombatDiagram(msg) {
   }
 
   svg.innerHTML = html;
-  combatInfo.textContent = fighterPositions.length > 0
-    ? `${fighterPositions.length} ${fighterPositions.length === 1 ? 'fighter' : 'fighters'} engaging`
+  combatInfo.textContent = fighters.length > 0
+    ? `${fighters.length} ${fighters.length === 1 ? 'fighter' : 'fighters'} engaging`
     : 'No active combat';
 }
 

@@ -70,6 +70,12 @@ export interface RollDetail {
   tableData?: Record<string, string>;
 }
 
+/** Structured combat state attached to combat events so the UI can render
+ *  without parsing message strings. */
+export interface CombatViewState {
+  fighters: Array<{ id: number; type: string; position: string }>;
+}
+
 export interface GameEvent {
   id: number;
   phase: string;
@@ -79,6 +85,8 @@ export interface GameEvent {
   severity: 'info' | 'good' | 'warn' | 'bad' | 'critical';
   message: string;
   details?: RollDetail[];
+  /** Structured combat state for the UI combat diagram */
+  combatState?: CombatViewState;
   /** Snapshot of crew/aircraft state at this point */
   stateSnapshot?: {
     crew: CrewMember[];
@@ -418,16 +426,27 @@ export class GameSession {
     };
   }
 
+  /** Build a CombatViewState from a fighters array */
+  private static combatView(fighters: Fighter[]): CombatViewState {
+    return {
+      fighters: fighters.map(f => ({ id: f.id, type: f.type, position: f.position })),
+    };
+  }
+
   private emit(
     phase: string, message: string, category: GameEvent['category'],
     severity: GameEvent['severity'], zone?: number,
     direction?: 'outbound' | 'inbound', details?: RollDetail[],
     includeSnapshot = false,
+    combatState?: CombatViewState,
   ): GameEvent {
     const event: GameEvent = {
       id: this.eventId++,
       phase, zone, direction, category, severity, message, details,
     };
+    if (combatState) {
+      event.combatState = combatState;
+    }
     if (includeSnapshot) {
       event.stateSnapshot = {
         crew: cloneCrew(this.state.campaign.crew),
@@ -797,7 +816,8 @@ export class GameSession {
 
       if (waveCount === 0) {
         this.emit('COMBAT', 'No enemy fighters encountered', 'combat', 'good', z, 'outbound',
-          [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }]);
+          [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }],
+          false, GameSession.combatView([]));
       } else {
         this.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', z, 'outbound',
           [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
@@ -831,7 +851,8 @@ export class GameSession {
           // Handle "No Attackers" with out-of-formation reroll
           if (fighters.length === 0 && !mission.outOfFormation) {
             this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
-              [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }]);
+              [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
+              false, GameSession.combatView([]));
             continue;
           } else if (fighters.length === 0 && mission.outOfFormation) {
             // Reroll when out of formation
@@ -856,7 +877,8 @@ export class GameSession {
             }
           }
         } else {
-          this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound');
+          this.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
+            undefined, false, GameSession.combatView([]));
           continue;
         }
 
@@ -867,7 +889,8 @@ export class GameSession {
         // Describe fighters
         const initialFighterCount = fighters.length;
         const fDescs = fighters.map(f => `${f.type} at ${f.position}`);
-        this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
+        this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound',
+          undefined, false, GameSession.combatView(fighters));
 
         // Fighter cover defense (M-4)
         let successiveCover = 0;
@@ -890,14 +913,16 @@ export class GameSession {
         }
 
         if (fighters.length === 0) {
-          this.emit('COMBAT', 'All fighters driven off!', 'combat', 'good', z, 'outbound');
+          this.emit('COMBAT', 'All fighters driven off!', 'combat', 'good', z, 'outbound',
+            undefined, false, GameSession.combatView([]));
           continue;
         }
 
         // Emit updated fighter list after drive-offs so the combat view refreshes
         if (fighters.length < initialFighterCount) {
           const remainDescs = fighters.map(f => `${f.type} at ${f.position}`);
-          this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${remainDescs.join(', ')}`, 'combat', 'warn', z, 'outbound');
+          this.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${remainDescs.join(', ')}`, 'combat', 'warn', z, 'outbound',
+            undefined, false, GameSession.combatView(fighters));
         }
 
         // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
@@ -974,7 +999,8 @@ export class GameSession {
 
         if (waveCount === 0) {
           this.emit('COMBAT', 'No enemy fighters', 'combat', 'good', z, 'inbound',
-            [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }]);
+            [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }],
+            false, GameSession.combatView([]));
           continue;
         }
 
@@ -1003,7 +1029,8 @@ export class GameSession {
           }
 
           if (fighters.length === 0) {
-            this.emit('COMBAT', 'Fighters driven off by formation', 'combat', 'good', z, 'inbound');
+            this.emit('COMBAT', 'Fighters driven off by formation', 'combat', 'good', z, 'inbound',
+              undefined, false, GameSession.combatView([]));
             continue;
           }
 
@@ -1030,7 +1057,8 @@ export class GameSession {
 
           if (fighters.length === 0) { continue; }
 
-          this.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound');
+          this.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound',
+            undefined, false, GameSession.combatView(fighters));
 
           // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
           const inboundResult = yield* this._resolveCombatRounds(fighters, fighters, mission, z, 'inbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; }, inboundSuccessiveCover);
@@ -1319,13 +1347,14 @@ export class GameSession {
             allFighters = allFighters.filter(f => activeFighters.includes(f) || !f.damage.includes('Destroyed'));
           }
           if (activeFighters.length === 0) {
-            this.emit('COMBAT', 'All fighters driven off by cover!', 'combat', 'good', zone, direction, undefined, true);
+            this.emit('COMBAT', 'All fighters driven off by cover!', 'combat', 'good', zone, direction, undefined, true, GameSession.combatView([]));
             break;
           }
         }
 
         const survDescs = activeFighters.map(f => `${f.type} at ${f.position}`);
-        this.emit('COMBAT', `${plural(activeFighters.length, 'fighter')} pressing the attack: ${survDescs.join(', ')}`, 'combat', 'warn', zone, direction);
+        this.emit('COMBAT', `${plural(activeFighters.length, 'fighter')} pressing the attack: ${survDescs.join(', ')}`, 'combat', 'warn', zone, direction,
+          undefined, false, GameSession.combatView(activeFighters));
       }
       lastRoundSummary = [];
 
@@ -1475,7 +1504,7 @@ export class GameSession {
       });
 
       if (activeFighters.length === 0) {
-        this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction, undefined, true);
+        this.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction, undefined, true, GameSession.combatView([]));
         break;
       }
 
