@@ -1003,12 +1003,19 @@ function renderAircraft(ac) {
     const superficialCount = ac.superficialHits || 0;
 
     if (dmgItems.length > 0 || superficialCount > 0) {
-      html += `<div class="damage-section"><div class="ammo-header">Damage Tracking</div>`;
+      html += `<div class="damage-section" style="width:100%"><div class="ammo-header">Damage Tracking</div>`;
       for (const item of dmgItems) {
-        html += `<div class="damage-row ${item.cls}"><span class="damage-area">${item.text}</span></div>`;
+        // Split on first ": " to get label and value
+        const colonIdx = item.text.indexOf(': ');
+        const label = colonIdx >= 0 ? item.text.slice(0, colonIdx) : item.text;
+        const value = colonIdx >= 0 ? item.text.slice(colonIdx + 2) : '';
+        html += `<div class="damage-row ${item.cls}" style="display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:1px 0">`;
+        html += `<span class="damage-label" style="text-align:left;white-space:nowrap">${label}</span>`;
+        if (value) html += `<span class="damage-value" style="text-align:right;white-space:nowrap;margin-left:12px">${value}</span>`;
+        html += `</div>`;
       }
       if (superficialCount > 0) {
-        html += `<div class="damage-row dmg-light" style="opacity:0.6;font-size:0.85em"><span class="damage-area">Superficial hits: ${superficialCount}</span></div>`;
+        html += `<div class="damage-row dmg-light" style="display:flex;justify-content:space-between;align-items:baseline;width:100%;opacity:0.6;font-size:0.85em;padding:1px 0"><span class="damage-label">Superficial hits</span><span class="damage-value" style="margin-left:12px">${superficialCount}</span></div>`;
       }
       html += `</div>`;
     }
