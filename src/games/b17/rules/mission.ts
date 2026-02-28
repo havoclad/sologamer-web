@@ -113,6 +113,22 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     fireExtinguishersUsed: ac.fireExtinguishersUsed,
     guns: ac.guns ? ac.guns.map(g => ({ ...g })) : initializeGuns(),
     ammo: ac.ammo ? { ...ac.ammo } : Object.fromEntries((ac.guns ?? initializeGuns()).map(g => [g.id, g.ammo])) as any,
+    navigatorEquipInop: ac.navigatorEquipInop ?? false,
+    bombControlsInop: ac.bombControlsInop ?? false,
+    autopilotInop: ac.autopilotInop ?? false,
+    tailWheelDamaged: ac.tailWheelDamaged ?? false,
+    brakesOut: ac.brakesOut ?? false,
+    landingGearInop: ac.landingGearInop ?? false,
+    ballTurretTrapped: ac.ballTurretTrapped ?? false,
+    portFlapInop: ac.portFlapInop ?? false,
+    starboardFlapInop: ac.starboardFlapInop ?? false,
+    portAileronInop: ac.portAileronInop ?? false,
+    starboardAileronInop: ac.starboardAileronInop ?? false,
+    portElevatorInop: ac.portElevatorInop ?? false,
+    starboardElevatorInop: ac.starboardElevatorInop ?? false,
+    portWingRootHits: ac.portWingRootHits ?? 0,
+    starboardWingRootHits: ac.starboardWingRootHits ?? 0,
+    superficialHits: ac.superficialHits ?? 0,
   };
 }
 

@@ -935,30 +935,80 @@ function renderAircraft(ac) {
     html += `</div>`;
   }
 
-  // ─── Compartment damage tracking ───
-  const compartments = [
-    { name: 'Nose', key: 'nose' },
-    { name: 'Pilot Compt.', key: 'pilot' },
-    { name: 'Bomb Bay', key: 'bombBay' },
-    { name: 'Radio Room', key: 'radio' },
-    { name: 'Waist', key: 'waist' },
-    { name: 'Tail', key: 'tail' },
-    { name: 'Port Wing', key: 'portWing' },
-    { name: 'Stbd Wing', key: 'stbdWing' },
-  ];
-  // Count damage from recent events — track hits per area
-  if (window._compartmentHits) {
-    const hasAnyDamage = Object.values(window._compartmentHits).some(v => v > 0);
-    if (hasAnyDamage) {
+  // ─── Named Damage List ───
+  {
+    const dmgItems = [];
+
+    // Wing root hits
+    if (ac.portWingRootHits > 0) dmgItems.push({ text: `Port Wing Root: ${ac.portWingRootHits}/5 hits`, cls: ac.portWingRootHits >= 4 ? 'dmg-critical' : 'dmg-warn' });
+    if (ac.starboardWingRootHits > 0) dmgItems.push({ text: `Starboard Wing Root: ${ac.starboardWingRootHits}/5 hits`, cls: ac.starboardWingRootHits >= 4 ? 'dmg-critical' : 'dmg-warn' });
+
+    // Engine damage (already shown above but detailed here)
+    for (let i = 0; i < 4; i++) {
+      const es = ac.engines[i];
+      if (es === 'fire') dmgItems.push({ text: `Engine #${i+1}: FIRE 🔥`, cls: 'dmg-critical' });
+      else if (es === 'out') dmgItems.push({ text: `Engine #${i+1}: OUT`, cls: 'dmg-warn' });
+      else if (es === 'runaway') dmgItems.push({ text: `Engine #${i+1}: RUNAWAY`, cls: 'dmg-warn' });
+      else if (es === 'oil_leak') dmgItems.push({ text: `Engine #${i+1}: Oil Leak`, cls: 'dmg-warn' });
+      else if (es === 'supercharger_out') dmgItems.push({ text: `Engine #${i+1}: Supercharger Out`, cls: 'dmg-light' });
+    }
+
+    // Structural / system damage
+    if (ac.fuelFire) dmgItems.push({ text: 'Fuel Fire 🔥', cls: 'dmg-critical' });
+    if (ac.fuelLeak) dmgItems.push({ text: 'Fuel Leak', cls: 'dmg-warn' });
+    if (ac.oxygenOut) dmgItems.push({ text: 'Oxygen System: Out', cls: 'dmg-warn' });
+    if (ac.heatingOut) dmgItems.push({ text: 'Heating System: Out', cls: 'dmg-warn' });
+    if (ac.radioOut) dmgItems.push({ text: 'Radio: Out', cls: 'dmg-light' });
+    if (ac.navigatorEquipInop) dmgItems.push({ text: 'Navigator Equipment: Inoperable', cls: 'dmg-warn' });
+    if (ac.bombControlsInop) dmgItems.push({ text: 'Bomb Controls: Inoperable', cls: 'dmg-warn' });
+    if (ac.autopilotInop) dmgItems.push({ text: 'Autopilot: Inoperable', cls: 'dmg-warn' });
+    if (ac.bombBayDoorsInop) dmgItems.push({ text: 'Bomb Bay Doors: Inoperable', cls: 'dmg-warn' });
+
+    // Landing-affecting damage
+    if (ac.tailWheelDamaged || ac.tailWheelInop) dmgItems.push({ text: 'Tailwheel: Damaged (landing -1)', cls: 'dmg-warn' });
+    if (ac.brakesOut) dmgItems.push({ text: 'Brakes: Out (landing -1)', cls: 'dmg-warn' });
+    if (ac.landingGearInop) dmgItems.push({ text: 'Landing Gear: Inoperable (landing -3)', cls: 'dmg-critical' });
+    if (ac.portFlapInop) dmgItems.push({ text: 'Port Flap: Inoperable (landing -1)', cls: 'dmg-warn' });
+    if (ac.starboardFlapInop) dmgItems.push({ text: 'Starboard Flap: Inoperable (landing -1)', cls: 'dmg-warn' });
+    if (ac.portAileronInop) dmgItems.push({ text: 'Port Aileron: Inoperable', cls: 'dmg-warn' });
+    if (ac.starboardAileronInop) dmgItems.push({ text: 'Starboard Aileron: Inoperable', cls: 'dmg-warn' });
+    if (ac.portElevatorInop) dmgItems.push({ text: 'Port Elevator: Inoperable', cls: 'dmg-warn' });
+    if (ac.starboardElevatorInop) dmgItems.push({ text: 'Starboard Elevator: Inoperable', cls: 'dmg-warn' });
+
+    // Control surfaces
+    if (ac.controlDamage?.rudder) dmgItems.push({ text: 'Rudder: Damaged', cls: 'dmg-warn' });
+    if (ac.controlDamage?.elevator && !ac.portElevatorInop && !ac.starboardElevatorInop) dmgItems.push({ text: 'Elevator: Damaged', cls: 'dmg-warn' });
+    if (ac.controlDamage?.ailerons && !ac.portAileronInop && !ac.starboardAileronInop) dmgItems.push({ text: 'Ailerons: Damaged', cls: 'dmg-warn' });
+
+    // Turret
+    if (ac.ballTurretTrapped) dmgItems.push({ text: 'Ball Turret: Gunner Trapped!', cls: 'dmg-critical' });
+    else if (ac.ballTurretInop) dmgItems.push({ text: 'Ball Turret: Inoperable', cls: 'dmg-warn' });
+
+    // Inoperable guns
+    if (ac.guns) {
+      for (const gun of ac.guns) {
+        if (gun.disabled) dmgItems.push({ text: `${gun.name}: Inoperable`, cls: 'dmg-warn' });
+        else if (gun.jammed) dmgItems.push({ text: `${gun.name}: Jammed`, cls: 'dmg-light' });
+      }
+    }
+
+    // Fire extinguishers
+    const extRemaining = 2 - (ac.fireExtinguishersUsed || 0);
+    const hasActiveFire = ac.engines.some(e => e === 'fire') || ac.fuelFire;
+    if (ac.fireExtinguishersUsed > 0 || hasActiveFire) {
+      dmgItems.push({ text: `Fire Extinguishers: ${extRemaining} remaining`, cls: extRemaining === 0 ? 'dmg-critical' : 'dmg-light' });
+    }
+
+    // Superficial hit count
+    const superficialCount = ac.superficialHits || 0;
+
+    if (dmgItems.length > 0 || superficialCount > 0) {
       html += `<div class="damage-section"><div class="ammo-header">Damage Tracking</div>`;
-      for (const comp of compartments) {
-        const hits = window._compartmentHits[comp.name] || 0;
-        if (hits === 0) continue;
-        const maxHits = 5;
-        const filled = Math.min(hits, maxHits);
-        const bar = '█'.repeat(filled) + '░'.repeat(maxHits - filled);
-        const cls = hits >= 4 ? 'dmg-critical' : hits >= 2 ? 'dmg-warn' : 'dmg-light';
-        html += `<div class="damage-row ${cls}"><span class="damage-area">${comp.name}</span><span class="damage-bar">${bar}</span><span class="damage-count">${hits}</span></div>`;
+      for (const item of dmgItems) {
+        html += `<div class="damage-row ${item.cls}"><span class="damage-area">${item.text}</span></div>`;
+      }
+      if (superficialCount > 0) {
+        html += `<div class="damage-row dmg-light" style="opacity:0.6;font-size:0.85em"><span class="damage-area">Superficial hits: ${superficialCount}</span></div>`;
       }
       html += `</div>`;
     }

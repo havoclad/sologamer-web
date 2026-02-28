@@ -48,6 +48,9 @@ function createDefaultAircraft(): AircraftState {
     starboardAileronInop: false,
     portElevatorInop: false,
     starboardElevatorInop: false,
+    portWingRootHits: 0,
+    starboardWingRootHits: 0,
+    superficialHits: 0,
   };
 }
 

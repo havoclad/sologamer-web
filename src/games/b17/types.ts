@@ -112,6 +112,9 @@ export interface AircraftState {
   starboardAileronInop: boolean;
   portElevatorInop: boolean;
   starboardElevatorInop: boolean;
+  portWingRootHits: number;
+  starboardWingRootHits: number;
+  superficialHits: number;
 }
 
 // ─── Mission ───
