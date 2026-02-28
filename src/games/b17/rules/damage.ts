@@ -312,7 +312,7 @@ export function accumulateWound(
  * Count engines out from aircraft state.
  */
 export function countEnginesOut(aircraft: AircraftState): number {
-  return aircraft.engines.filter(e => e === 'out').length;
+  return aircraft.engines.filter(e => e === 'out' || e === 'fire' || e === 'runaway').length;
 }
 
 /**
