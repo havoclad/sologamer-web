@@ -1075,14 +1075,37 @@ export class GameSession {
     if (!destroyed) {
       this.emit('LANDING', `${this.state.campaign.planeName} approaches the airfield...`, 'landing', 'info', 1, 'inbound');
 
-      // Landing roll — not on G-8 (which is water bailout), use 2d6
+      // Weather at base per §5.2d — roll O-1 to determine landing weather modifier
+      let weatherLandingMod = 0;
+      const baseWeatherPending = this.createPendingRoll('O-1', 'Weather at home base');
+      const baseWeatherRoll: number = (yield { type: 'pending', roll: baseWeatherPending, events: this.eventBuffer }) ?? autoRoll(baseWeatherPending.diceType, rng);
+      this.eventBuffer = [];
+
+      const baseWeatherResult = tables.lookupWithValue('O-1', baseWeatherRoll);
+      if (baseWeatherResult) {
+        const weatherStr = baseWeatherResult.entry.weather as string;
+        if (weatherStr === 'Bad') {
+          weatherLandingMod = -2;
+        } else if (weatherStr === 'Poor') {
+          weatherLandingMod = -1;
+        }
+        const wsev = weatherStr === 'Good' ? 'good' : weatherStr === 'Poor' ? 'warn' : 'bad';
+        const modDesc = weatherLandingMod !== 0 ? ` (${weatherLandingMod} to landing)` : '';
+        this.emit('WEATHER', `Weather at base: ${weatherStr}${modDesc}`, 'landing', wsev as any,
+          1, 'inbound', [{
+            table: 'O-1', rollType: '2d6', rolled: baseWeatherRoll, result: weatherStr,
+            description: `Base weather determination${modDesc}`,
+          }]);
+      }
+
+      // Landing roll on G-9
       const landingPending: PendingRoll = {
         id: this.pendingRollId++,
-        tableId: 'LANDING',
-        tableName: 'Landing',
+        tableId: 'G-9',
+        tableName: 'Landing on Land',
         diceType: '2d6',
         purpose: 'Landing attempt',
-        modifier: mission.landingModifiers + (countEnginesOut(this.state.campaign.aircraft) >= 3 ? -3 : 0),
+        modifier: mission.landingModifiers + weatherLandingMod + (countEnginesOut(this.state.campaign.aircraft) >= 3 ? -3 : 0),
         tableRows: [
           { roll: '2-4', columns: { result: 'Crash landing' } },
           { roll: '5-7', columns: { result: 'Rough landing — minor damage' } },
@@ -1098,13 +1121,13 @@ export class GameSession {
 
       if (modifiedLanding >= 8) {
         this.emit('LANDING', 'Safe landing!', 'landing', 'good', 1, 'inbound',
-          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Safe landing' }], true);
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Safe landing' }], true);
       } else if (modifiedLanding >= 5) {
         this.emit('LANDING', 'Rough landing — minor damage', 'landing', 'warn', 1, 'inbound',
-          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Rough landing' }], true);
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Rough landing' }], true);
       } else {
         this.emit('LANDING', 'Crash landing!', 'landing', 'bad', 1, 'inbound',
-          [{ table: 'Landing', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
         for (const crew of this.state.campaign.crew) {
           if (crew.status === 'active' && rng.d6() <= 2) {
             crew.woundSeverity = accumulateWound(crew.woundSeverity, 'light');
@@ -1153,6 +1176,46 @@ export class GameSession {
     this.emit('DEBRIEF', `Mission #${missionNumber} to ${target.name}: ${survived ? 'SURVIVED' : 'LOST'}`, 'debrief',
       survived ? 'good' : 'critical', undefined, undefined,
       [{ table: '', rollType: '', rolled: 0, result: survived ? 'Survived' : 'Lost', description: `Fighters destroyed: ${fightersDestroyed}` }], true);
+
+    // ═══ BETWEEN-MISSION CREW PROCESSING ═══
+    const crewUpdates: string[] = [];
+    for (const crew of this.state.campaign.crew) {
+      // KIA — permanent, mark for replacement (TODO: actual replacement system)
+      if (crew.woundSeverity === 'kia' || crew.status === 'kia') {
+        continue; // stays KIA
+      }
+
+      // Seriously wounded — miss next mission, then recover
+      // For now: mark as recovering (TODO: actually bench them for a mission)
+      if (crew.woundSeverity === 'serious') {
+        crewUpdates.push(`${crew.name} (${crew.position}): seriously wounded — hospitalized`);
+        continue;
+      }
+
+      // Lightly wounded / frostbite — auto-recover before next mission
+      if (crew.woundSeverity === 'light' || crew.lightWounds > 0) {
+        crewUpdates.push(`${crew.name} (${crew.position}): light wounds healed`);
+        crew.woundSeverity = 'none';
+        crew.lightWounds = 0;
+      }
+      if (crew.frostbite) {
+        crewUpdates.push(`${crew.name} (${crew.position}): frostbite recovered`);
+        crew.frostbite = false;
+      }
+    }
+
+    if (crewUpdates.length > 0) {
+      this.emit('DEBRIEF', `Crew status updates:\n${crewUpdates.join('\n')}`, 'debrief', 'info');
+    }
+
+    // Reset mission-scoped aircraft state but preserve campaign-level damage
+    const ac2 = this.state.campaign.aircraft;
+    ac2.fireExtinguishersUsed = 0;
+
+    // Check for campaign victory
+    if (this.state.campaign.missionsCompleted >= this.state.campaign.missionsTotal) {
+      this.emit('DEBRIEF', `🎖️ TOUR COMPLETE! ${this.state.campaign.missionsCompleted} missions flown. Campaign victory!`, 'debrief', 'good', undefined, undefined, undefined, true);
+    }
 
     this.state.mission = null;
     this.missionInProgress = false;
