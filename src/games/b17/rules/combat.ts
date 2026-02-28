@@ -138,9 +138,12 @@ export function rollFighterDamage(
   rng: RNG,
   tables: TableStore,
   isTwinGun: boolean,
+  fighterType?: string,
 ): FighterDamageResult {
-  const modifier = isTwinGun ? 1 : 0;
-  const roll = Math.min(6, rng.d6() + modifier);
+  const twinMod = isTwinGun ? 1 : 0;
+  const fighterMod = fighterType === 'FW190' ? -1 : 0;
+  const modifier = twinMod + fighterMod;
+  const roll = Math.min(6, Math.max(1, rng.d6() + modifier));
 
   // M-2: 1–3 = FCA, 4–5 = FBOA, 6 = Destroyed
   if (roll <= 3) return 'FCA';

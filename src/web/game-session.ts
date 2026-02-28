@@ -1735,9 +1735,14 @@ export class GameSession {
 
     const fr = resolveDefensiveFire(hitReq, createFixedRng(defRollValue, rng), false, mission.evasiveAction, false, cm.frostbite, false);
     if (fr.hit) {
+      const m2Mods: string[] = [];
+      if (gunObj.twin) m2Mods.push('twin mount +1');
+      if (fighter.type === 'FW190') m2Mods.push('FW190 -1 (note b)');
+      const m2ModStr = m2Mods.length > 0 ? ` (${m2Mods.join(', ')})` : '';
+
       const dmgRollValue: number = yield* this._yieldCombatRoll(
         'M-2', 'Fighter Damage',
-        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${gunObj.twin ? ' (twin mount +1)' : ''}`,
+        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${m2ModStr}`,
         '1d6',
         [
           { roll: '1-3', columns: { result: 'FCA — continues attack' } },
@@ -1746,7 +1751,7 @@ export class GameSession {
         ],
       );
 
-      const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, gunObj.twin);
+      const dmg = rollFighterDamage(createFixedRng(dmgRollValue, rng), tables, gunObj.twin, fighter.type);
       const status = applyFighterDamage(fighter, dmg);
 
       if (status.status === 'destroyed') {
