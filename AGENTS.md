@@ -6,12 +6,14 @@ The server runs as a live `tsx` process (no Docker, no build step required).
 
 **To redeploy after code changes:**
 ```bash
-# Find and kill the running server
-pkill -f "tsx src/web/server.ts" || pkill -f "b17-queen.*server"
+# Find and kill ALL running b17-queen processes by PID
+kill $(ps aux | grep "b17-queen" | grep -v grep | awk '{print $2}') 2>/dev/null
+sleep 2
 
 # Restart it in the background
 cd /Users/clawbot/.openclaw/workspace/b17-queen
-npm exec tsx src/web/server.ts &
+nohup npm exec tsx src/web/server.ts > /tmp/b17.log 2>&1 &
+sleep 3
 ```
 
 Wait a second, then verify it's up:
