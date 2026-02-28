@@ -2743,9 +2743,9 @@ export class GameSession {
 
     if (extRemaining <= 0) {
       this.emit('DAMAGE', `${engLabel} on fire — no fire extinguishers remaining!`, 'damage', 'critical', zone, direction);
-      // Trigger uncontrolled bailout
-      this.emit('DAMAGE', 'Engine fire uncontrolled — crew bailing out!', 'damage', 'critical', zone, direction, undefined, true);
-      yield* this._executeBailout(false);
+      // Per B1-1 note (e): crew bails out on G-6 (controlled bailout)
+      this.emit('DAMAGE', 'Engine fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
+      yield* this._executeBailout(true);
       return false;
     }
 
@@ -2776,9 +2776,9 @@ export class GameSession {
     const ext2Remaining = 2 - ac.fireExtinguishersUsed;
     if (ext2Remaining <= 0) {
       this.emit('DAMAGE', `Both extinguishers exhausted — ${engLabel} fire continues!`, 'damage', 'critical', zone, direction, undefined, true);
-      // Trigger uncontrolled bailout
-      this.emit('DAMAGE', 'Engine fire uncontrolled — crew bailing out!', 'damage', 'critical', zone, direction, undefined, true);
-      yield* this._executeBailout(false);
+      // Per B1-1 note (e): crew bails out on G-6 (controlled bailout)
+      this.emit('DAMAGE', 'Engine fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
+      yield* this._executeBailout(true);
       return false;
     }
 
@@ -2803,9 +2803,9 @@ export class GameSession {
 
     this.emit('DAMAGE', `Both extinguishers exhausted — ${engLabel} fire continues!`, 'damage', 'critical', zone, direction,
       [{ table: 'B1-1', rollType: '1d6', rolled: roll2, result: 'Failed', description: 'Fire extinguisher roll (2nd)' }], true);
-    // Trigger uncontrolled bailout
-    this.emit('DAMAGE', 'Engine fire uncontrolled — crew bailing out!', 'damage', 'critical', zone, direction, undefined, true);
-    yield* this._executeBailout(false);
+    // Per B1-1 note (e): crew bails out on G-6 (controlled bailout)
+    this.emit('DAMAGE', 'Engine fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
+    yield* this._executeBailout(true);
     return false;
   }
 
