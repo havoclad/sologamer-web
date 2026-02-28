@@ -1098,7 +1098,13 @@ export class GameSession {
           }]);
       }
 
-      // Landing roll on G-9
+      // Landing roll on G-9 — use actual table data
+      const g9Display = this.tables.getTableDisplayData('G-9');
+      const g9TableRows = g9Display ? g9Display.rows.map(r => ({
+        roll: r.roll,
+        columns: { result: r.columns.landing?.replace('$plane_name', this.state.campaign.planeName) ?? '' },
+      })) : [];
+
       const landingPending: PendingRoll = {
         id: this.pendingRollId++,
         tableId: 'G-9',
@@ -1106,11 +1112,7 @@ export class GameSession {
         diceType: '2d6',
         purpose: 'Landing attempt',
         modifier: mission.landingModifiers + weatherLandingMod + (countEnginesOut(this.state.campaign.aircraft) >= 3 ? -3 : 0),
-        tableRows: [
-          { roll: '2-4', columns: { result: 'Crash landing' } },
-          { roll: '5-7', columns: { result: 'Rough landing — minor damage' } },
-          { roll: '8-12', columns: { result: 'Safe landing' } },
-        ],
+        tableRows: g9TableRows,
       };
 
       const landingRoll: number = (yield { type: 'pending', roll: landingPending, events: this.eventBuffer }) ?? autoRoll('2d6', rng);
@@ -1119,19 +1121,78 @@ export class GameSession {
       const landingMod = landingPending.modifier;
       const modifiedLanding = landingRoll + landingMod;
 
-      if (modifiedLanding >= 8) {
-        this.emit('LANDING', 'Safe landing!', 'landing', 'good', 1, 'inbound',
-          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Safe landing' }], true);
-      } else if (modifiedLanding >= 5) {
-        this.emit('LANDING', 'Rough landing — minor damage', 'landing', 'warn', 1, 'inbound',
-          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Rough landing' }], true);
-      } else {
-        this.emit('LANDING', 'Crash landing!', 'landing', 'bad', 1, 'inbound',
-          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: 'Crash landing' }], true);
+      // Clamp to G-9 table range (min -3, max 12)
+      const clampedLanding = Math.max(-3, Math.min(12, modifiedLanding));
+
+      // Look up result in G-9 table
+      const g9Entry = this.tables.lookupValue('G-9', clampedLanding);
+      const landingResultText = g9Entry
+        ? (g9Entry as any).landing?.replace('$plane_name', this.state.campaign.planeName) ?? 'Unknown'
+        : 'Unknown';
+
+      // Determine severity and apply effects
+      if (clampedLanding >= 2) {
+        // 2-12: Crew and plane safe
+        this.emit('LANDING', landingResultText, 'landing', 'good', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+      } else if (clampedLanding === 1) {
+        // 1: Crew safe, plane repairable by next mission
+        this.emit('LANDING', landingResultText, 'landing', 'warn', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+      } else if (clampedLanding === 0) {
+        // 0: Crew safe, plane irreparably damaged — needs replacement
+        this.emit('LANDING', landingResultText, 'landing', 'bad', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+        destroyed = true; // plane irreparably damaged
+      } else if (clampedLanding === -1) {
+        // -1: Crew rolls for wounds (B1-4), plane wrecked
+        this.emit('LANDING', landingResultText, 'landing', 'bad', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+        destroyed = true;
+        // Each surviving crew member rolls B1-4 for wounds
         for (const crew of this.state.campaign.crew) {
-          if (crew.status === 'active' && rng.d6() <= 2) {
-            crew.woundSeverity = accumulateWound(crew.woundSeverity, 'light');
-            this.emit('LANDING', `${crew.name} injured in crash!`, 'damage', 'bad', 1, 'inbound');
+          if (crew.status === 'active' && crew.woundSeverity !== 'kia') {
+            const woundRoll = rng.d6();
+            const woundEntry = this.tables.lookupValue('B1-4', woundRoll);
+            const severity = (woundEntry as any)?.severity ?? 'light';
+            crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
+            if (crew.woundSeverity === 'kia') {
+              crew.status = 'kia';
+            }
+            this.emit('LANDING', `${crew.name}: wound roll ${woundRoll} — ${(woundEntry as any)?.result ?? severity}`,
+              'damage', severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn', 1, 'inbound',
+              [{ table: 'B1-4', rollType: '1d6', rolled: woundRoll, result: (woundEntry as any)?.result ?? severity }], true);
+          }
+        }
+      } else if (clampedLanding === -2) {
+        // -2: Crew rolls for wounds (B1-4) with +1 penalty, plane wrecked
+        this.emit('LANDING', landingResultText, 'landing', 'critical', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+        destroyed = true;
+        for (const crew of this.state.campaign.crew) {
+          if (crew.status === 'active' && crew.woundSeverity !== 'kia') {
+            const woundRoll = Math.min(6, rng.d6() + 1); // +1 penalty, cap at 6
+            const woundEntry = this.tables.lookupValue('B1-4', woundRoll);
+            const severity = (woundEntry as any)?.severity ?? 'light';
+            crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
+            if (crew.woundSeverity === 'kia') {
+              crew.status = 'kia';
+            }
+            this.emit('LANDING', `${crew.name}: wound roll ${woundRoll} (with +1) — ${(woundEntry as any)?.result ?? severity}`,
+              'damage', severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn', 1, 'inbound',
+              [{ table: 'B1-4', rollType: '1d6', rolled: woundRoll, result: (woundEntry as any)?.result ?? severity, description: 'Landing wound (+1 penalty)' }], true);
+          }
+        }
+      } else {
+        // -3 or below: All crew KIA, plane wrecked
+        this.emit('LANDING', landingResultText, 'landing', 'critical', 1, 'inbound',
+          [{ table: 'G-9', rollType: '2d6', rolled: landingRoll, modifier: landingMod, modifiedRoll: modifiedLanding, result: landingResultText }], true);
+        destroyed = true;
+        for (const crew of this.state.campaign.crew) {
+          if (crew.status === 'active' && crew.woundSeverity !== 'kia') {
+            crew.woundSeverity = 'kia';
+            crew.status = 'kia';
+            this.emit('LANDING', `${crew.name}: KIA in crash`, 'damage', 'critical', 1, 'inbound', undefined, true);
           }
         }
       }
