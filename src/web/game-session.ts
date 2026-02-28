@@ -1276,6 +1276,37 @@ export class GameSession {
     }
 
     // ── O-6: Bomb run on/off target ──
+    // Note (c): If Bombardier is KIA or seriously wounded, bomb run is automatically off target
+    const bombardier = getCrewByPosition(this.state.campaign.crew, 'bombardier');
+    if (bombardier && (bombardier.woundSeverity === 'kia' || bombardier.woundSeverity === 'serious')) {
+      const reason = bombardier.woundSeverity === 'kia' ? 'KIA' : 'seriously wounded';
+      this.emit('BOMB_RUN', `Bomb run: OFF target — Bombardier ${bombardier.name} is ${reason}, automatic miss (O-6 note c)`, 'bombing', 'warn', zone, 'outbound');
+
+      // Skip O-6 roll, proceed directly to O-7 with Off target
+      const accuracyPending = this.createPendingRoll('O-7', `Bombing accuracy (OFF target)`, 0, 'Off');
+      const accuracyRoll: number = (yield { type: 'pending', roll: accuracyPending, events: this.eventBuffer }) ?? autoRoll(accuracyPending.diceType, rng);
+      this.eventBuffer = [];
+
+      const accuracyResult = tables.lookupWithValue('O-7', accuracyRoll);
+      let accuracy = 0;
+      if (accuracyResult?.entry) {
+        const accData = accuracyResult.entry['Off'] as Record<string, any> | undefined;
+        if (accData) {
+          accuracy = parseInt(accData.bombing_accuracy as string ?? '0', 10);
+        } else {
+          accuracy = parseInt(accuracyResult.entry.bombing_accuracy as string ?? '0', 10);
+        }
+      }
+
+      mission.bombsAboard = false;
+      mission.bombsDropped = true;
+
+      this.emit('BOMB_RUN', `Bombs away over ${target.name}! Accuracy: ${accuracy}%`, 'bombing',
+        accuracy >= 30 ? 'good' : accuracy > 0 ? 'warn' : 'bad', zone, 'outbound',
+        [{ table: 'O-7', rollType: '2d6', rolled: accuracyRoll, result: `${accuracy}% accuracy`, description: `Bombing accuracy (OFF target)` }], true);
+      return;
+    }
+
     const bombRunMod = mission.bombRunModifier || 0;
     const bombRunPending = this.createPendingRoll('O-6', `Bomb run — on or off target?`, bombRunMod);
     const bombRunRoll: number = (yield { type: 'pending', roll: bombRunPending, events: this.eventBuffer }) ?? autoRoll(bombRunPending.diceType, rng);
@@ -1571,6 +1602,7 @@ export class GameSession {
             try { hitLoc = rollHitLocation(fighter.position, createFixedRng(hitLocRollValue, rng), tables); } catch { hitLoc = { location: 'Superficial', isSuperificial: true }; }
 
             if (hitLoc.isSuperificial) {
+              this.state.campaign.aircraft.superficialHits = (this.state.campaign.aircraft.superficialHits || 0) + 1;
               this.emit('DAMAGE', `Shell ${s + 1}: Superficial damage`, 'damage', 'info', zone, direction,
                 [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }]);
               continue;
@@ -1881,6 +1913,7 @@ export class GameSession {
     for (const effect of dmg.effects) {
       switch (effect.type) {
         case 'superficial':
+          this.state.campaign.aircraft.superficialHits = (this.state.campaign.aircraft.superficialHits || 0) + 1;
           this.emit('DAMAGE', `${location}: Superficial — no effect`, 'damage', 'info', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Superficial' }]);
           break;
@@ -1943,6 +1976,31 @@ export class GameSession {
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control damage' }]);
           if (this.state.mission) this.state.mission.landingModifiers -= 1;
           break;
+        case 'wing_root_hit': {
+          const isPort = location.toLowerCase().includes('port');
+          if (isPort) {
+            this.state.campaign.aircraft.portWingRootHits = (this.state.campaign.aircraft.portWingRootHits || 0) + 1;
+            const hits = this.state.campaign.aircraft.portWingRootHits;
+            if (hits >= 5) {
+              this.emit('DAMAGE', `Port wing root: ${hits}/5 hits — WING RIPS OFF!`, 'damage', 'critical', zone, direction,
+                [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Wing root hit (destroyed)' }], true);
+            } else {
+              this.emit('DAMAGE', `Port wing root hit (${hits}/5)`, 'damage', 'bad', zone, direction,
+                [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Wing root hit ${hits}/5` }], true);
+            }
+          } else {
+            this.state.campaign.aircraft.starboardWingRootHits = (this.state.campaign.aircraft.starboardWingRootHits || 0) + 1;
+            const hits = this.state.campaign.aircraft.starboardWingRootHits;
+            if (hits >= 5) {
+              this.emit('DAMAGE', `Starboard wing root: ${hits}/5 hits — WING RIPS OFF!`, 'damage', 'critical', zone, direction,
+                [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Wing root hit (destroyed)' }], true);
+            } else {
+              this.emit('DAMAGE', `Starboard wing root hit (${hits}/5)`, 'damage', 'bad', zone, direction,
+                [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Wing root hit ${hits}/5` }], true);
+            }
+          }
+          break;
+        }
         case 'destroyed':
           this.emit('DAMAGE', `CATASTROPHIC DAMAGE — aircraft destroyed!`, 'damage', 'critical', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Destroyed' }], true);
@@ -2078,9 +2136,7 @@ export class GameSession {
               }
             } else {
               // Oil tank hit — engine out + fire
-              if (this.state.campaign.aircraft.engines[engIdx] !== 'out') {
-                this.state.campaign.aircraft.engines[engIdx] = 'out';
-              }
+              this.state.campaign.aircraft.engines[engIdx] = 'fire';
               this.emit('DAMAGE', `${engLabel} OIL TANK HIT — engine out, fire!`, 'damage', 'critical', zone, direction,
                 [
                   { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Engines' },
@@ -2092,6 +2148,8 @@ export class GameSession {
                 this.state.mission.outOfFormation = true;
                 this.emit('DAMAGE', `${out} engines out — out of formation!`, 'damage', 'bad', zone, direction);
               }
+              // Fire extinguisher sequence (B1-1 note e)
+              yield* this._resolveFireExtinguisher(engIdx, zone, direction);
             }
           } else if (effect.table === 'B1-4') {
             // ── Crew wound follow-up (B1-4) ──
@@ -2373,6 +2431,9 @@ export class GameSession {
     }
     // ── No effect / superficial ──
     else if (outcomeLower.includes('no effect') || outcomeLower.includes('superficial')) {
+      if (outcomeLower.includes('superficial')) {
+        ac.superficialHits = (ac.superficialHits || 0) + 1;
+      }
       severity = 'info';
     }
 
@@ -2428,6 +2489,72 @@ export class GameSession {
           ], true);
       }
     }
+  }
+
+  /** Fire extinguisher sequence per B1-1 note (e). Two extinguishers, 1-3 = out, 4-6 = fail. */
+  private *_resolveFireExtinguisher(
+    engIdx: number, zone: number, direction: 'outbound' | 'inbound',
+  ): Generator<MissionYield, void, number | number[] | undefined> {
+    const ac = this.state.campaign.aircraft;
+    const engLabel = `Engine #${engIdx + 1}`;
+    const extRemaining = 2 - (ac.fireExtinguishersUsed || 0);
+
+    if (extRemaining <= 0) {
+      this.emit('DAMAGE', `${engLabel} on fire — no fire extinguishers remaining!`, 'damage', 'critical', zone, direction);
+      return;
+    }
+
+    // First extinguisher
+    this.emit('DAMAGE', `${engLabel} on fire — attempting fire extinguisher (${extRemaining} remaining)`, 'damage', 'warn', zone, direction);
+    const roll1: number = yield* this._yieldCombatRoll(
+      'B1-1', 'Fire Extinguisher',
+      `Roll to extinguish ${engLabel} fire (1-3 = out, 4-6 = fail)`, '1d6',
+      [
+        { roll: '1-3', columns: { result: 'Fire extinguished!' } },
+        { roll: '4-6', columns: { result: 'Extinguisher failed' } },
+      ],
+    );
+
+    ac.fireExtinguishersUsed = (ac.fireExtinguishersUsed || 0) + 1;
+
+    if (roll1 <= 3) {
+      ac.engines[engIdx] = 'out'; // fire is out, engine still dead
+      this.emit('DAMAGE', `${engLabel}: Fire extinguished!`, 'damage', 'good', zone, direction,
+        [{ table: 'B1-1', rollType: '1d6', rolled: roll1, result: 'Fire extinguished', description: 'Fire extinguisher roll' }], true);
+      return;
+    }
+
+    this.emit('DAMAGE', `${engLabel}: Extinguisher failed!`, 'damage', 'bad', zone, direction,
+      [{ table: 'B1-1', rollType: '1d6', rolled: roll1, result: 'Failed', description: 'Fire extinguisher roll' }]);
+
+    // Second extinguisher?
+    const ext2Remaining = 2 - ac.fireExtinguishersUsed;
+    if (ext2Remaining <= 0) {
+      this.emit('DAMAGE', `Both extinguishers exhausted — ${engLabel} fire continues!`, 'damage', 'critical', zone, direction, undefined, true);
+      return;
+    }
+
+    this.emit('DAMAGE', `Trying second extinguisher on ${engLabel} (${ext2Remaining} remaining)`, 'damage', 'warn', zone, direction);
+    const roll2: number = yield* this._yieldCombatRoll(
+      'B1-1', 'Fire Extinguisher (2nd attempt)',
+      `Roll to extinguish ${engLabel} fire (1-3 = out, 4-6 = fail)`, '1d6',
+      [
+        { roll: '1-3', columns: { result: 'Fire extinguished!' } },
+        { roll: '4-6', columns: { result: 'Extinguisher failed' } },
+      ],
+    );
+
+    ac.fireExtinguishersUsed++;
+
+    if (roll2 <= 3) {
+      ac.engines[engIdx] = 'out';
+      this.emit('DAMAGE', `${engLabel}: Fire extinguished!`, 'damage', 'good', zone, direction,
+        [{ table: 'B1-1', rollType: '1d6', rolled: roll2, result: 'Fire extinguished', description: 'Fire extinguisher roll (2nd)' }], true);
+      return;
+    }
+
+    this.emit('DAMAGE', `Both extinguishers exhausted — ${engLabel} fire continues!`, 'damage', 'critical', zone, direction,
+      [{ table: 'B1-1', rollType: '1d6', rolled: roll2, result: 'Failed', description: 'Fire extinguisher roll (2nd)' }], true);
   }
 
   private _resolveCompartmentHit(
