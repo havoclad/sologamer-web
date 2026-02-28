@@ -140,6 +140,28 @@ describe('rollFighterDamage (M-2)', () => {
     // Twin guns should destroy more often due to +1
     expect(twinDestroyed).toBeGreaterThan(singleDestroyed);
   });
+
+  it('FW190 -1 modifier (note b) reduces damage results vs Me109', () => {
+    // FW190 applies -1, so fewer Destroyed results than vs Me109 (no modifier)
+    let fw190Destroyed = 0;
+    let me109Destroyed = 0;
+    for (let seed = 0; seed < 500; seed++) {
+      if (rollFighterDamage(createRNG(seed), tables, false, 'FW190') === 'Destroyed') fw190Destroyed++;
+      if (rollFighterDamage(createRNG(seed), tables, false, 'Me109') === 'Destroyed') me109Destroyed++;
+    }
+    expect(fw190Destroyed).toBeLessThan(me109Destroyed);
+  });
+
+  it('twin +1 and FW190 -1 cancel out to same result as no modifiers', () => {
+    // With twin=true and FW190, net modifier is 0 — same distribution as single/Me109
+    let twinFW190Destroyed = 0;
+    let singleMe109Destroyed = 0;
+    for (let seed = 0; seed < 500; seed++) {
+      if (rollFighterDamage(createRNG(seed), tables, true, 'FW190') === 'Destroyed') twinFW190Destroyed++;
+      if (rollFighterDamage(createRNG(seed), tables, false, 'Me109') === 'Destroyed') singleMe109Destroyed++;
+    }
+    expect(twinFW190Destroyed).toBe(singleMe109Destroyed);
+  });
 });
 
 describe('isTwinGunMount', () => {
