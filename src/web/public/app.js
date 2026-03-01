@@ -9,8 +9,8 @@ let gameState = null;
 let allEvents = [];
 let selectedEventId = null;
 let currentMapTarget = null;
-let currentMapZone = 0;
-let currentMapTargetZone = 0;
+let currentMapZone = 1;
+let currentMapTargetZone = 1;
 let autoplayMode = false;
 let autoPlayTimer = null;
 let pendingRoll = null; // Current roll the engine is waiting for
@@ -165,7 +165,7 @@ btnStart.addEventListener('click', async () => {
     renderCrew();
     renderAircraft();
     renderCombatDiagram([]);
-    renderMap(null, 1, 5);
+    renderMap(null, 1, 1);
     eventLog.innerHTML = '';
     btnFly.style.display = '';
     btnFly.disabled = false;
@@ -1120,19 +1120,22 @@ function renderMap(target, currentZone, targetZone) {
 }
 
 function updateMapFromEvent(evt) {
-  if (evt.phase === 'ZONE' || evt.phase === 'SETUP') {
+  if (evt.phase === 'SETUP') {
     if (evt.message.includes('Target:')) {
       const match = evt.message.match(/Target:\s*(.+?)\s*\(/);
       if (match) currentMapTarget = match[1];
     }
-    if (evt.zone) currentMapZone = evt.zone;
+    if (evt.message.includes('Target zone:')) {
+      const match = evt.message.match(/zone:\s*(\d+)/);
+      if (match) currentMapTargetZone = parseInt(match[1], 10);
+    }
+    // Plane stays in Zone 1 during SETUP — don't update currentMapZone
+    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone);
   }
-  if (evt.phase === 'SETUP' && evt.message.includes('Target zone:')) {
-    const match = evt.message.match(/zone:\s*(\d+)/);
-    if (match) currentMapTargetZone = parseInt(match[1], 10);
+  if (evt.phase === 'ZONE' && evt.zone) {
+    currentMapZone = evt.zone;
+    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone);
   }
-  if (evt.zone) currentMapZone = evt.zone;
-  if (currentMapTargetZone > 0) renderMap(currentMapTarget, currentMapZone, currentMapTargetZone);
 }
 
 // ─── Combat View ───
@@ -1251,7 +1254,7 @@ function formatColumnHeader(key) {
     updateMissionCount();
     renderCrew();
     renderAircraft();
-    renderMap(null, 1, 5);
+    renderMap(null, 1, 1);
     resetStatusBar();
 
     // Replay all events into the log
