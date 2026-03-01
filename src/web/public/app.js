@@ -1059,44 +1059,65 @@ function renderAircraftFromState() { renderAircraft(gameState?.campaign?.aircraf
 function renderMap(target, currentZone, targetZone) {
   const svg = $('strategic-map');
   const zones = targetZone || 5;
-  const w = 700, h = 200;
-  const margin = 60;
-  const zoneW = (w - margin * 2) / zones;
+  const w = 700, h = 280;
+  const margin = 40;
+  const zoneW = (w - margin * 2) / (zones + 1); // +1 for England block
+  const blockY = 30, blockH = 200;
+
+  // Set viewBox for responsive scaling
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', '100%');
+  svg.removeAttribute('height');
+  svg.style.maxHeight = '320px';
 
   let html = '';
   html += `<rect x="0" y="0" width="${w}" height="${h}" fill="#1a1a14" rx="4"/>`;
-  html += `<rect x="${margin}" y="40" width="${zoneW}" height="120" fill="#1a2a3a" rx="2" opacity="0.5"/>`;
-  html += `<text x="${margin + zoneW/2}" y="170" text-anchor="middle" fill="#4a6a8a" font-size="9" font-family="monospace">ENGLAND</text>`;
 
+  // England block
+  const engX = margin;
+  html += `<rect x="${engX}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#1e3450" rx="3" stroke="#3a5a7a" stroke-width="1"/>`;
+  html += `<text x="${engX + zoneW/2}" y="${blockY + blockH/2 + 5}" text-anchor="middle" fill="#6a9aca" font-size="15" font-family="monospace" font-weight="bold">ENGLAND</text>`;
+
+  // Zone blocks
   for (let z = 1; z <= zones; z++) {
-    const x = margin + (z - 1) * zoneW;
+    const x = margin + z * zoneW;
     const isTarget = z === zones;
     const isCurrent = z === (currentZone || 0);
 
-    if (z > 1 && z < zones) {
-      html += `<rect x="${x}" y="40" width="${zoneW}" height="120" fill="#2a2a1a" rx="2" stroke="#3a3a2a" stroke-width="1"/>`;
-    }
     if (isTarget) {
-      html += `<rect x="${x}" y="40" width="${zoneW}" height="120" fill="#3a2020" rx="2" stroke="#5a3030" stroke-width="1"/>`;
-      html += `<text x="${x + zoneW/2}" y="170" text-anchor="middle" fill="#c04030" font-size="9" font-family="monospace" font-weight="bold">${target ? target.toUpperCase() : 'TARGET'}</text>`;
+      html += `<rect x="${x}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#4a2020" rx="3" stroke="#6a3535" stroke-width="1.5"/>`;
+      html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 - 10}" text-anchor="middle" fill="#e05040" font-size="14" font-family="monospace" font-weight="bold">${target ? target.toUpperCase() : 'TARGET'}</text>`;
+      html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 + 12}" text-anchor="middle" fill="#8a4a3a" font-size="13" font-family="monospace">ZONE ${z}</text>`;
+    } else {
+      html += `<rect x="${x}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#2e2e18" rx="3" stroke="#4a4a2e" stroke-width="1"/>`;
+      html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 + 5}" text-anchor="middle" fill="#7a7a50" font-size="13" font-family="monospace">ZONE ${z}</text>`;
     }
 
-    html += `<text x="${x + zoneW/2}" y="56" text-anchor="middle" fill="#6a6a4a" font-size="10" font-family="monospace">ZONE ${z}</text>`;
-
+    // Current zone indicator
     if (isCurrent) {
       const cx = x + zoneW / 2;
+      const cy = blockY + blockH/2 + (isTarget ? 45 : 40);
       html += `<g>
-        <circle cx="${cx}" cy="100" r="12" fill="none" stroke="#b89b4a" stroke-width="2"/>
-        <text x="${cx}" y="104" text-anchor="middle" fill="#b89b4a" font-size="14" font-family="monospace">✈</text>
+        <circle cx="${cx}" cy="${cy}" r="18" fill="rgba(184,155,74,0.15)" stroke="#b89b4a" stroke-width="2.5"/>
+        <text x="${cx}" y="${cy + 7}" text-anchor="middle" fill="#d4b85a" font-size="22" font-family="monospace">✈</text>
       </g>`;
     }
 
+    // Dashed connector lines
     if (z < zones) {
-      const x1 = x + zoneW/2 + 15;
-      const x2 = x + zoneW + zoneW/2 - 15;
-      html += `<line x1="${x1}" y1="100" x2="${x2}" y2="100" stroke="#3a3a2a" stroke-width="1" stroke-dasharray="4,4"/>`;
+      const x1 = x + zoneW - 2;
+      const x2 = x + zoneW + 2;
+      html += `<line x1="${x1}" y1="${blockY + blockH/2}" x2="${x2}" y2="${blockY + blockH/2}" stroke="#4a4a2e" stroke-width="1.5" stroke-dasharray="5,4"/>`;
     }
   }
+
+  // Connector from England to Zone 1
+  const engEnd = margin + zoneW - 2;
+  const z1Start = margin + zoneW + 2;
+  html += `<line x1="${engEnd}" y1="${blockY + blockH/2}" x2="${z1Start}" y2="${blockY + blockH/2}" stroke="#3a5a7a" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+
+  // Direction label at bottom
+  html += `<text x="${w/2}" y="${h - 8}" text-anchor="middle" fill="#555540" font-size="11" font-family="monospace">OUTBOUND ➤</text>`;
 
   svg.innerHTML = html;
 }
