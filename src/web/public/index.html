@@ -69,13 +69,24 @@
 
     <!-- Main layout -->
     <div id="main-layout">
-      <!-- Left column: map + crew -->
+      <!-- Left column: tabbed map/combat + crew + aircraft -->
       <div id="left-col">
-        <!-- Strategic Map -->
-        <div class="panel" id="map-panel">
-          <h3 class="panel-title">Strategic Map</h3>
-          <div id="map-container">
-            <svg id="strategic-map" viewBox="0 0 700 200"></svg>
+        <!-- Tabbed: Strategic Map / Combat View -->
+        <div class="panel" id="map-combat-panel">
+          <div id="view-tabs">
+            <button class="view-tab active" data-tab="strategic-map-tab">Strategic Map</button>
+            <button class="view-tab" data-tab="combat-view-tab">Combat View</button>
+          </div>
+          <div id="strategic-map-tab" class="tab-content active">
+            <div id="map-container">
+              <svg id="strategic-map" viewBox="0 0 700 200"></svg>
+            </div>
+          </div>
+          <div id="combat-view-tab" class="tab-content">
+            <div id="combat-view">
+              <svg id="combat-svg" viewBox="0 0 300 300"></svg>
+              <div id="combat-info">No active combat</div>
+            </div>
           </div>
         </div>
 
@@ -98,26 +109,6 @@
         <div class="panel" id="log-panel">
           <h3 class="panel-title">Mission Log</h3>
           <div id="event-log"></div>
-        </div>
-      </div>
-
-      <!-- Right column: combat + detail -->
-      <div id="right-col">
-        <!-- Combat View -->
-        <div class="panel" id="combat-panel">
-          <h3 class="panel-title">Combat View</h3>
-          <div id="combat-view">
-            <svg id="combat-svg" viewBox="0 0 300 300"></svg>
-            <div id="combat-info">No active combat</div>
-          </div>
-        </div>
-
-        <!-- Detail Panel -->
-        <div class="panel" id="detail-panel">
-          <h3 class="panel-title">Mechanics Detail</h3>
-          <div id="detail-content">
-            <p class="placeholder">Click any event in the log to see the underlying dice rolls and table lookups.</p>
-          </div>
         </div>
       </div>
     </div>

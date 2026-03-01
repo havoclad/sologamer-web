@@ -39,9 +39,27 @@ const btnAutoplay = $('btn-autoplay');
 const eventLog = $('event-log');
 const crewGrid = $('crew-grid');
 const aircraftStatus = $('aircraft-status');
-const detailContent = $('detail-content');
 const combatInfo = $('combat-info');
 const rollPanel = $('roll-panel');
+
+// ─── Tab switching ───
+let activeTab = 'strategic-map-tab';
+let hadCombat = false; // tracks if we've been in combat this zone
+
+function switchTab(tabId) {
+  activeTab = tabId;
+  document.querySelectorAll('.view-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.toggle('active', el.id === tabId);
+  });
+}
+
+// Wire up tab clicks
+document.querySelectorAll('.view-tab').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
 
 // ─── Status bar state ───
 let statusTarget = '—';
@@ -182,7 +200,7 @@ btnFly.addEventListener('click', async () => {
   eventLog.innerHTML = '';
   allEvents = [];
   selectedEventId = null;
-  detailContent.innerHTML = '<p class="placeholder">Click any event to see dice rolls and table lookups.</p>';
+  // detail now shown inline in log
 
   if (autoplayMode) {
     // Autoplay: run entire mission eagerly
@@ -682,7 +700,7 @@ btnNewMission.addEventListener('click', () => {
   window._compartmentHits = {};
   rollPanel.innerHTML = '';
   rollPanel.style.display = 'none';
-  detailContent.innerHTML = '<p class="placeholder">Click any event to see dice rolls and table lookups.</p>';
+  // detail now shown inline in log
   updateMissionCount();
   resetStatusBar();
 });
@@ -775,42 +793,54 @@ function appendEvent(evt) {
 
   const el = document.createElement('div');
   el.className = `log-entry sev-${evt.severity} new`;
-  if (evt.details && evt.details.length > 0) el.classList.add('has-details');
+  const hasDetails = evt.details && evt.details.length > 0;
+  if (hasDetails) el.classList.add('has-details');
   el.dataset.eventId = evt.id;
 
   const zoneStr = evt.zone ? `Z${evt.zone}${evt.direction === 'inbound' ? '←' : '→'}` : '';
 
   el.innerHTML = `
+    ${hasDetails ? '<span class="log-expand">▶</span>' : ''}
     <span class="log-phase">${evt.phase}</span>
     ${zoneStr ? `<span class="log-zone">${zoneStr}</span>` : ''}
     <span class="log-msg">${escapeHtml(evt.message)}</span>
   `;
 
-  el.addEventListener('click', () => selectEvent(evt));
+  if (hasDetails) {
+    el.addEventListener('click', () => toggleInlineDetail(el, evt));
+  }
   eventLog.appendChild(el);
   eventLog.scrollTop = eventLog.scrollHeight;
+
+  // Auto-switch tabs based on phase
+  if (evt.phase === 'COMBAT' || evt.category === 'combat') {
+    hadCombat = true;
+    switchTab('combat-view-tab');
+  } else if ((evt.phase === 'ZONE' || evt.phase === 'SETUP' || evt.phase === 'FLAK') && hadCombat) {
+    hadCombat = false;
+    switchTab('strategic-map-tab');
+  }
 
   setTimeout(() => el.classList.remove('new'), 800);
 }
 
-// ─── Select event (show details) ───
-function selectEvent(evt) {
-  selectedEventId = evt.id;
-
-  document.querySelectorAll('.log-entry.selected').forEach(el => el.classList.remove('selected'));
-  const el = document.querySelector(`.log-entry[data-event-id="${evt.id}"]`);
-  if (el) el.classList.add('selected');
-
-  if (!evt.details || evt.details.length === 0) {
-    detailContent.innerHTML = `
-      <div style="margin-bottom:8px; color:var(--text-bright);">${escapeHtml(evt.message)}</div>
-      <p class="placeholder">No table lookups for this event.</p>
-    `;
+// ─── Toggle inline detail for a log entry ───
+function toggleInlineDetail(el, evt) {
+  const isExpanded = el.classList.contains('expanded');
+  if (isExpanded) {
+    // Collapse: remove the detail row below
+    el.classList.remove('expanded');
+    const next = el.nextElementSibling;
+    if (next && next.classList.contains('log-detail-inline')) {
+      next.remove();
+    }
     return;
   }
 
-  let html = `<div style="margin-bottom:10px; color:var(--text-bright); font-weight:bold;">${escapeHtml(evt.message)}</div>`;
+  // Expand
+  el.classList.add('expanded');
 
+  let html = '';
   for (const d of evt.details) {
     html += `<div class="detail-roll">`;
     html += `<span class="detail-table">${d.table || '—'}${d.tableTitle ? ` (${d.tableTitle})` : ''}</span>`;
@@ -839,7 +869,15 @@ function selectEvent(evt) {
     html += `</div>`;
   }
 
-  detailContent.innerHTML = html;
+  const detailDiv = document.createElement('div');
+  detailDiv.className = 'log-detail-inline';
+  detailDiv.innerHTML = html;
+  el.after(detailDiv);
+}
+
+// ─── Select event (legacy — now just used for auto-highlighting last event) ───
+function selectEvent(evt) {
+  selectedEventId = evt.id;
 }
 
 // ─── Crew rendering ───

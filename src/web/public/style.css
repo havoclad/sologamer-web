@@ -182,7 +182,7 @@ body {
 /* ─── Main Layout ─── */
 #main-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 300px;
+  grid-template-columns: 35% 1fr;
   gap: 8px;
   padding: 8px;
   height: calc(100vh - 120px);
@@ -221,11 +221,62 @@ body {
   flex-direction: column;
   min-height: 0;
 }
-#right-col {
+/* ─── View Tabs ─── */
+#view-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.view-tab {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+.view-tab:hover { color: var(--text); }
+.view-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ─── Inline Log Detail ─── */
+.log-detail-inline {
+  padding: 6px 8px 6px 20px;
+  margin: 0 0 2px 0;
+  background: rgba(255,255,255,0.02);
+  border-left: 3px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+.log-detail-inline .detail-roll {
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  background: var(--bg-dark);
+  border-left: 2px solid var(--accent);
+}
+
+.log-entry.has-details { cursor: pointer; }
+.log-entry .log-expand {
+  color: var(--accent);
+  font-size: 10px;
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.log-entry.expanded .log-expand {
+  transform: rotate(90deg);
 }
 
 /* ─── Strategic Map ─── */
@@ -306,11 +357,7 @@ body {
   background: rgba(184, 155, 74, 0.15);
   border-left-color: var(--accent);
 }
-.log-entry.has-details::before {
-  content: '▶ ';
-  color: var(--accent);
-  font-size: 10px;
-}
+/* has-details arrow handled by .log-expand span */
 .log-entry.sev-good { border-left-color: var(--good); }
 .log-entry.sev-warn { border-left-color: var(--warn); }
 .log-entry.sev-bad { border-left-color: var(--bad); }
@@ -398,14 +445,12 @@ body {
 @media (max-width: 1024px) {
   #main-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr;
     height: auto;
     min-height: calc(100vh - 90px);
   }
   #left-col { flex-direction: row; flex-wrap: wrap; }
   #left-col .panel { flex: 1; min-width: 250px; }
-  #right-col { flex-direction: row; flex-wrap: wrap; }
-  #right-col .panel { flex: 1; min-width: 250px; }
   #event-log { max-height: 50vh; }
 }
 
