@@ -2049,8 +2049,8 @@ export class GameSession {
             try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
             crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
             if (severity === 'kia') crew.status = 'kia';
-            const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
-            this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+            const sev = woundToEventSeverity(severity);
+            this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev, zone, direction,
               [
                 { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Crew wound', description: `${location} damage` },
                 { table: 'B1-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
@@ -2297,8 +2297,8 @@ export class GameSession {
                 try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
                 crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
                 if (severity === 'kia') crew.status = 'kia';
-                const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
-                this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+                const sev = woundToEventSeverity(severity);
+                this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev, zone, direction,
                   [
                     { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
                     { table: 'B1-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
@@ -2594,8 +2594,8 @@ export class GameSession {
         try { severity = rollCrewWound(createFixedRng(woundRollValue, rng), tables); } catch { severity = 'light'; }
         crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
         if (severity === 'kia') crew.status = 'kia';
-        const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
-        this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+        const sev = woundToEventSeverity(severity);
+        this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev, zone, direction,
           [
             { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Sub-roll wound', description: 'Damage sub-roll' },
             { table: 'B1-4', rollType: '1d6', rolled: woundRollValue, result: severity, description: 'Wound severity' },
@@ -2944,8 +2944,8 @@ export class GameSession {
             try { severity = rollCrewWound(rng, tables); } catch { severity = 'light'; }
             crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
             if (severity === 'kia') crew.status = 'kia';
-            const sev = severity === 'kia' ? 'critical' : severity === 'serious' ? 'bad' : 'warn';
-            this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev as any, zone, direction,
+            const sev = woundToEventSeverity(severity);
+            this.emit('DAMAGE', `${crew.name} (${POSITION_LABELS[pos]}): ${severity} wound`, 'damage', sev, zone, direction,
               [
                 { table: damageTable, rollType: '1d6', rolled: 0, result: 'Crew wound', description: `${location} damage` },
                 { table: 'G-9', rollType: '2d6', rolled: 0, result: severity, description: 'Wound severity' },
