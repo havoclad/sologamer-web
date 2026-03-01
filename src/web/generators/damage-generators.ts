@@ -154,45 +154,45 @@ export function* applySubRollEffect(
   // ── Bomb controls inoperable (bomb run -3) ──
   else if (outcomeLower.includes('bomb controls inoperable') || outcomeLower.includes('bombs must be dropped manually')) {
     ac.bombControlsInop = true;
-    if (mission) mission.bombRunModifier -= 3;
+    if (mission) { mission.bombRunModifier -= 3; mission.bombRunModifierReasons.push('Bomb controls -3'); }
     severity = 'bad'; isImportant = true;
   }
   // ── Autopilot inoperable (bomb run -2) ──
   else if (outcomeLower.includes('autopilot') && outcomeLower.includes('inoperable')) {
     ac.autopilotInop = true;
-    if (mission) mission.bombRunModifier -= 2;
+    if (mission) { mission.bombRunModifier -= 2; mission.bombRunModifierReasons.push('Autopilot -2'); }
     severity = 'bad'; isImportant = true;
   }
   // ── Tailwheel damaged (landing -1) ──
   else if (outcomeLower.includes('tailwheel damaged')) {
     ac.tailWheelDamaged = true;
-    if (mission) mission.landingModifiers -= 1;
+    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Tailwheel -1'); }
     severity = 'bad'; isImportant = true;
   }
   // ── Brakes out (landing -1) ──
   else if (outcomeLower.includes('brakes out')) {
     ac.brakesOut = true;
-    if (mission) mission.landingModifiers -= 1;
+    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Brakes -1'); }
     severity = 'bad'; isImportant = true;
   }
   // ── Landing gear inoperable (landing -3) ──
   else if (outcomeLower.includes('landing gear inoperable')) {
     ac.landingGearInop = true;
-    if (mission) mission.landingModifiers -= 3;
+    if (mission) { mission.landingModifiers -= 3; mission.landingModifierReasons.push('Landing gear -3'); }
     severity = 'critical'; isImportant = true;
   }
   // ── Wing flap inoperable (landing -1) ──
   else if (outcomeLower.includes('flap inoperable') || outcomeLower.includes('wing flap inoperable')) {
     const isPort = location === 'Port Wing';
     if (isPort) ac.portFlapInop = true; else ac.starboardFlapInop = true;
-    if (mission) mission.landingModifiers -= 1;
+    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push(`${isPort ? 'Port' : 'Starboard'} flap -1`); }
     severity = 'bad'; isImportant = true;
   }
   // ── Aileron inoperable (landing -1) ──
   else if (outcomeLower.includes('aileron inoperable')) {
     const isPort = location === 'Port Wing';
     if (isPort) ac.portAileronInop = true; else ac.starboardAileronInop = true;
-    if (mission) mission.landingModifiers -= 1;
+    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push(`${isPort ? 'Port' : 'Starboard'} aileron -1`); }
     severity = 'bad'; isImportant = true;
   }
   // ── Elevator inoperable ──
@@ -201,6 +201,7 @@ export function* applySubRollEffect(
     else ac.starboardElevatorInop = true;
     if (ac.portElevatorInop && ac.starboardElevatorInop && mission) {
       mission.landingModifiers -= 1;
+      mission.landingModifierReasons.push('Both elevators -1');
     }
     severity = 'bad'; isImportant = true;
   }
@@ -466,7 +467,7 @@ export function* resolveCompartmentHitGen(
       case 'control_damage':
         ctx.emit('DAMAGE', `Control surface damage`, 'damage', 'bad', zone, direction,
           [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control damage' }]);
-        if (ctx.state.mission) ctx.state.mission.landingModifiers -= 1;
+        if (ctx.state.mission) { ctx.state.mission.landingModifiers -= 1; ctx.state.mission.landingModifierReasons.push('Control damage -1'); }
         break;
       case 'wing_root_hit': {
         const isPort = location.toLowerCase().includes('port');

@@ -47,7 +47,7 @@ export function createDefaultMission(): MissionState {
     formation: 'lead', squadron: 'lead', weather: 'clear',
     outOfFormation: false, altitude: 20000,
     bombsAboard: true, bombsDropped: false, aborted: false,
-    evasiveAction: false, landingModifiers: 0, bombRunModifier: 0,
+    evasiveAction: false, landingModifiers: 0, landingModifierReasons: [], bombRunModifier: 0, bombRunModifierReasons: [],
   };
 }
 

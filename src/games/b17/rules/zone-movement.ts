@@ -119,6 +119,22 @@ export function getFighterWaveModifier(
   return gazetteerMod + squadMod + weatherModifier;
 }
 
+/** Build a human-readable reason string for fighter wave modifiers. */
+export function getFighterWaveModifierReason(
+  zoneInfo: ZoneInfo | null,
+  squadronModifier: number,
+  outOfFormation: boolean,
+  weatherModifier: number,
+): string {
+  const parts: string[] = [];
+  const gazetteerMod = zoneInfo?.b1Modifier ?? 0;
+  if (gazetteerMod !== 0) parts.push(`Zone ${gazetteerMod >= 0 ? '+' : ''}${gazetteerMod}`);
+  const squadMod = outOfFormation ? 0 : squadronModifier;
+  if (squadMod !== 0) parts.push(`Formation position ${squadMod >= 0 ? '+' : ''}${squadMod}`);
+  if (weatherModifier !== 0) parts.push(`Weather ${weatherModifier >= 0 ? '+' : ''}${weatherModifier}`);
+  return parts.join(', ');
+}
+
 /**
  * Determine if the B-17 must abort per §8.0 mandatory conditions.
  *

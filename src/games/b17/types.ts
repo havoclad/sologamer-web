@@ -138,7 +138,9 @@ export interface MissionState {
   aborted: boolean;
   evasiveAction: boolean;
   landingModifiers: number;
+  landingModifierReasons: string[];
   bombRunModifier: number;
+  bombRunModifierReasons: string[];
 }
 
 // ─── Campaign ───

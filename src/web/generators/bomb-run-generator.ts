@@ -165,7 +165,8 @@ export function* executeBombRun(
   }
 
   const bombRunMod = mission.bombRunModifier || 0;
-  const bombRunPending = createPendingRoll(ctx, 'O-6', `Bomb run — on or off target?`, bombRunMod);
+  const bombRunModReason = mission.bombRunModifierReasons.join(', ');
+  const bombRunPending = createPendingRoll(ctx, 'O-6', `Bomb run — on or off target?`, bombRunMod, undefined, bombRunModReason);
   const bombRunRoll: number = (yield { type: 'pending', roll: bombRunPending, events: ctx.eventBuffer }) ?? autoRoll(bombRunPending.diceType, rng);
   ctx.eventBuffer = [];
 

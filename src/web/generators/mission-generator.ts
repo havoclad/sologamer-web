@@ -161,7 +161,7 @@ export function* executeMission(
     squadron: squadronPosition?.position as any ?? 'lead',
     weather: 'clear', outOfFormation: false, altitude: 20000,
     bombsAboard: true, bombsDropped: false, aborted: false,
-    evasiveAction: false, landingModifiers: 0, bombRunModifier: 0,
+    evasiveAction: false, landingModifiers: 0, landingModifierReasons: [], bombRunModifier: 0, bombRunModifierReasons: [],
   };
   ctx.state.mission = mission;
   ctx.state.campaign.aircraft.guns = initializeGuns();
@@ -533,16 +533,8 @@ export function* executeMission(
       columns: { result: r.columns.landing?.replace('$plane_name', ctx.state.campaign.planeName) ?? '' },
     })) : [];
 
-    // Build landing modifier reason from damage sources
-    const landingReasonParts: string[] = [];
-    if (ac.tailWheelDamaged) landingReasonParts.push('Tailwheel -1');
-    if (ac.brakesOut) landingReasonParts.push('Brakes -1');
-    if (ac.landingGearInop) landingReasonParts.push('Landing gear -3');
-    if (ac.portFlapInop) landingReasonParts.push('Port flap -1');
-    if (ac.starboardFlapInop) landingReasonParts.push('Starboard flap -1');
-    if (ac.portAileronInop) landingReasonParts.push('Port aileron -1');
-    if (ac.starboardAileronInop) landingReasonParts.push('Starboard aileron -1');
-    if (ac.portElevatorInop && ac.starboardElevatorInop) landingReasonParts.push('Both elevators -1');
+    // Build landing modifier reason from tracked damage sources
+    const landingReasonParts: string[] = [...mission.landingModifierReasons];
     if (weatherLandingMod !== 0) landingReasonParts.push(`Weather ${weatherLandingMod >= 0 ? '+' : ''}${weatherLandingMod}`);
     if (countEnginesOut(ac) >= 3) landingReasonParts.push('3+ engines out -3');
     const landingModReason = landingReasonParts.join(', ');

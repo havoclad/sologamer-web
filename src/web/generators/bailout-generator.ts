@@ -86,7 +86,7 @@ export function* executeBailout(
       ctx,
       tableId, tableTitle,
       `Bailout roll for ${label}${modText}`, '1d6',
-      bailoutRows, modifier,
+      bailoutRows, modifier, modifier !== 0 ? 'Light wound -1' : undefined,
     );
 
     // Determine if bailed out

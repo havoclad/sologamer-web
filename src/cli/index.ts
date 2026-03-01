@@ -232,6 +232,9 @@ function flyMission(
     aborted: false,
     evasiveAction: false,
     landingModifiers: 0,
+    landingModifierReasons: [],
+    bombRunModifier: 0,
+    bombRunModifierReasons: [],
   };
   state.mission = mission;
 
