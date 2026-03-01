@@ -11,6 +11,7 @@ let selectedEventId = null;
 let currentMapTarget = null;
 let currentMapZone = 1;
 let currentMapTargetZone = 1;
+let currentMapDirection = null;
 let autoplayMode = false;
 let autoPlayTimer = null;
 let pendingRoll = null; // Current roll the engine is waiting for
@@ -724,6 +725,7 @@ btnRestart.addEventListener('click', () => {
   currentMapZone = 1;
   currentMapTargetZone = 1;
   currentMapTarget = null;
+  currentMapDirection = null;
   renderMap(null, 1, 1);
   // Generate a fresh random bomber name for the new campaign
   if (bomberNames.length) {
@@ -782,6 +784,15 @@ function trackDamageFromEvent(evt) {
 function appendEvent(evt) {
   updateStatusFromEvent(evt);
   trackDamageFromEvent(evt);
+  // Auto-switch tabs based on phase (must run before early returns)
+  if (evt.phase === 'COMBAT' || evt.category === 'combat') {
+    hadCombat = true;
+    switchTab('combat-view-tab');
+  } else if ((evt.phase === 'ZONE' || evt.phase === 'SETUP' || evt.phase === 'FLAK') && hadCombat) {
+    hadCombat = false;
+    switchTab('strategic-map-tab');
+  }
+
   if (evt.phase === 'ZONE' || evt.phase === 'SETUP' && evt.message.includes('Mission #')) {
     const header = document.createElement('div');
     header.className = 'log-zone-header';
@@ -811,15 +822,6 @@ function appendEvent(evt) {
   }
   eventLog.appendChild(el);
   eventLog.scrollTop = eventLog.scrollHeight;
-
-  // Auto-switch tabs based on phase
-  if (evt.phase === 'COMBAT' || evt.category === 'combat') {
-    hadCombat = true;
-    switchTab('combat-view-tab');
-  } else if ((evt.phase === 'ZONE' || evt.phase === 'SETUP' || evt.phase === 'FLAK') && hadCombat) {
-    hadCombat = false;
-    switchTab('strategic-map-tab');
-  }
 
   setTimeout(() => el.classList.remove('new'), 800);
 }
@@ -1098,7 +1100,7 @@ function renderAircraft(ac) {
 function renderAircraftFromState() { renderAircraft(gameState?.campaign?.aircraft); }
 
 // ─── Strategic Map ───
-function renderMap(target, currentZone, targetZone) {
+function renderMap(target, currentZone, targetZone, direction) {
   const svg = $('strategic-map');
   const zones = targetZone || 5;
   const w = 700, h = 280;
@@ -1156,7 +1158,8 @@ function renderMap(target, currentZone, targetZone) {
   }
 
   // Direction label at bottom
-  html += `<text x="${w/2}" y="${h - 8}" text-anchor="middle" fill="#555540" font-size="11" font-family="monospace">OUTBOUND ➤</text>`;
+  const dirLabel = direction === 'inbound' ? '◄ INBOUND' : direction === 'outbound' ? 'OUTBOUND ➤' : '';
+  if (dirLabel) html += `<text x="${w/2}" y="${h - 8}" text-anchor="middle" fill="#555540" font-size="11" font-family="monospace">${dirLabel}</text>`;
 
   svg.innerHTML = html;
 }
@@ -1172,11 +1175,12 @@ function updateMapFromEvent(evt) {
       if (match) currentMapTargetZone = parseInt(match[1], 10);
     }
     // Plane stays in Zone 1 during SETUP — don't update currentMapZone
-    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone);
+    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone, currentMapDirection);
   }
-  if (evt.phase === 'ZONE' && evt.zone) {
+  if ((evt.phase === 'ZONE' || evt.phase === 'LANDING') && evt.zone) {
     currentMapZone = evt.zone;
-    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone);
+    if (evt.direction) currentMapDirection = evt.direction;
+    renderMap(currentMapTarget, currentMapZone, currentMapTargetZone, currentMapDirection);
   }
 }
 
