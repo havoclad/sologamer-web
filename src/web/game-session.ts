@@ -1155,7 +1155,6 @@ export class GameSession {
         for (const crew of this.state.campaign.crew) {
           if (crew.status === 'active') {
             applyKia(crew);
-            crew.status = 'kia';
             this.emit('LANDING', `${crew.name}: KIA in crash`, 'damage', 'critical', 1, 'inbound', undefined, true);
           }
         }
@@ -1169,9 +1168,6 @@ export class GameSession {
             const woundEntry = this.tables.lookupValue('B1-4', woundRoll);
             const severity = (woundEntry as any)?.severity ?? 'light';
             applyWound(crew, severity);
-            if (crew.woundSeverity === 'kia') {
-              crew.status = 'kia';
-            }
             const sev = woundToEventSeverity(severity);
             this.emit('LANDING', `${crew.name}: wound roll ${woundRoll}${penaltyDesc} — ${(woundEntry as any)?.result ?? severity}`,
               'damage', sev, 1, 'inbound',

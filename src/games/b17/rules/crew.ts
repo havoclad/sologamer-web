@@ -86,6 +86,7 @@ export function applyLightWound(crew: CrewMember): void {
   if (crew.woundSeverity === 'kia') return;
   if (crew.woundSeverity === 'serious') {
     crew.woundSeverity = 'kia';
+    crew.status = 'kia';
     crew.currentGunPosition = null;
     return;
   }
@@ -105,6 +106,7 @@ export function applySeriousWound(crew: CrewMember): void {
   if (crew.woundSeverity === 'kia') return;
   if (crew.woundSeverity === 'serious') {
     crew.woundSeverity = 'kia';
+    crew.status = 'kia';
   } else {
     crew.woundSeverity = 'serious';
   }
@@ -114,6 +116,7 @@ export function applySeriousWound(crew: CrewMember): void {
 /** Apply KIA directly (e.g., from wound severity roll of 6, or 20mm hit). */
 export function applyKia(crew: CrewMember): void {
   crew.woundSeverity = 'kia';
+  crew.status = 'kia';
   crew.currentGunPosition = null;
 }
 
