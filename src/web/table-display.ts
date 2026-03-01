@@ -58,21 +58,22 @@ export function buildM3Rows(tables: TableStore, fighterPosition: string, totalMo
   return rows;
 }
 
+/** Map fighter position string to attack group key used in B-4/B-5 tables. */
+function positionToGroupKey(fighterPosition: string): string {
+  const posLower = fighterPosition.toLowerCase();
+  if (posLower.includes('vertical dive')) return 'vertical_dive';
+  if (posLower.includes('vertical climb')) return 'vertical_climb';
+  if (posLower.startsWith('3 ') || posLower.startsWith('9 ')) return '3_9';
+  if (posLower.startsWith('6 ')) return '6';
+  return '12_1:30_10:30';
+}
+
 /** Build display rows for B-4 filtered by fighter attack position group */
 export function buildB4Rows(tables: TableStore, fighterPosition: string): PendingRoll['tableRows'] {
   const raw = (tables.get('B-4')?.raw as any)?.attack_positions;
   if (!raw) return [];
 
-  // Map fighter position to B-4 group key
-  const posLower = fighterPosition.toLowerCase();
-  let groupKey: string;
-  if (posLower.includes('vertical dive')) groupKey = 'vertical_dive';
-  else if (posLower.includes('vertical climb')) groupKey = 'vertical_climb';
-  else if (posLower.startsWith('3 ') || posLower.startsWith('9 ')) groupKey = '3_9';
-  else if (posLower.startsWith('6 ')) groupKey = '6';
-  else groupKey = '12_1:30_10:30';
-
-  const group = raw[groupKey];
+  const group = raw[positionToGroupKey(fighterPosition)];
   if (!group?.rolls) return [];
 
   const rows: PendingRoll['tableRows'] = [];
@@ -87,19 +88,11 @@ export function buildB5Rows(tables: TableStore, fighterPosition: string): Pendin
   const raw = (tables.get('B-5')?.raw as any)?.attack_positions;
   if (!raw) return [];
 
-  // Map fighter position to B-5 group key
-  const posLower = fighterPosition.toLowerCase();
-  let groupKey: string;
-  if (posLower.includes('vertical dive')) groupKey = 'vertical_dive';
-  else if (posLower.includes('vertical climb')) groupKey = 'vertical_climb';
-  else if (posLower.startsWith('3 ') || posLower.startsWith('9 ')) groupKey = '3_9';
-  else if (posLower.startsWith('6 ')) groupKey = '6';
-  else groupKey = '12_1:30_10:30';
-
-  const group = raw[groupKey];
+  const group = raw[positionToGroupKey(fighterPosition)];
   if (!group) return [];
 
   // Determine altitude sub-key (high/level/low from position, or flat for vertical)
+  const posLower = fighterPosition.toLowerCase();
   let altKey: string | null = null;
   if (posLower.includes('high')) altKey = 'high';
   else if (posLower.includes('low')) altKey = 'low';

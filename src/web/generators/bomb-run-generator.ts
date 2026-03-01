@@ -58,13 +58,14 @@ export function* executeBombRun(
   // ── O-3: Flak to hit B-17 (3 rolls if flak present) ──
   let totalFlakHits = 0;
   if (flakLevel !== 'No flak') {
+    const o3Rows = buildO3Rows(tables, flakLevel);
     for (let burst = 1; burst <= 3; burst++) {
       const hitRoll: number = yield* yieldCombatRoll(
         ctx,
         'O-3', 'Flak to Hit B-17',
         `Flak burst ${burst}/3 — does it hit? (${flakLevel})`,
         '2d6',
-        buildO3Rows(tables, flakLevel),
+        o3Rows,
       );
       ctx.eventBuffer = [];
 

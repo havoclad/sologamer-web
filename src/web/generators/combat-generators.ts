@@ -29,15 +29,6 @@ import type { GeneratorContext } from './generator-context.js';
 import { yieldCombatRoll } from './yield-helpers.js';
 import { resolveCompartmentHitGen } from './damage-generators.js';
 
-// GUN_TO_CREW is deprecated — use gun.crewPosition from the Gun object instead.
-// Kept temporarily as a local lookup until all usages are replaced.
-const GUN_TO_CREW: Record<string, CrewPosition> = {
-  Nose: 'bombardier', Port_Cheek: 'navigator', Starboard_Cheek: 'navigator',
-  Top_Turret: 'engineer', Ball_Turret: 'ball_turret',
-  Port_Waist: 'left_waist', Starboard_Waist: 'right_waist',
-  Radio: 'radioman', Tail: 'tail_gunner',
-};
-
 /** Build a CombatViewState from active fighters. */
 export function combatView(fighters: Fighter[]): CombatViewState {
   return {
@@ -303,7 +294,8 @@ export function* resolveCombatRounds(
       for (const [gun, hitReq] of fieldOfFire) {
         let entry = gunEntries.find(e => e.gun === gun);
         if (!entry) {
-          const crewPos = GUN_TO_CREW[gun];
+          const gunObj = getGun(aircraft.guns, gun);
+          const crewPos = gunObj.crewPosition;
           if (!crewPos) continue;
           entry = { gun, crewPos, targets: [] };
           gunEntries.push(entry);
@@ -315,7 +307,6 @@ export function* resolveCombatRounds(
       const posLower = fighter.position.toLowerCase();
       const isTailSpecialPos = posLower.startsWith('10:30') || posLower.startsWith('12 ') || posLower.startsWith('1:30');
       if (isTailSpecialPos && !posLower.includes('vertical')) {
-        const fieldOfFire = getFieldOfFire(fighter.position, tables);
         if (!fieldOfFire.has('Tail')) {
           // Tail isn't already listed — add as special delayed target
           let entry = gunEntries.find(e => e.gun === 'Tail');
@@ -428,13 +419,7 @@ export function* resolveCombatRounds(
     }
 
     // Filter destroyed/broken-off fighters after defensive fire
-    activeFighters = allFighters.filter(f => {
-      const fboa = f.damage.filter(d => d === 'FBOA').length;
-      if (fboa > 0) return false;
-      const fca = f.damage.filter(d => d === 'FCA').length;
-      if (fca >= 2) return false;
-      return !f.damage.includes('Destroyed');
-    });
+    activeFighters = allFighters.filter(f => !isFighterOutOfAction(f));
 
     if (activeFighters.length === 0) {
       ctx.emit('COMBAT', 'All fighters driven off or destroyed!', 'combat', 'good', zone, direction, undefined, true, combatView([]));
@@ -540,14 +525,7 @@ export function* resolveCombatRounds(
       }
 
       // Re-filter after tail gun fire (must also exclude destroyed fighters)
-      activeFighters = allFighters.filter(f => {
-        if (f.damage.includes('Destroyed')) return false;
-        const fboa = f.damage.filter(d => d === 'FBOA').length;
-        if (fboa > 0) return false;
-        const fca = f.damage.filter(d => d === 'FCA').length;
-        if (fca >= 2) return false;
-        return true;
-      });
+      activeFighters = allFighters.filter(f => !isFighterOutOfAction(f));
     }
 
     // Check destruction
