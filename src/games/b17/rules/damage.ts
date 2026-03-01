@@ -277,35 +277,6 @@ export function rollCrewWound(
   }
 }
 
-/**
- * Apply wound accumulation rules per B1-4 notes.
- *
- * Per B1-4: "3 light wounds = serious wound. 4 light wounds = KIA.
- * Light wound + serious wound = KIA."
- */
-/**
- * @deprecated Use applyWound() / applyLightWound() / applySeriousWound() / applyKia()
- * from rules/crew.ts instead. Those track lightWounds count properly.
- *
- * This legacy function doesn't track light wound accumulation (2nd/3rd/4th).
- */
-export function accumulateWound(
-  currentWound: WoundSeverity,
-  newWound: WoundSeverity,
-): WoundSeverity {
-  if (currentWound === 'kia') return 'kia';
-  if (newWound === 'kia') return 'kia';
-
-  if (currentWound === 'serious' && newWound === 'light') return 'kia';
-  if (currentWound === 'light' && newWound === 'serious') return 'kia';
-  if (currentWound === 'serious' && newWound === 'serious') return 'kia';
-
-  if (currentWound === 'none') return newWound;
-
-  // Both light: return light (caller tracks count for 3rd/4th escalation)
-  return newWound;
-}
-
 // ─── Engine Damage ───
 
 /**

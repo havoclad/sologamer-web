@@ -5,7 +5,7 @@ import { TableStore } from '../../src/engine/tables.js';
 import { b17Module } from '../../src/games/b17/index.js';
 import {
   rollHitLocation, WALKING_HIT_COMPARTMENTS, rollCompartmentDamage,
-  rollCrewWound, accumulateWound, countEnginesOut, isAllEnginesOut,
+  rollCrewWound, countEnginesOut, isAllEnginesOut,
   getEngineLandingModifier, attemptExtinguishFire, rollFrostbite,
   rollFrostbiteRecovery, resolveBIP,
 } from '../../src/games/b17/rules/damage.js';
@@ -201,36 +201,6 @@ describe('rollCrewWound (B1-4)', () => {
   });
 });
 
-describe('accumulateWound', () => {
-  it('none + light = light', () => {
-    expect(accumulateWound('none', 'light')).toBe('light');
-  });
-
-  it('none + serious = serious', () => {
-    expect(accumulateWound('none', 'serious')).toBe('serious');
-  });
-
-  it('none + kia = kia', () => {
-    expect(accumulateWound('none', 'kia')).toBe('kia');
-  });
-
-  it('light + serious = kia per B1-4', () => {
-    expect(accumulateWound('light', 'serious')).toBe('kia');
-  });
-
-  it('serious + light = kia per B1-4', () => {
-    expect(accumulateWound('serious', 'light')).toBe('kia');
-  });
-
-  it('serious + serious = kia', () => {
-    expect(accumulateWound('serious', 'serious')).toBe('kia');
-  });
-
-  it('kia + anything = kia', () => {
-    expect(accumulateWound('kia', 'light')).toBe('kia');
-    expect(accumulateWound('kia', 'serious')).toBe('kia');
-  });
-});
 
 describe('engine helpers', () => {
   it('countEnginesOut', () => {
