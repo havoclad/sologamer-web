@@ -80,6 +80,8 @@ export interface PendingRoll {
   diceType: string;       // '1d6', '2d6', 'd6d6'
   purpose: string;        // Human-readable: "Target for Mission 1"
   modifier: number;
+  /** Human-readable explanation of where the modifier comes from */
+  modifierReason?: string;
   /** Full table rows for display */
   tableRows: Array<{ roll: string; columns: Record<string, string> }>;
 }

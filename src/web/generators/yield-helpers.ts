@@ -13,6 +13,7 @@ import type { GeneratorContext } from './generator-context.js';
 export function createPendingRoll(
   ctx: GeneratorContext,
   tableId: string, purpose: string, modifier = 0, subKey?: string,
+  modifierReason?: string,
 ): PendingRoll {
   const tableDisplay = ctx.tables.getTableDisplayData(tableId, subKey);
   const table = ctx.tables.getRoll(tableId);
@@ -23,6 +24,7 @@ export function createPendingRoll(
     diceType: normalizeDiceType(tableDisplay?.rolltype ?? table?.rolltype ?? '1d6'),
     purpose,
     modifier,
+    ...(modifierReason ? { modifierReason } : {}),
     tableRows: tableDisplay?.rows ?? [],
   };
 }
@@ -34,11 +36,13 @@ export function createPendingRoll(
 export function* yieldCombatRoll(
   ctx: GeneratorContext,
   tableId: string, tableName: string, purpose: string, diceType: string,
-  tableRows: PendingRoll['tableRows'] = [], modifier = 0,
+  tableRows: PendingRoll['tableRows'] = [], modifier = 0, modifierReason?: string,
 ): Generator<MissionYield, number, number | number[] | undefined> {
   const pending: PendingRoll = {
     id: ctx.pendingRollId++,
-    tableId, tableName, diceType, purpose, modifier, tableRows,
+    tableId, tableName, diceType, purpose, modifier,
+    ...(modifierReason ? { modifierReason } : {}),
+    tableRows,
   };
   // Flush accumulated events WITH this yield
   const eventsToSend = ctx.eventBuffer;

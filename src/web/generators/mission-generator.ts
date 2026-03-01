@@ -12,7 +12,7 @@ import {
   type TargetInfo,
 } from '../../games/b17/rules/mission-setup.js';
 import {
-  hasFighterCover, getFighterWaveModifier,
+  hasFighterCover, getFighterWaveModifier, getFighterWaveModifierReason,
   mustAbort, type FighterCoverLevel,
 } from '../../games/b17/rules/zone-movement.js';
 import {
@@ -239,7 +239,8 @@ export function* executeMission(
     const waveTableData = tables.getRoll(waveTable);
     const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
 
-    const wavePending = createPendingRoll(ctx, waveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''})`, waveMod);
+    const waveModReason = getFighterWaveModifierReason(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
+    const wavePending = createPendingRoll(ctx, waveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''})`, waveMod, undefined, waveModReason);
     const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: ctx.eventBuffer }) ?? autoRoll(waveDiceType, rng);
     ctx.eventBuffer = [];
 
@@ -419,7 +420,8 @@ export function* executeMission(
       const waveTableData = tables.getRoll(inboundWaveTable);
       const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
 
-      const wavePending = createPendingRoll(ctx, inboundWaveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''} inbound)`, waveMod);
+      const waveModReason = getFighterWaveModifierReason(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
+      const wavePending = createPendingRoll(ctx, inboundWaveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''} inbound)`, waveMod, undefined, waveModReason);
       const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: ctx.eventBuffer }) ?? autoRoll(waveDiceType, rng);
       ctx.eventBuffer = [];
 
@@ -531,6 +533,20 @@ export function* executeMission(
       columns: { result: r.columns.landing?.replace('$plane_name', ctx.state.campaign.planeName) ?? '' },
     })) : [];
 
+    // Build landing modifier reason from damage sources
+    const landingReasonParts: string[] = [];
+    if (ac.tailWheelDamaged) landingReasonParts.push('Tailwheel -1');
+    if (ac.brakesOut) landingReasonParts.push('Brakes -1');
+    if (ac.landingGearInop) landingReasonParts.push('Landing gear -3');
+    if (ac.portFlapInop) landingReasonParts.push('Port flap -1');
+    if (ac.starboardFlapInop) landingReasonParts.push('Starboard flap -1');
+    if (ac.portAileronInop) landingReasonParts.push('Port aileron -1');
+    if (ac.starboardAileronInop) landingReasonParts.push('Starboard aileron -1');
+    if (ac.portElevatorInop && ac.starboardElevatorInop) landingReasonParts.push('Both elevators -1');
+    if (weatherLandingMod !== 0) landingReasonParts.push(`Weather ${weatherLandingMod >= 0 ? '+' : ''}${weatherLandingMod}`);
+    if (countEnginesOut(ac) >= 3) landingReasonParts.push('3+ engines out -3');
+    const landingModReason = landingReasonParts.join(', ');
+
     const landingPending: PendingRoll = {
       id: ctx.pendingRollId++,
       tableId: 'G-9',
@@ -538,6 +554,7 @@ export function* executeMission(
       diceType: '2d6',
       purpose: 'Landing attempt',
       modifier: mission.landingModifiers + weatherLandingMod + (countEnginesOut(ac) >= 3 ? -3 : 0),
+      ...(landingModReason ? { modifierReason: landingModReason } : {}),
       tableRows: g9TableRows,
     };
 

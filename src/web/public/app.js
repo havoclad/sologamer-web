@@ -311,7 +311,7 @@ function showPendingRoll(roll) {
     <div class="roll-prompt">
       <div class="roll-purpose">🎲 Roll ${roll.diceType} on Table ${roll.tableId}: ${escapeHtml(roll.tableName)}</div>
       <div class="roll-description">${escapeHtml(roll.purpose)}</div>
-      ${roll.modifier ? `<div class="roll-modifier">Modifier: ${roll.modifier >= 0 ? '+' : ''}${roll.modifier}</div>` : ''}
+      ${roll.modifier ? `<div class="roll-modifier">Modifier: ${roll.modifier >= 0 ? '+' : ''}${roll.modifier}${roll.modifierReason ? ` (${roll.modifierReason})` : ''}</div>` : ''}
     </div>
     <div class="roll-table-display">
       <table class="lookup-table roll-lookup-table">
