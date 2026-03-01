@@ -99,6 +99,8 @@ export function* executeMission(
       description: `Target selection for ${targetTableDesc}`,
     }]);
 
+  ctx.emit('SETUP', `Target zone: ${targetZone}`, 'setup', 'info');
+
   // ── Formation position (G-4) ──
   const formPending = createPendingRoll(ctx, 'G-4', 'Formation position within squadron');
   const formRollValue: number = (yield { type: 'pending', roll: formPending, events: ctx.eventBuffer }) ?? autoRoll(formPending.diceType, rng);
@@ -151,8 +153,6 @@ export function* executeMission(
   if (extraFighterPerWave) {
     ctx.emit('SETUP', `${formLabel} position: +1 fighter per wave!`, 'setup', 'warn');
   }
-
-  ctx.emit('SETUP', `Target zone: ${targetZone}`, 'setup', 'info');
 
   // Initialize mission state
   const mission: MissionState = {

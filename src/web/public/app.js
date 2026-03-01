@@ -703,6 +703,10 @@ btnRestart.addEventListener('click', () => {
   gameState = null;
   allEvents = [];
   window._compartmentHits = {};
+  currentMapZone = 1;
+  currentMapTargetZone = 1;
+  currentMapTarget = null;
+  renderMap(null, 1, 1);
   // Generate a fresh random bomber name for the new campaign
   if (bomberNames.length) {
     $('bomber-name').value = bomberNames[Math.floor(Math.random() * bomberNames.length)];
