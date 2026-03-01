@@ -51,7 +51,9 @@ import {
   countEnginesOut, WALKING_HIT_COMPARTMENTS,
   type ShellHitLocation, type DamageResult,
 } from '../games/b17/rules/damage.js';
-import { applyWound } from '../games/b17/rules/crew.js';
+import { applyWound, getCrewByPosition, isCrewDown, POSITION_LABELS } from '../games/b17/rules/crew.js';
+import { generateCrewName } from '../games/b17/rules/crew-names.js';
+import { GUN_LABELS } from '../games/b17/rules/display-labels.js';
 
 // ─── Parse CLI args (minimal, no commander needed for this) ───
 
@@ -156,69 +158,13 @@ function verbose(text: string, isVerbose: boolean): void {
   }
 }
 
-// ─── Crew name generation ───
-
-const FIRST_NAMES = [
-  'James', 'Robert', 'John', 'William', 'Richard', 'Thomas', 'Charles', 'Donald',
-  'George', 'Kenneth', 'Edward', 'Frank', 'Raymond', 'Harold', 'Paul', 'Jack',
-  'Henry', 'Arthur', 'Ralph', 'Albert', 'Eugene', 'Howard', 'Carl', 'Walter',
-  'Joseph', 'Lawrence', 'Earl', 'Roy', 'Leonard', 'Norman', 'Gerald', 'Herbert',
-];
-
-const LAST_NAMES = [
-  'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson',
-  'Anderson', 'Taylor', 'Thomas', 'Moore', 'Martin', 'Jackson', 'Thompson', 'White',
-  'Harris', 'Clark', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King',
-  'Wright', 'Scott', 'Green', 'Baker', 'Adams', 'Nelson', 'Hill', 'Campbell',
-  'Mitchell', 'Roberts', 'Carter', 'Phillips', 'Evans', 'Turner', 'Torres', 'Parker',
-];
-
-const POSITION_LABELS: Record<CrewPosition, string> = {
-  pilot: 'Pilot',
-  copilot: 'Co-Pilot',
-  navigator: 'Navigator',
-  bombardier: 'Bombardier',
-  engineer: 'Engineer/Top Turret',
-  radioman: 'Radio Operator',
-  ball_turret: 'Ball Turret Gunner',
-  left_waist: 'Left Waist Gunner',
-  right_waist: 'Right Waist Gunner',
-  tail_gunner: 'Tail Gunner',
-};
-
-const GUN_LABELS: Record<string, string> = {
-  Nose: 'Nose guns',
-  Port_Cheek: 'Port cheek gun',
-  Starboard_Cheek: 'Starboard cheek gun',
-  Top_Turret: 'Top turret',
-  Ball_Turret: 'Ball turret',
-  Port_Waist: 'Left waist gun',
-  Starboard_Waist: 'Right waist gun',
-  Radio: 'Radio room gun',
-  Tail: 'Tail guns',
-};
-
+// GUN_TO_CREW is deprecated — use gun.crewPosition from the Gun object instead.
 const GUN_TO_CREW: Record<string, CrewPosition> = {
-  Nose: 'bombardier',
-  Port_Cheek: 'navigator',
-  Starboard_Cheek: 'navigator',
-  Top_Turret: 'engineer',
-  Ball_Turret: 'ball_turret',
-  Port_Waist: 'left_waist',
-  Starboard_Waist: 'right_waist',
-  Radio: 'radioman',
-  Tail: 'tail_gunner',
+  Nose: 'bombardier', Port_Cheek: 'navigator', Starboard_Cheek: 'navigator',
+  Top_Turret: 'engineer', Ball_Turret: 'ball_turret',
+  Port_Waist: 'left_waist', Starboard_Waist: 'right_waist',
+  Radio: 'radioman', Tail: 'tail_gunner',
 };
-
-function generateCrewName(rng: RNG): string {
-  const first = FIRST_NAMES[rng.int(0, FIRST_NAMES.length - 1)];
-  const last = LAST_NAMES[rng.int(0, LAST_NAMES.length - 1)];
-  return `${first} ${last}`;
-}
-
-function getCrewByPosition(crew: CrewMember[], pos: CrewPosition): CrewMember | undefined {
-  return crew.find(c => c.position === pos);
-}
 
 // ─── Mission Runner ───
 
@@ -877,11 +823,6 @@ function resolveCompartmentHit(
         damageNotes.push(`${location}: ${dmg.result}`);
     }
   }
-}
-
-function isCrewDown(crew: CrewMember[], pos: CrewPosition): boolean {
-  const member = crew.find(c => c.position === pos);
-  return !member || member.status !== 'active' || member.woundSeverity === 'serious' || member.woundSeverity === 'kia';
 }
 
 // ─── Campaign summary ───

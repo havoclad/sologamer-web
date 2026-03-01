@@ -229,3 +229,21 @@ export function hasWrongPositionPenalty(gun: Gun, crew: CrewMember[]): boolean {
   if (!operator) return false;
   return !isAtNaturalPosition(operator);
 }
+
+// ─── Crew list utilities ───
+
+/** Find a crew member by position. */
+export function getCrewByPosition(crew: CrewMember[], pos: CrewPosition): CrewMember | undefined {
+  return crew.find(c => c.position === pos);
+}
+
+/** Is a crew member at the given position unable to perform duties? */
+export function isCrewDown(crew: CrewMember[], pos: CrewPosition): boolean {
+  const m = crew.find(c => c.position === pos);
+  return !m || m.status !== 'active' || m.woundSeverity === 'serious' || m.woundSeverity === 'kia';
+}
+
+/** Shallow-clone a crew array (each member is spread-copied). */
+export function cloneCrew(crew: CrewMember[]): CrewMember[] {
+  return crew.map(c => ({ ...c }));
+}
