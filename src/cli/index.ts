@@ -47,10 +47,11 @@ import {
   type GunPosition, type FighterDamageResult,
 } from '../games/b17/rules/combat.js';
 import {
-  rollHitLocation, rollCompartmentDamage, rollCrewWound, accumulateWound,
+  rollHitLocation, rollCompartmentDamage, rollCrewWound,
   countEnginesOut, WALKING_HIT_COMPARTMENTS,
   type ShellHitLocation, type DamageResult,
 } from '../games/b17/rules/damage.js';
+import { applyWound } from '../games/b17/rules/crew.js';
 
 // ─── Parse CLI args (minimal, no commander needed for this) ───
 
@@ -730,7 +731,7 @@ function flyMission(
       // Roll for crew injuries on crash
       for (const crew of state.campaign.crew) {
         if (crew.status === 'active' && rng.d6() <= 2) {
-          crew.woundSeverity = accumulateWound(crew.woundSeverity, 'light');
+          applyWound(crew, 'light');
           bad(`    ${crew.name} injured in crash!`);
         }
       }
@@ -816,9 +817,8 @@ function resolveCompartmentHit(
         if (crew) {
           let severity: WoundSeverity;
           try { severity = rollCrewWound(rng, tables); } catch { severity = 'light'; }
-          crew.woundSeverity = accumulateWound(crew.woundSeverity, severity);
-          if (severity === 'kia') {
-            crew.status = 'kia';
+          applyWound(crew, severity);
+          if (crew.woundSeverity === 'kia') {
             bad(`      ${BOLD}${crew.name} (${POSITION_LABELS[pos]}) — KIA!${RESET}`);
           } else if (severity === 'serious') {
             bad(`      ${crew.name} (${POSITION_LABELS[pos]}) — seriously wounded!`);
