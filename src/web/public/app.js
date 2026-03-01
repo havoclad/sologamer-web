@@ -1061,7 +1061,7 @@ function renderMap(target, currentZone, targetZone) {
   const zones = targetZone || 5;
   const w = 700, h = 280;
   const margin = 40;
-  const zoneW = (w - margin * 2) / (zones + 1); // +1 for England block
+  const zoneW = (w - margin * 2) / zones;
   const blockY = 30, blockH = 200;
 
   // Set viewBox for responsive scaling
@@ -1073,18 +1073,19 @@ function renderMap(target, currentZone, targetZone) {
   let html = '';
   html += `<rect x="0" y="0" width="${w}" height="${h}" fill="#1a1a14" rx="4"/>`;
 
-  // England block
-  const engX = margin;
-  html += `<rect x="${engX}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#1e3450" rx="3" stroke="#3a5a7a" stroke-width="1"/>`;
-  html += `<text x="${engX + zoneW/2}" y="${blockY + blockH/2 + 5}" text-anchor="middle" fill="#6a9aca" font-size="15" font-family="monospace" font-weight="bold">ENGLAND</text>`;
-
-  // Zone blocks
+  // Zone blocks: Zone 1 = England, last zone = target
   for (let z = 1; z <= zones; z++) {
-    const x = margin + z * zoneW;
+    const x = margin + (z - 1) * zoneW;
+    const isEngland = z === 1;
     const isTarget = z === zones;
     const isCurrent = z === (currentZone || 0);
 
-    if (isTarget) {
+    if (isEngland) {
+      // Zone 1 = England (blue-grey)
+      html += `<rect x="${x}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#1e3450" rx="3" stroke="#3a5a7a" stroke-width="1"/>`;
+      html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 - 5}" text-anchor="middle" fill="#6a9aca" font-size="15" font-family="monospace" font-weight="bold">ENGLAND</text>`;
+      html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 + 14}" text-anchor="middle" fill="#4a7aaa" font-size="12" font-family="monospace">ZONE 1</text>`;
+    } else if (isTarget) {
       html += `<rect x="${x}" y="${blockY}" width="${zoneW}" height="${blockH}" fill="#4a2020" rx="3" stroke="#6a3535" stroke-width="1.5"/>`;
       html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 - 10}" text-anchor="middle" fill="#e05040" font-size="14" font-family="monospace" font-weight="bold">${target ? target.toUpperCase() : 'TARGET'}</text>`;
       html += `<text x="${x + zoneW/2}" y="${blockY + blockH/2 + 12}" text-anchor="middle" fill="#8a4a3a" font-size="13" font-family="monospace">ZONE ${z}</text>`;
@@ -1103,18 +1104,14 @@ function renderMap(target, currentZone, targetZone) {
       </g>`;
     }
 
-    // Dashed connector lines
+    // Dashed connector lines between zones
     if (z < zones) {
       const x1 = x + zoneW - 2;
       const x2 = x + zoneW + 2;
-      html += `<line x1="${x1}" y1="${blockY + blockH/2}" x2="${x2}" y2="${blockY + blockH/2}" stroke="#4a4a2e" stroke-width="1.5" stroke-dasharray="5,4"/>`;
+      const strokeColor = isEngland ? '#3a5a7a' : '#4a4a2e';
+      html += `<line x1="${x1}" y1="${blockY + blockH/2}" x2="${x2}" y2="${blockY + blockH/2}" stroke="${strokeColor}" stroke-width="1.5" stroke-dasharray="5,4"/>`;
     }
   }
-
-  // Connector from England to Zone 1
-  const engEnd = margin + zoneW - 2;
-  const z1Start = margin + zoneW + 2;
-  html += `<line x1="${engEnd}" y1="${blockY + blockH/2}" x2="${z1Start}" y2="${blockY + blockH/2}" stroke="#3a5a7a" stroke-width="1.5" stroke-dasharray="5,4"/>`;
 
   // Direction label at bottom
   html += `<text x="${w/2}" y="${h - 8}" text-anchor="middle" fill="#555540" font-size="11" font-family="monospace">OUTBOUND ➤</text>`;
