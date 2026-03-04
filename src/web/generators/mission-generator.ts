@@ -34,14 +34,203 @@ import { resolveCombatRounds, combatView, playerRemoveFighters } from './combat-
 import { executeBombRun } from './bomb-run-generator.js';
 import { executeBailout } from './bailout-generator.js';
 
+/**
+ * Shared zone-combat generator — runs fighter cover, fighter waves, and
+ * combat rounds for a single zone.  Used identically for outbound and
+ * inbound legs so the flow is always:
+ *   B-3 (determine fighters) → display fighters → M-4 (friendly intercept)
+ *   → player removes fighters → combat rounds.
+ *
+ * Returns true if the bomber is destroyed.
+ */
+function* resolveZoneCombat(
+  ctx: GeneratorContext,
+  mission: MissionState,
+  zone: number,
+  direction: 'outbound' | 'inbound',
+  isTarget: boolean,
+  missionNumber: number,
+  squadronMod: number,
+  extraFighterPerWave: boolean,
+  zoneInfo: ReturnType<typeof getZoneInfo>,
+  fighterState: { nextFighterId: number; fightersDestroyed: number },
+): Generator<MissionYield, boolean, number | number[] | undefined> {
+  const tables = ctx.tables;
+
+  // ── Fighter cover ──
+  let coverLevel: FighterCoverLevel | null = null;
+  if (hasFighterCover(zone)) {
+    if (missionNumber <= 5) {
+      coverLevel = 'Good';
+      ctx.emit('COVER', `Fighter cover: Good (missions 1–5: always Good)`, 'combat', 'good',
+        zone, direction,
+        [{ table: 'G-5', rollType: '—', rolled: 0, result: 'Good',
+           description: 'Missions 1–5: always Good fighter cover' }]);
+    } else {
+      const coverPending = createPendingRoll(ctx, 'G-5', `Fighter cover level (Zone ${zone}${direction === 'inbound' ? ' inbound' : ''})`);
+      const coverRoll: number = (yield { type: 'pending', roll: coverPending, events: ctx.eventBuffer }) ?? autoRoll(coverPending.diceType, ctx.rng);
+      ctx.eventBuffer = [];
+
+      const coverResult = tables.lookupWithValue('G-5', coverRoll);
+      if (coverResult) {
+        coverLevel = coverResult.entry.fighter_cover as FighterCoverLevel;
+        const csev = coverLevel === 'Good' ? 'good' : coverLevel === 'Fair' ? 'info' : 'warn';
+        ctx.emit('COVER', `Fighter cover: ${coverLevel}`, 'combat', csev as any,
+          zone, direction,
+          [{ table: 'G-5', tableTitle: 'Fighter Cover', rollType: '1d6', rolled: coverRoll, result: coverLevel,
+             description: 'Allied fighter cover level' }]);
+      }
+    }
+  } else {
+    ctx.emit('COVER', 'No fighter cover in this zone', 'combat', 'warn', zone, direction);
+  }
+
+  // ── Fighter waves ──
+  const waveTable = isTarget ? 'B-2' : 'B-1';
+  const waveMod = getFighterWaveModifier(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
+  const waveTableData = tables.getRoll(waveTable);
+  const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
+  const waveModReason = getFighterWaveModifierReason(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
+
+  const wavePending = createPendingRoll(ctx, waveTable,
+    `Fighter waves (Zone ${zone}${isTarget ? ' — Target' : ''}${direction === 'inbound' ? ' inbound' : ''})`,
+    waveMod, undefined, waveModReason);
+  const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: ctx.eventBuffer }) ?? autoRoll(waveDiceType, ctx.rng);
+  ctx.eventBuffer = [];
+
+  const waveResult = tables.lookupWithValue(waveTable, waveRoll, waveMod);
+  const waveCount = waveResult ? (waveResult.entry.fighter_waves as number ?? 0) : 0;
+
+  if (waveCount === 0) {
+    ctx.emit('COMBAT', 'No enemy fighters encountered', 'combat', 'good', zone, direction,
+      [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }],
+      false, combatView([]));
+    return false;
+  }
+
+  ctx.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', zone, direction,
+    [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod,
+       result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
+
+  // ── Process each wave ──
+  for (let w = 1; w <= waveCount; w++) {
+    ctx.emit('WAVE', `Fighter Wave ${w}`, 'combat', 'bad', zone, direction);
+
+    // Roll attacking fighters on B-3
+    const atkPending = createPendingRoll(ctx, 'B-3',
+      `Attacking fighters (Wave ${w}, Zone ${zone}${direction === 'inbound' ? ' inbound' : ''})`);
+    const atkRoll: number = (yield { type: 'pending', roll: atkPending, events: ctx.eventBuffer }) ?? autoRoll(atkPending.diceType, ctx.rng);
+    ctx.eventBuffer = [];
+
+    const atkResult = tables.lookupWithValue('B-3', atkRoll);
+    let fighters: Fighter[] = [];
+
+    if (atkResult) {
+      const fighterData = atkResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
+      if (fighterData && fighterData.length > 0) {
+        fighters = fighterData.map(f => ({
+          id: fighterState.nextFighterId++, type: f.type as any, position: f.position,
+          damage: [], attacksMade: 0, scoredHit: false,
+        }));
+      }
+
+      // Handle "No Attackers" with out-of-formation reroll
+      if (fighters.length === 0 && !mission.outOfFormation) {
+        ctx.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', zone, direction,
+          [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
+          false, combatView([]));
+        continue;
+      } else if (fighters.length === 0 && mission.outOfFormation) {
+        // Reroll when out of formation
+        ctx.emit('COMBAT', 'No attackers rolled, but out of formation — rerolling', 'combat', 'warn', zone, direction);
+        const rerollPending = createPendingRoll(ctx, 'B-3', `Attacking fighters reroll (out of formation)`);
+        const reroll: number = (yield { type: 'pending', roll: rerollPending, events: ctx.eventBuffer }) ?? autoRoll(rerollPending.diceType, ctx.rng);
+        ctx.eventBuffer = [];
+
+        const rerollResult = tables.lookupWithValue('B-3', reroll);
+        if (rerollResult) {
+          const reFighterData = rerollResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
+          if (reFighterData && reFighterData.length > 0) {
+            fighters = reFighterData.map(f => ({
+              id: fighterState.nextFighterId++, type: f.type as any, position: f.position,
+              damage: [], attacksMade: 0, scoredHit: false,
+            }));
+          }
+        }
+        if (fighters.length === 0) {
+          ctx.emit('COMBAT', 'Reroll: still no attackers', 'combat', 'good', zone, direction);
+          continue;
+        }
+      }
+    } else {
+      ctx.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', zone, direction,
+        [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
+        false, combatView([]));
+      continue;
+    }
+
+    if (extraFighterPerWave && !mission.outOfFormation) {
+      fighters = addLeadTailExtraFighter(fighters, fighterState.nextFighterId++);
+    }
+
+    // Describe fighters
+    const initialFighterCount = fighters.length;
+    const fDescs = fighters.map(f => `${f.type} at ${f.position}`);
+    ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', zone, direction,
+      [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: `${fighters.length} fighters` }],
+      false, combatView(fighters));
+
+    // Fighter cover defense (M-4)
+    let successiveCover = 0;
+    if (coverLevel && hasFighterCover(zone)) {
+      const m4RollValue: number = yield* yieldCombatRoll(ctx,
+        'M-4', 'Fighter Cover Defense',
+        `Friendly fighters intercept — cover level: ${coverLevel}`,
+        '1d6',
+        buildM4Rows(tables, coverLevel),
+      );
+
+      const coverResult = rollFighterCoverDefense(coverLevel, ctx.createFixedRng(m4RollValue), tables, 0);
+      successiveCover = coverResult.successiveDrivenOff;
+      if (coverResult.initialDrivenOff > 0) {
+        fighters = yield* playerRemoveFighters(ctx, fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, zone, direction);
+      } else {
+        ctx.emit('COMBAT', `Friendly fighters fail to intercept`, 'combat', 'warn', zone, direction,
+          [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `0 driven off (${coverLevel} cover)` }]);
+      }
+    }
+
+    if (fighters.length === 0) {
+      ctx.emit('COMBAT', 'All fighters driven off!', 'combat', 'good', zone, direction,
+        undefined, false, combatView([]));
+      continue;
+    }
+
+    // Emit updated fighter list after drive-offs so the combat view refreshes
+    if (fighters.length < initialFighterCount) {
+      const remainDescs = fighters.map(f => `${f.type} at ${f.position}`);
+      ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${remainDescs.join(', ')}`, 'combat', 'warn', zone, direction,
+        undefined, false, combatView(fighters));
+    }
+
+    // Combat rounds
+    const activeFighters = [...fighters];
+    const combatResult = yield* resolveCombatRounds(ctx, activeFighters, fighters, mission, zone, direction,
+      () => fighterState.fightersDestroyed, (v) => { fighterState.fightersDestroyed = v; },
+      (c) => executeBailout(ctx, c), successiveCover);
+    if (combatResult.destroyed) { return true; }
+  }
+
+  return false;
+}
+
 export function* executeMission(
   ctx: GeneratorContext,
 ): Generator<MissionYield, void, number | number[] | undefined> {
   const missionNumber = ctx.state.campaign.missionsCompleted + 1;
   const rng = ctx.rng;
   const tables = ctx.tables;
-  let nextFighterId = 1;
-  let fightersDestroyed = 0;
+  const fighterState = { nextFighterId: 1, fightersDestroyed: 0 };
 
   // Check crew availability
   const activeCrew = ctx.state.campaign.crew.filter(c => c.status === 'active');
@@ -203,166 +392,11 @@ export function* executeMission(
       }
     }
 
-    // Fighter cover
-    let coverLevel: FighterCoverLevel | null = null;
-    if (hasFighterCover(z)) {
-      if (missionNumber <= 5) {
-        coverLevel = 'Good';
-        ctx.emit('COVER', `Fighter cover: Good (missions 1–5: always Good)`, 'combat', 'good',
-          z, 'outbound', [{
-            table: 'G-5', rollType: '—', rolled: 0, result: 'Good',
-            description: 'Missions 1–5: always Good fighter cover',
-          }]);
-      } else {
-        const coverPending = createPendingRoll(ctx, 'G-5', `Fighter cover level (Zone ${z})`);
-        const coverRoll: number = (yield { type: 'pending', roll: coverPending, events: ctx.eventBuffer }) ?? autoRoll(coverPending.diceType, rng);
-        ctx.eventBuffer = [];
-
-        const coverResult = tables.lookupWithValue('G-5', coverRoll);
-        if (coverResult) {
-          coverLevel = coverResult.entry.fighter_cover as FighterCoverLevel;
-          const csev = coverLevel === 'Good' ? 'good' : coverLevel === 'Fair' ? 'info' : 'warn';
-          ctx.emit('COVER', `Fighter cover: ${coverLevel}`, 'combat', csev as any,
-            z, 'outbound', [{
-              table: 'G-5', tableTitle: 'Fighter Cover', rollType: '1d6', rolled: coverRoll, result: coverLevel,
-              description: 'Allied fighter cover level',
-            }]);
-        }
-      }
-    } else {
-      ctx.emit('COVER', 'No fighter cover in this zone', 'combat', 'warn', z, 'outbound');
-    }
-
-    // Fighter waves
-    const waveMod = getFighterWaveModifier(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-    const waveTable = isTarget ? 'B-2' : 'B-1';
-    const waveTableData = tables.getRoll(waveTable);
-    const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
-
-    const waveModReason = getFighterWaveModifierReason(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-    const wavePending = createPendingRoll(ctx, waveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''})`, waveMod, undefined, waveModReason);
-    const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: ctx.eventBuffer }) ?? autoRoll(waveDiceType, rng);
-    ctx.eventBuffer = [];
-
-    const waveResult = tables.lookupWithValue(waveTable, waveRoll, waveMod);
-    const waveCount = waveResult ? (waveResult.entry.fighter_waves as number ?? 0) : 0;
-
-    if (waveCount === 0) {
-      ctx.emit('COMBAT', 'No enemy fighters encountered', 'combat', 'good', z, 'outbound',
-        [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }],
-        false, combatView([]));
-    } else {
-      ctx.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', z, 'outbound',
-        [{ table: waveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
-    }
-
-    // Process fighter waves
-    for (let w = 1; w <= waveCount && !destroyed; w++) {
-      ctx.emit('WAVE', `Fighter Wave ${w}`, 'combat', 'bad', z, 'outbound');
-
-      // Roll attacking fighters on B-3
-      const atkPending = createPendingRoll(ctx, 'B-3', `Attacking fighters (Wave ${w}, Zone ${z})`);
-      const atkRoll: number = (yield { type: 'pending', roll: atkPending, events: ctx.eventBuffer }) ?? autoRoll(atkPending.diceType, rng);
-      ctx.eventBuffer = [];
-
-      const atkResult = tables.lookupWithValue('B-3', atkRoll);
-      let fighters: Fighter[] = [];
-
-      if (atkResult) {
-        const fighterData = atkResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
-        if (fighterData && fighterData.length > 0) {
-          fighters = fighterData.map(f => ({
-            id: nextFighterId++,
-            type: f.type as any,
-            position: f.position,
-            damage: [],
-            attacksMade: 0,
-            scoredHit: false,
-          }));
-        }
-
-        // Handle "No Attackers" with out-of-formation reroll
-        if (fighters.length === 0 && !mission.outOfFormation) {
-          ctx.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
-            [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
-            false, combatView([]));
-          continue;
-        } else if (fighters.length === 0 && mission.outOfFormation) {
-          // Reroll when out of formation
-          ctx.emit('COMBAT', 'No attackers rolled, but out of formation — rerolling', 'combat', 'warn', z, 'outbound');
-          const rerollPending = createPendingRoll(ctx, 'B-3', `Attacking fighters reroll (out of formation)`);
-          const reroll: number = (yield { type: 'pending', roll: rerollPending, events: ctx.eventBuffer }) ?? autoRoll(rerollPending.diceType, rng);
-          ctx.eventBuffer = [];
-
-          const rerollResult = tables.lookupWithValue('B-3', reroll);
-          if (rerollResult) {
-            const reFighterData = rerollResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
-            if (reFighterData && reFighterData.length > 0) {
-              fighters = reFighterData.map(f => ({
-                id: nextFighterId++, type: f.type as any, position: f.position,
-                damage: [], attacksMade: 0, scoredHit: false,
-              }));
-            }
-          }
-          if (fighters.length === 0) {
-            ctx.emit('COMBAT', 'Reroll: still no attackers', 'combat', 'good', z, 'outbound');
-            continue;
-          }
-        }
-      } else {
-        ctx.emit('COMBAT', 'Fighters driven off by other B-17s', 'combat', 'good', z, 'outbound',
-          undefined, false, combatView([]));
-        continue;
-      }
-
-      if (extraFighterPerWave && !mission.outOfFormation) {
-        fighters = addLeadTailExtraFighter(fighters, nextFighterId++);
-      }
-
-      // Describe fighters
-      const initialFighterCount = fighters.length;
-      const fDescs = fighters.map(f => `${f.type} at ${f.position}`);
-      ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescs.join(', ')}`, 'combat', 'warn', z, 'outbound',
-        undefined, false, combatView(fighters));
-
-      // Fighter cover defense (M-4)
-      let successiveCover = 0;
-      if (coverLevel && hasFighterCover(z)) {
-        const m4RollValue: number = yield* yieldCombatRoll(ctx,
-          'M-4', 'Fighter Cover Defense',
-          `Friendly fighters intercept — cover level: ${coverLevel}`,
-          '1d6',
-          buildM4Rows(tables, coverLevel),
-        );
-
-        const coverResult = rollFighterCoverDefense(coverLevel, ctx.createFixedRng(m4RollValue), tables, 0);
-        successiveCover = coverResult.successiveDrivenOff;
-        if (coverResult.initialDrivenOff > 0) {
-          fighters = yield* playerRemoveFighters(ctx, fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'outbound');
-        } else {
-          ctx.emit('COMBAT', `Friendly fighters fail to intercept`, 'combat', 'warn', z, 'outbound',
-            [{ table: 'M-4', rollType: '1d6', rolled: m4RollValue, result: `0 driven off (${coverLevel} cover)` }]);
-        }
-      }
-
-      if (fighters.length === 0) {
-        ctx.emit('COMBAT', 'All fighters driven off!', 'combat', 'good', z, 'outbound',
-          undefined, false, combatView([]));
-        continue;
-      }
-
-      // Emit updated fighter list after drive-offs so the combat view refreshes
-      if (fighters.length < initialFighterCount) {
-        const remainDescs = fighters.map(f => `${f.type} at ${f.position}`);
-        ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${remainDescs.join(', ')}`, 'combat', 'warn', z, 'outbound',
-          undefined, false, combatView(fighters));
-      }
-
-      // Combat rounds — Rule 6.3a: allocate ALL guns before resolving fire
-      const activeFighters = [...fighters];
-      const combatResult = yield* resolveCombatRounds(ctx, activeFighters, fighters, mission, z, 'outbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; }, (c) => executeBailout(ctx, c), successiveCover);
-      if (combatResult.destroyed) { destroyed = true; }
-    }
+    // Fighter combat (shared outbound/inbound flow)
+    const zoneDestroyed = yield* resolveZoneCombat(
+      ctx, mission, z, 'outbound', isTarget, missionNumber,
+      squadronMod, extraFighterPerWave, zoneInfo, fighterState);
+    if (zoneDestroyed) { destroyed = true; }
 
     // Abort check
     if (!destroyed && !mission.aborted && mission.direction === 'outbound') {
@@ -392,116 +426,11 @@ export function* executeMission(
 
       ctx.emit('ZONE', `Entering Zone ${z}${isTarget ? ' — TARGET' : ''} inbound${overText}`, 'movement', 'info', z, 'inbound', undefined, true);
 
-      // Fighter cover
-      let coverLevel: FighterCoverLevel | null = null;
-      if (hasFighterCover(z)) {
-        if (missionNumber <= 5) {
-          coverLevel = 'Good';
-          ctx.emit('COVER', `Fighter cover: Good (missions 1–5: always Good)`, 'combat', 'good', z, 'inbound',
-            [{ table: 'G-5', rollType: '—', rolled: 0, result: 'Good', description: 'Missions 1–5: always Good fighter cover' }]);
-        } else {
-          const coverPending = createPendingRoll(ctx, 'G-5', `Fighter cover level (Zone ${z} inbound)`);
-          const coverRoll: number = (yield { type: 'pending', roll: coverPending, events: ctx.eventBuffer }) ?? autoRoll(coverPending.diceType, rng);
-          ctx.eventBuffer = [];
-
-          const coverResult = tables.lookupWithValue('G-5', coverRoll);
-          if (coverResult) {
-            coverLevel = coverResult.entry.fighter_cover as FighterCoverLevel;
-            ctx.emit('COVER', `Fighter cover: ${coverLevel}`, 'combat',
-              coverLevel === 'Good' ? 'good' : 'info', z, 'inbound',
-              [{ table: 'G-5', tableTitle: 'Fighter Cover', rollType: '1d6', rolled: coverRoll, result: coverLevel }]);
-          }
-        }
-      }
-
-      // Fighter waves — use B-2 for target zone, B-1 for non-target zones
-      const inboundWaveTable = isTarget ? 'B-2' : 'B-1';
-      const waveMod = getFighterWaveModifier(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-      const waveTableData = tables.getRoll(inboundWaveTable);
-      const waveDiceType = normalizeDiceType(waveTableData?.rolltype ?? '1d6');
-
-      const waveModReason = getFighterWaveModifierReason(zoneInfo ?? null, squadronMod, mission.outOfFormation, 0);
-      const wavePending = createPendingRoll(ctx, inboundWaveTable, `Fighter waves (Zone ${z}${isTarget ? ' — Target' : ''} inbound)`, waveMod, undefined, waveModReason);
-      const waveRoll: number = (yield { type: 'pending', roll: wavePending, events: ctx.eventBuffer }) ?? autoRoll(waveDiceType, rng);
-      ctx.eventBuffer = [];
-
-      const waveResult = tables.lookupWithValue(inboundWaveTable, waveRoll, waveMod);
-      const waveCount = waveResult ? (waveResult.entry.fighter_waves as number ?? 0) : 0;
-
-      if (waveCount === 0) {
-        ctx.emit('COMBAT', 'No enemy fighters', 'combat', 'good', z, 'inbound',
-          [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: '0 waves' }],
-          false, combatView([]));
-        continue;
-      }
-
-      ctx.emit('COMBAT', `${plural(waveCount, 'fighter wave')}!`, 'combat', 'bad', z, 'inbound',
-        [{ table: inboundWaveTable, rollType: waveDiceType, rolled: waveRoll, modifier: waveMod, result: `${waveCount} ${waveCount === 1 ? 'wave' : 'waves'}` }]);
-
-      // Inbound combat
-      for (let w = 1; w <= waveCount && !destroyed; w++) {
-        ctx.emit('WAVE', `Fighter Wave ${w}`, 'combat', 'bad', z, 'inbound');
-
-        const atkPending = createPendingRoll(ctx, 'B-3', `Attacking fighters (Wave ${w}, Zone ${z} inbound)`);
-        const atkRoll: number = (yield { type: 'pending', roll: atkPending, events: ctx.eventBuffer }) ?? autoRoll(atkPending.diceType, rng);
-        ctx.eventBuffer = [];
-
-        const atkResult = tables.lookupWithValue('B-3', atkRoll);
-        let fighters: Fighter[] = [];
-
-        if (atkResult) {
-          const fighterData = atkResult.entry.fighters as Array<{ type: string; position: string; count: number }> | undefined;
-          if (fighterData && fighterData.length > 0) {
-            fighters = fighterData.map(f => ({
-              id: nextFighterId++, type: f.type as any, position: f.position,
-              damage: [], attacksMade: 0, scoredHit: false,
-            }));
-          }
-        }
-
-        if (fighters.length === 0) {
-          ctx.emit('COMBAT', 'Fighters driven off by formation', 'combat', 'good', z, 'inbound',
-            [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
-            false, combatView([]));
-          continue;
-        }
-
-        if (extraFighterPerWave && !mission.outOfFormation) {
-          fighters = addLeadTailExtraFighter(fighters, nextFighterId++);
-        }
-
-        // Describe fighters (B-3 result)
-        const fDescsInbound = fighters.map(f => `${f.type} at ${f.position}`);
-        ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescsInbound.join(', ')}`, 'combat', 'warn', z, 'inbound',
-          [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: `${fighters.length} fighters` }],
-          false, combatView(fighters));
-
-        // Fighter cover defense (M-4)
-        let inboundSuccessiveCover = 0;
-        if (coverLevel && hasFighterCover(z)) {
-          const m4RollValue: number = yield* yieldCombatRoll(ctx,
-            'M-4', 'Fighter Cover Defense',
-            `Friendly fighters intercept — cover level: ${coverLevel}`,
-            '1d6',
-            buildM4Rows(tables, coverLevel),
-          );
-
-          const coverResult = rollFighterCoverDefense(coverLevel, ctx.createFixedRng(m4RollValue), tables, 0);
-          inboundSuccessiveCover = coverResult.successiveDrivenOff;
-          if (coverResult.initialDrivenOff > 0) {
-            fighters = yield* playerRemoveFighters(ctx, fighters, coverResult.initialDrivenOff, m4RollValue, coverLevel, z, 'inbound');
-          }
-        }
-
-        if (fighters.length === 0) { continue; }
-
-        ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')} attacking`, 'combat', 'warn', z, 'inbound',
-          undefined, false, combatView(fighters));
-
-        // Combat rounds
-        const inboundResult = yield* resolveCombatRounds(ctx, fighters, fighters, mission, z, 'inbound', () => fightersDestroyed, (v) => { fightersDestroyed = v; }, (c) => executeBailout(ctx, c), inboundSuccessiveCover);
-        if (inboundResult.destroyed) { destroyed = true; }
-      }
+      // Fighter combat (shared outbound/inbound flow)
+      const zoneDestroyed = yield* resolveZoneCombat(
+        ctx, mission, z, 'inbound', isTarget, missionNumber,
+        squadronMod, extraFighterPerWave, zoneInfo, fighterState);
+      if (zoneDestroyed) { destroyed = true; }
     }
   }
 
@@ -649,7 +578,7 @@ export function* executeMission(
   const survived = !destroyed;
   ctx.emit('DEBRIEF', `Mission #${missionNumber} to ${target.name}: ${survived ? 'SURVIVED' : 'LOST'}`, 'debrief',
     survived ? 'good' : 'critical', undefined, undefined,
-    [{ table: '', rollType: '', rolled: 0, result: survived ? 'Survived' : 'Lost', description: `Fighters destroyed: ${fightersDestroyed}` }], true);
+    [{ table: '', rollType: '', rolled: 0, result: survived ? 'Survived' : 'Lost', description: `Fighters destroyed: ${fighterState.fightersDestroyed}` }], true);
 
   // ═══ BETWEEN-MISSION CREW PROCESSING ═══
   const crewUpdates: string[] = [];
