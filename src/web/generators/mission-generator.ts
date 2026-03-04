@@ -461,13 +461,20 @@ export function* executeMission(
 
         if (fighters.length === 0) {
           ctx.emit('COMBAT', 'Fighters driven off by formation', 'combat', 'good', z, 'inbound',
-            undefined, false, combatView([]));
+            [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: 'No attackers' }],
+            false, combatView([]));
           continue;
         }
 
         if (extraFighterPerWave && !mission.outOfFormation) {
           fighters = addLeadTailExtraFighter(fighters, nextFighterId++);
         }
+
+        // Describe fighters (B-3 result)
+        const fDescsInbound = fighters.map(f => `${f.type} at ${f.position}`);
+        ctx.emit('COMBAT', `${plural(fighters.length, 'fighter')}: ${fDescsInbound.join(', ')}`, 'combat', 'warn', z, 'inbound',
+          [{ table: 'B-3', rollType: 'd6d6', rolled: atkRoll, result: `${fighters.length} fighters` }],
+          false, combatView(fighters));
 
         // Fighter cover defense (M-4)
         let inboundSuccessiveCover = 0;
