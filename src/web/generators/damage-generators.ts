@@ -181,18 +181,24 @@ export function* applySubRollEffect(
     if (mission) { mission.landingModifiers -= 3; mission.landingModifierReasons.push('Landing gear -3'); }
     severity = 'critical'; isImportant = true;
   }
-  // ── Wing flap inoperable (landing -1) ──
+  // ── Wing flap inoperable (landing -1 only when BOTH sides inoperable per note b B1-1) ──
   else if (outcomeLower.includes('flap inoperable') || outcomeLower.includes('wing flap inoperable')) {
     const isPort = location === 'Port Wing';
     if (isPort) ac.portFlapInop = true; else ac.starboardFlapInop = true;
-    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push(`${isPort ? 'Port' : 'Starboard'} flap -1`); }
+    if (mission && ac.portFlapInop && ac.starboardFlapInop) {
+      mission.landingModifiers -= 1;
+      mission.landingModifierReasons.push('Both flaps -1');
+    }
     severity = 'bad'; isImportant = true;
   }
-  // ── Aileron inoperable (landing -1) ──
+  // ── Aileron inoperable (landing -1 only when BOTH sides inoperable per note b B1-1) ──
   else if (outcomeLower.includes('aileron inoperable')) {
     const isPort = location === 'Port Wing';
     if (isPort) ac.portAileronInop = true; else ac.starboardAileronInop = true;
-    if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push(`${isPort ? 'Port' : 'Starboard'} aileron -1`); }
+    if (mission && ac.portAileronInop && ac.starboardAileronInop) {
+      mission.landingModifiers -= 1;
+      mission.landingModifierReasons.push('Both ailerons -1');
+    }
     severity = 'bad'; isImportant = true;
   }
   // ── Elevator inoperable ──
@@ -538,6 +544,31 @@ export function* resolveCompartmentHitGen(
                 { table: 'B1-1', rollType: '1d6', rolled: tankLocRoll, result: tankLocation, description: 'Tank location' },
                 { table: 'B1-1', rollType: '1d6', rolled: tankDmgRoll, result: 'Fire', description: 'Fuel tank damage' },
               ], true);
+
+            // ── Note f: Outboard fuel tank fire → immediate emergency roll ──
+            // 1-5: Controlled bailout (G-6), 6: Explosion → uncontrolled bailout (G-7)
+            if (tankLocation === 'Outboard tank') {
+              const noteFRoll: number = yield* yieldCombatRoll(
+                ctx,
+                'B1-1', 'Outboard Fuel Tank Fire — Note f',
+                `Outboard fuel fire emergency! Roll for explosion`, '1d6',
+                [
+                  { roll: '1-5', columns: { result: 'Controlled bailout — Table G-6' } },
+                  { roll: '6', columns: { result: 'EXPLOSION — uncontrolled bailout — Table G-7' } },
+                ],
+              );
+              if (noteFRoll >= 6) {
+                ctx.emit('DAMAGE', `EXPLOSION! Outboard fuel tank explodes — uncontrolled bailout!`, 'damage', 'critical', zone, direction,
+                  [{ table: 'B1-1', rollType: '1d6', rolled: noteFRoll, result: 'Explosion', description: 'Note f' }], true);
+                yield* executeBailout(false); // G-7: uncontrolled
+                return;
+              } else {
+                ctx.emit('DAMAGE', `Outboard fuel fire — crew must bail out (controlled)`, 'damage', 'critical', zone, direction,
+                  [{ table: 'B1-1', rollType: '1d6', rolled: noteFRoll, result: 'Controlled bailout', description: 'Note f' }], true);
+                yield* executeBailout(true); // G-6: controlled
+                return;
+              }
+            }
           } else if (tankDmgRoll <= 4) {
             ctx.state.campaign.aircraft.fuelLeak = true;
             ctx.emit('DAMAGE', `Fuel leak in ${wingLabel} wing ${tankLocation} — limited range`, 'damage', 'bad', zone, direction,

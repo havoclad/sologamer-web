@@ -215,21 +215,34 @@ describe('applySubRollEffect', () => {
     expect(ctx.state.campaign.aircraft.superficialHits).toBe(1);
   });
 
-  it('handles port wing flap inoperable', () => {
+  it('handles port wing flap inoperable (no landing modifier for single side per note b)', () => {
     const gen = applySubRollEffect(
       ctx, 'B1-1', '1d6', 3, baseDmg, 'Port Wing', 1, 'Wing flap inoperable', 4, 'outbound',
     );
     driveGenerator(gen, []);
     expect(ctx.state.campaign.aircraft.portFlapInop).toBe(true);
-    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+    expect(ctx.state.mission!.landingModifiers).toBe(0); // single side → no penalty
   });
 
-  it('handles starboard wing flap inoperable', () => {
+  it('handles starboard wing flap inoperable (no landing modifier for single side per note b)', () => {
     const gen = applySubRollEffect(
       ctx, 'B1-1', '1d6', 3, baseDmg, 'Starboard Wing', 1, 'Wing flap inoperable', 4, 'outbound',
     );
     driveGenerator(gen, []);
     expect(ctx.state.campaign.aircraft.starboardFlapInop).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(0); // single side → no penalty
+  });
+
+  it('applies -1 landing modifier only when BOTH flaps inoperable (note b B1-1)', () => {
+    // Damage port flap first
+    ctx.state.campaign.aircraft.portFlapInop = true;
+    // Now damage starboard flap
+    const gen = applySubRollEffect(
+      ctx, 'B1-1', '1d6', 3, baseDmg, 'Starboard Wing', 1, 'Wing flap inoperable', 4, 'outbound',
+    );
+    driveGenerator(gen, []);
+    expect(ctx.state.campaign.aircraft.starboardFlapInop).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1); // both sides → penalty
   });
 
   it('handles crew wound outcome (chains to wound resolution)', () => {

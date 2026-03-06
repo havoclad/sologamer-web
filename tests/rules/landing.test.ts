@@ -16,6 +16,9 @@ function defaultInputs(): LandingModifierInputs {
   return {
     enginesOut: 0, tailWheelInop: false,
     controlDamage: { rudder: false, elevator: false, ailerons: false },
+    portFlapInop: false, starboardFlapInop: false,
+    portAileronInop: false, starboardAileronInop: false,
+    portElevatorInop: false, starboardElevatorInop: false,
     bipDamage: false, landingInEurope: false, accumulatedModifiers: 0,
     radioOut: false, pilotCopilotExperienced: false,
     nonPilotFlying: false, bombsAboard: false,
@@ -55,6 +58,37 @@ describe('calculateLandModifier', () => {
       ...defaultInputs(), landingInEurope: true, bipDamage: true,
     });
     expect(mod).toBe(-7); // -3 Europe + -4 BIP
+  });
+
+  it('does NOT apply -1 for single-side flap inoperable (note b B1-1)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), starboardFlapInop: true })).toBe(0);
+    expect(calculateLandModifier({ ...defaultInputs(), portFlapInop: true })).toBe(0);
+  });
+
+  it('applies -1 only when BOTH flaps inoperable (note b B1-1)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), portFlapInop: true, starboardFlapInop: true })).toBe(-1);
+  });
+
+  it('does NOT apply -1 for single-side aileron inoperable (note b B1-1)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), starboardAileronInop: true })).toBe(0);
+    expect(calculateLandModifier({ ...defaultInputs(), portAileronInop: true })).toBe(0);
+  });
+
+  it('applies -1 only when BOTH ailerons inoperable (note b B1-1)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), portAileronInop: true, starboardAileronInop: true })).toBe(-1);
+  });
+
+  it('does NOT apply -1 for single-side elevator inoperable (note B P-6)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), starboardElevatorInop: true })).toBe(0);
+    expect(calculateLandModifier({ ...defaultInputs(), portElevatorInop: true })).toBe(0);
+  });
+
+  it('applies -1 only when BOTH elevators inoperable (note B P-6)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), portElevatorInop: true, starboardElevatorInop: true })).toBe(-1);
+  });
+
+  it('applies -1 for rudder (single surface, no both-sides check)', () => {
+    expect(calculateLandModifier({ ...defaultInputs(), controlDamage: { rudder: true, elevator: false, ailerons: false } })).toBe(-1);
   });
 });
 

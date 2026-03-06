@@ -71,7 +71,20 @@ export interface LandingResult {
 export interface LandingModifierInputs {
   enginesOut: number;
   tailWheelInop: boolean;
-  controlDamage: { rudder: boolean; elevator: boolean; ailerons: boolean };
+  controlDamage: {
+    rudder: boolean;
+    /** @deprecated Use portElevatorInop/starboardElevatorInop instead */
+    elevator: boolean;
+    /** @deprecated Use portAileronInop/starboardAileronInop instead */
+    ailerons: boolean;
+  };
+  /** Per note b (B1-1) / note B (P-6): -1 only when BOTH sides inoperable */
+  portFlapInop?: boolean;
+  starboardFlapInop?: boolean;
+  portAileronInop?: boolean;
+  starboardAileronInop?: boolean;
+  portElevatorInop?: boolean;
+  starboardElevatorInop?: boolean;
   bipDamage: boolean;
   landingInEurope: boolean;
   accumulatedModifiers: number;
@@ -102,9 +115,22 @@ export function calculateLandModifier(inputs: LandingModifierInputs): number {
   if (inputs.tailWheelInop) mod -= 1;
 
   // Control damage modifiers
+  // Rudder: only one rudder, so single boolean is fine
   if (inputs.controlDamage.rudder) mod -= 1;
-  if (inputs.controlDamage.elevator) mod -= 1;
-  if (inputs.controlDamage.ailerons) mod -= 1;
+  // Elevator: per note b (B1-1) / note B (P-6), -1 only when BOTH sides inoperable
+  if (inputs.portElevatorInop !== undefined && inputs.starboardElevatorInop !== undefined) {
+    if (inputs.portElevatorInop && inputs.starboardElevatorInop) mod -= 1;
+  } else if (inputs.controlDamage.elevator) {
+    mod -= 1; // legacy fallback
+  }
+  // Ailerons: per note b (B1-1) / note B (P-6), -1 only when BOTH sides inoperable
+  if (inputs.portAileronInop !== undefined && inputs.starboardAileronInop !== undefined) {
+    if (inputs.portAileronInop && inputs.starboardAileronInop) mod -= 1;
+  } else if (inputs.controlDamage.ailerons) {
+    mod -= 1; // legacy fallback
+  }
+  // Flaps: per note b (B1-1) / note B (P-6), -1 only when BOTH sides inoperable
+  if (inputs.portFlapInop && inputs.starboardFlapInop) mod -= 1;
 
   // Non-pilot flying → -11 per G-10 notes (applies to G-9 too per §14.2c)
   if (inputs.nonPilotFlying) mod -= 11;
