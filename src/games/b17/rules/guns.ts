@@ -24,15 +24,15 @@ const GUN_CONFIGS: Array<{
   twin: boolean;
   ammoCapacity: number;
 }> = [
-  { id: 'Nose', name: 'Nose gun', crewPosition: 'bombardier', twin: false, ammoCapacity: 12 },
-  { id: 'Port_Cheek', name: 'Port cheek gun', crewPosition: 'navigator', twin: false, ammoCapacity: 12 },
-  { id: 'Starboard_Cheek', name: 'Starboard cheek gun', crewPosition: 'navigator', twin: false, ammoCapacity: 12 },
+  { id: 'Nose', name: 'Nose gun', crewPosition: 'bombardier', twin: false, ammoCapacity: 15 },
+  { id: 'Port_Cheek', name: 'Port cheek gun', crewPosition: 'navigator', twin: false, ammoCapacity: 10 },
+  { id: 'Starboard_Cheek', name: 'Starboard cheek gun', crewPosition: 'navigator', twin: false, ammoCapacity: 10 },
   { id: 'Top_Turret', name: 'Top turret', crewPosition: 'engineer', twin: true, ammoCapacity: 16 },
-  { id: 'Ball_Turret', name: 'Ball turret', crewPosition: 'ball_turret', twin: true, ammoCapacity: 16 },
-  { id: 'Port_Waist', name: 'Left waist gun', crewPosition: 'left_waist', twin: false, ammoCapacity: 12 },
-  { id: 'Starboard_Waist', name: 'Right waist gun', crewPosition: 'right_waist', twin: false, ammoCapacity: 12 },
-  { id: 'Radio', name: 'Radio room gun', crewPosition: 'radioman', twin: false, ammoCapacity: 8 },
-  { id: 'Tail', name: 'Tail guns', crewPosition: 'tail_gunner', twin: true, ammoCapacity: 16 },
+  { id: 'Ball_Turret', name: 'Ball turret', crewPosition: 'ball_turret', twin: true, ammoCapacity: 20 },
+  { id: 'Port_Waist', name: 'Left waist gun', crewPosition: 'left_waist', twin: false, ammoCapacity: 20 },
+  { id: 'Starboard_Waist', name: 'Right waist gun', crewPosition: 'right_waist', twin: false, ammoCapacity: 20 },
+  { id: 'Radio', name: 'Radio room gun', crewPosition: 'radioman', twin: false, ammoCapacity: 10 },
+  { id: 'Tail', name: 'Tail guns', crewPosition: 'tail_gunner', twin: true, ammoCapacity: 23 },
 ];
 
 /** Create the full set of 9 guns with default ammo loadout. */

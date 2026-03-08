@@ -47,13 +47,17 @@ describe('initializeGuns', () => {
     expect(getGun(guns, 'Radio').twin).toBe(false);
   });
 
-  it('ammo capacities match legacy defaults', () => {
+  it('ammo capacities match rulebook values', () => {
     const guns = initializeGuns();
-    expect(getGun(guns, 'Nose').ammoCapacity).toBe(12);
+    expect(getGun(guns, 'Nose').ammoCapacity).toBe(15);
+    expect(getGun(guns, 'Port_Cheek').ammoCapacity).toBe(10);
+    expect(getGun(guns, 'Starboard_Cheek').ammoCapacity).toBe(10);
     expect(getGun(guns, 'Top_Turret').ammoCapacity).toBe(16);
-    expect(getGun(guns, 'Ball_Turret').ammoCapacity).toBe(16);
-    expect(getGun(guns, 'Radio').ammoCapacity).toBe(8);
-    expect(getGun(guns, 'Tail').ammoCapacity).toBe(16);
+    expect(getGun(guns, 'Ball_Turret').ammoCapacity).toBe(20);
+    expect(getGun(guns, 'Port_Waist').ammoCapacity).toBe(20);
+    expect(getGun(guns, 'Starboard_Waist').ammoCapacity).toBe(20);
+    expect(getGun(guns, 'Radio').ammoCapacity).toBe(10);
+    expect(getGun(guns, 'Tail').ammoCapacity).toBe(23);
   });
 });
 
@@ -150,7 +154,7 @@ describe('gunsToAmmo', () => {
     guns[0].ammo = 5; // Nose
     const ammo = gunsToAmmo(guns);
     expect(ammo['Nose']).toBe(5);
-    expect(ammo['Tail']).toBe(16);
+    expect(ammo['Tail']).toBe(23);
   });
 });
 
@@ -159,6 +163,6 @@ describe('cloneGuns', () => {
     const guns = initializeGuns();
     const cloned = cloneGuns(guns);
     cloned[0].ammo = 0;
-    expect(guns[0].ammo).toBe(12); // original unchanged
+    expect(guns[0].ammo).toBe(15); // original unchanged
   });
 });
