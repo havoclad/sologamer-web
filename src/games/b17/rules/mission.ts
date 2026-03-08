@@ -129,6 +129,7 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     portWingRootHits: ac.portWingRootHits ?? 0,
     starboardWingRootHits: ac.starboardWingRootHits ?? 0,
     superficialHits: ac.superficialHits ?? 0,
+    controlCableHits: ac.controlCableHits ?? 0,
   };
 }
 

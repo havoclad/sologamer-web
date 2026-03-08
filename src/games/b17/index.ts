@@ -51,6 +51,7 @@ function createDefaultAircraft(): AircraftState {
     portWingRootHits: 0,
     starboardWingRootHits: 0,
     superficialHits: 0,
+    controlCableHits: 0,
   };
 }
 

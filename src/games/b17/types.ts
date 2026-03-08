@@ -115,6 +115,7 @@ export interface AircraftState {
   portWingRootHits: number;
   starboardWingRootHits: number;
   superficialHits: number;
+  controlCableHits: number;
 }
 
 // ─── Mission ───

@@ -67,7 +67,8 @@
     "12": {
       "result": "Control Cables",
       "description": "See effect for roll of 12 on Pilot Compartment Table P-2",
-      "see": "P-2:12"
+      "see": "P-2:12",
+      "effect": "control_cables"
     }
   },
   "notes": [

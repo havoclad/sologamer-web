@@ -500,6 +500,29 @@ export function* resolveCompartmentHitGen(
         }
         break;
       }
+      case 'control_cables': {
+        const ac = ctx.state.campaign.aircraft;
+        const hits = (ac.controlCableHits || 0) + 1;
+        ac.controlCableHits = hits;
+
+        if (hits === 1) {
+          // First hit — no effect, just track and report
+          ctx.emit('DAMAGE', `Control Cables: 1st hit — no effect (tracked)`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control Cables (1st hit — no effect)' }], true);
+        } else {
+          // Second (or more) hit — apply full effects
+          if (ctx.state.mission) {
+            ctx.state.mission.evasiveAction = false;
+            ctx.state.mission.landingModifiers -= 1;
+            ctx.state.mission.landingModifierReasons.push('Control cables (landing -1)');
+            ctx.state.mission.bombRunModifier -= 99;
+            ctx.state.mission.bombRunModifierReasons.push('Control cables (bomb run off target)');
+          }
+          ctx.emit('DAMAGE', `Control Cables: 2nd+ hit — No Evasive Action, landing -1, Bomb Run automatically Off Target!`, 'damage', 'critical', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control Cables (2nd hit — full effect)' }], true);
+        }
+        break;
+      }
       case 'destroyed':
         ctx.emit('DAMAGE', `CATASTROPHIC DAMAGE — aircraft destroyed!`, 'damage', 'critical', zone, direction,
           [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Destroyed' }], true);

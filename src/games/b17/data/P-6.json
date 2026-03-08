@@ -90,7 +90,8 @@
       "follow_up": {
         "table": "P-2",
         "roll": "12"
-      }
+      },
+      "effect": "control_cables"
     }
   },
   "notes": [

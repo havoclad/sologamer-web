@@ -145,7 +145,7 @@ export interface DamageEffect {
   type: 'gun_damage' | 'equipment_damage' | 'crew_wound' | 'engine_damage'
     | 'fire' | 'oxygen_hit' | 'heat_damage' | 'control_damage'
     | 'wing_root_hit' | 'destroyed' | 'superficial' | 'landing_modifier'
-    | 'follow_up_table' | 'system_damage';
+    | 'follow_up_table' | 'system_damage' | 'control_cables';
   position?: string;
   severity?: string;
   damageType?: string;
@@ -191,8 +191,13 @@ export function rollCompartmentDamage(
     }
   }
 
-  // Check for follow-up table rolls
-  if ((entry as any).follow_up?.table) {
+  // Control cables cumulative effect (P-2/P-3/P-4/P-5/P-6 roll 12)
+  if ((entry as any).effect === 'control_cables') {
+    effects.push({ type: 'control_cables' });
+  }
+
+  // Check for follow-up table rolls (skip if already handled as control_cables)
+  if ((entry as any).follow_up?.table && (entry as any).effect !== 'control_cables') {
     effects.push({
       type: 'follow_up_table',
       table: (entry as any).follow_up.table,
@@ -216,7 +221,8 @@ export function rollCompartmentDamage(
   }
 
   // Check for cumulative hit tracking (e.g. wing root hits on B1-1)
-  if ((entry as any).cumulative) {
+  // Skip if cumulative is a plain boolean (control_cables already handled above)
+  if ((entry as any).cumulative && typeof (entry as any).cumulative === 'object') {
     const cum = (entry as any).cumulative;
     effects.push({
       type: 'wing_root_hit',
