@@ -145,7 +145,7 @@ const GUN_LABELS = {
   Nose: 'Nose', Port_Cheek: 'Port Cheek', Starboard_Cheek: 'Stbd Cheek',
   Top_Turret: 'Top Turret', Ball_Turret: 'Ball Turret',
   Port_Waist: 'Left Waist', Starboard_Waist: 'Right Waist',
-  Radio: 'Radio Room', Tail: 'Tail',
+  Radio: 'Radio', Tail: 'Tail',
 };
 
 // ─── API helpers ───
@@ -297,6 +297,22 @@ function pickRollValueForRange(rangeStr, diceType, modifier) {
   return null;
 }
 
+// ─── Build bullet circle display for ammo ───
+function buildBulletCircles(remaining, capacity, disabled, jammed) {
+  let html = '';
+  for (let i = 0; i < capacity; i++) {
+    const filled = i < remaining;
+    let cls = 'bullet-circle';
+    if (filled) {
+      cls += disabled ? ' bullet-critical' : jammed ? ' bullet-low' : ' bullet-ok';
+    } else {
+      cls += ' bullet-empty';
+    }
+    html += `<span class="${cls}"></span>`;
+  }
+  return html;
+}
+
 // ─── Show pending roll panel ───
 function showPendingRoll(roll) {
   pendingRoll = roll;
@@ -312,6 +328,18 @@ function showPendingRoll(roll) {
       <div class="roll-purpose">🎲 Roll ${roll.diceType} on Table ${roll.tableId}: ${escapeHtml(roll.tableName)}</div>
       <div class="roll-description">${escapeHtml(roll.purpose)}</div>
       ${roll.modifier ? `<div class="roll-modifier">Modifier: ${roll.modifier >= 0 ? '+' : ''}${roll.modifier}${roll.modifierReason ? ` (${roll.modifierReason})` : ''}</div>` : ''}
+    </div>
+    <div class="roll-input-area">
+      <div class="roll-manual">
+        <label for="manual-roll-input">Your roll:</label>
+        <input type="number" id="manual-roll-input" min="${minVal}" max="${maxVal}" 
+               placeholder="${roll.diceType}" class="roll-input-field">
+        <button id="btn-submit-roll" class="btn btn-primary btn-roll-submit">Submit Roll</button>
+      </div>
+      <div class="roll-divider">or</div>
+      <div class="roll-auto">
+        <button id="btn-auto-roll" class="btn btn-roll-auto">🎲 Roll for me</button>
+      </div>
     </div>
     <div class="roll-table-display">
       <table class="lookup-table roll-lookup-table">
@@ -358,21 +386,6 @@ function showPendingRoll(roll) {
     html += `</tr>`;
   }
   html += `</tbody></table></div>`;
-
-  html += `
-    <div class="roll-input-area">
-      <div class="roll-manual">
-        <label for="manual-roll-input">Your roll:</label>
-        <input type="number" id="manual-roll-input" min="${minVal}" max="${maxVal}" 
-               placeholder="${roll.diceType}" class="roll-input-field">
-        <button id="btn-submit-roll" class="btn btn-primary btn-roll-submit">Submit Roll</button>
-      </div>
-      <div class="roll-divider">or</div>
-      <div class="roll-auto">
-        <button id="btn-auto-roll" class="btn btn-roll-auto">🎲 Roll for me</button>
-      </div>
-    </div>
-  `;
 
   rollPanel.innerHTML = html;
 
@@ -920,14 +933,17 @@ function renderAircraft(ac) {
   }
 
   let html = '';
+  html += `<div class="engine-bank-label">Engines</div><div class="engine-row-group">`;
   for (let i = 0; i < 4; i++) {
     const status = ac.engines[i];
-    const cls = status === 'ok' ? 'ok' : 'out';
-    html += `<div class="engine-row">
-      <span class="engine-indicator ${cls}"></span>
-      Engine #${i + 1}: ${status.toUpperCase()}
+    const engCls = status === 'ok' ? 'eng-ok' : status === 'fire' ? 'eng-fire' : status === 'runaway' ? 'eng-warn' : status === 'oil_leak' ? 'eng-warn' : status === 'supercharger_out' ? 'eng-degraded' : 'eng-out';
+    const label = status === 'ok' ? 'OK' : status === 'fire' ? 'FIRE' : status === 'out' ? 'OUT' : status === 'runaway' ? 'RUN' : status === 'oil_leak' ? 'LEAK' : status === 'supercharger_out' ? 'S/C' : status.toUpperCase();
+    html += `<div class="engine-box ${engCls}">
+      <div class="engine-box-num">#${i + 1}</div>
+      <div class="engine-box-status">${label}</div>
     </div>`;
   }
+  html += `</div>`;
 
   const damages = [];
   if (ac.fuelLeak) damages.push('Fuel Leak');
@@ -962,11 +978,7 @@ function renderAircraft(ac) {
   if (ac.controlDamage?.elevator && !ac.portElevatorInop && !ac.starboardElevatorInop) damages.push('Elevator Damage');
   if (ac.controlDamage?.ailerons && !ac.portAileronInop && !ac.starboardAileronInop) damages.push('Aileron Damage');
 
-  if (damages.length > 0) {
-    html += `<div class="system-damage">⚠ ${damages.join(' · ')}</div>`;
-  } else {
-    html += `<div style="color:var(--good); margin-top:4px">All systems operational</div>`;
-  }
+  let dmgCount = 0;
 
   // ─── Landing & Bomb Run Modifiers ───
   const mission = gameState?.mission;
@@ -1046,6 +1058,7 @@ function renderAircraft(ac) {
     // Superficial hit count
     const superficialCount = ac.superficialHits || 0;
 
+    dmgCount = dmgItems.length + superficialCount;
     if (dmgItems.length > 0 || superficialCount > 0) {
       html += `<div class="damage-section" style="width:100%"><div class="ammo-header">Damage Tracking</div>`;
       for (const item of dmgItems) {
@@ -1071,10 +1084,10 @@ function renderAircraft(ac) {
       const pct = Math.round((gun.ammo / gun.ammoCapacity) * 100);
       const barCls = gun.disabled ? 'ammo-critical' : gun.jammed ? 'ammo-low' : pct > 50 ? 'ammo-ok' : pct > 20 ? 'ammo-low' : 'ammo-critical';
       const statusSuffix = gun.disabled ? ' ✕' : gun.jammed ? ' ⚠' : '';
+      const bullets = buildBulletCircles(gun.ammo, gun.ammoCapacity, gun.disabled, gun.jammed);
       html += `<div class="ammo-row">
-        <span class="ammo-gun">${gun.name}${statusSuffix}</span>
-        <div class="ammo-bar-bg"><div class="ammo-bar ${barCls}" style="width:${pct}%"></div></div>
-        <span class="ammo-count">${gun.ammo}</span>
+        <span class="ammo-gun">${GUN_LABELS[gun.id] || gun.name}${statusSuffix}</span>
+        <span class="ammo-bullets">${bullets}</span>
       </div>`;
     }
     html += `</div></div>`;
@@ -1085,13 +1098,17 @@ function renderAircraft(ac) {
       const maxAmmo = { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 }[gun] || 12;
       const pct = Math.round((remaining / maxAmmo) * 100);
       const barCls = pct > 50 ? 'ammo-ok' : pct > 20 ? 'ammo-low' : 'ammo-critical';
+      const bullets = buildBulletCircles(remaining, maxAmmo, false, false);
       html += `<div class="ammo-row">
         <span class="ammo-gun">${GUN_LABELS[gun] || gun}</span>
-        <div class="ammo-bar-bg"><div class="ammo-bar ${barCls}" style="width:${pct}%"></div></div>
-        <span class="ammo-count">${remaining}</span>
+        <span class="ammo-bullets">${bullets}</span>
       </div>`;
     }
     html += `</div></div>`;
+  }
+
+  if (damages.length === 0 && dmgCount === 0) {
+    html += `<div style="color:var(--good); margin-top:6px; font-size:0.8rem">All systems operational</div>`;
   }
 
   aircraftStatus.innerHTML = html;

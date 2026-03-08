@@ -319,6 +319,51 @@ body {
   gap: 8px;
   margin-bottom: 3px;
 }
+.engine-bank-label {
+  color: #8a8a6a;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.engine-row-group {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.engine-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 4px 0;
+  border-radius: 4px;
+  border: 1px solid;
+}
+.engine-box-num {
+  font-size: 0.7rem;
+  font-weight: bold;
+  opacity: 0.8;
+}
+.engine-box-status {
+  font-size: 0.65rem;
+  letter-spacing: 0.5px;
+}
+.engine-box.eng-ok      { border-color: #3a6a3a; background: rgba(58,106,58,0.2); color: #6abf6a; }
+.engine-box.eng-out     { border-color: #6a2a2a; background: rgba(106,42,42,0.25); color: #c06060; }
+.engine-box.eng-fire    { border-color: #c05020; background: rgba(192,80,32,0.3); color: #ff8040; }
+.engine-box.eng-warn    { border-color: #7a6020; background: rgba(122,96,32,0.25); color: #c8a040; }
+.engine-box.eng-degraded { border-color: #5a5a2a; background: rgba(90,90,42,0.2); color: #a0a060; }
+.engine-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
 .engine-indicator {
   width: 10px; height: 10px;
   border-radius: 50%;
@@ -536,27 +581,25 @@ body {
   text-align: right;
   flex-shrink: 0;
 }
-.ammo-bar-bg {
+.ammo-bullets {
   flex: 1;
-  height: 6px;
-  background: #2a2a1a;
-  border-radius: 3px;
-  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
 }
-.ammo-bar {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-.ammo-ok { background: #4a8a4a; }
-.ammo-low { background: #b89b4a; }
-.ammo-critical { background: #c04030; }
-.ammo-count {
-  width: 20px;
-  color: #6a6a4a;
-  text-align: right;
+.bullet-circle {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   flex-shrink: 0;
 }
+.bullet-ok      { background: #4a8a4a; }
+.bullet-low     { background: #b89b4a; }
+.bullet-critical { background: #c04030; }
+.bullet-empty   { background: transparent; border: 1.5px solid #5a6a5a; }
+
 
 /* ─── Damage Tracking ─── */
 .damage-section {
@@ -738,6 +781,7 @@ details.table-lookup summary:hover { color: #b89b4a; }
   align-items: center;
   gap: 12px;
   padding: 10px;
+  margin-bottom: 10px;
   background: var(--bg-dark);
   border-radius: 4px;
   border: 1px solid var(--border);
