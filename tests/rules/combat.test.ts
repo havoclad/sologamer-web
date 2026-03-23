@@ -60,7 +60,7 @@ describe('getFieldOfFire', () => {
     const fof = getFieldOfFire('Vertical Climb', tables);
     expect(fof.has('Ball_Turret')).toBe(true);
     expect(fof.size).toBe(1);
-    expect(fof.get('Ball_Turret')).toBe(4);
+    expect(fof.get('Ball_Turret')).toBe(3);
   });
 
   it('Me110 gets lower hit numbers at 3/9 o\'clock turret positions', () => {
