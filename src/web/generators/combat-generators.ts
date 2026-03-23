@@ -488,7 +488,7 @@ export function* resolveCombatRounds(
           if (hitLoc.isSuperificial) {
             ctx.state.campaign.aircraft.superficialHits = (ctx.state.campaign.aircraft.superficialHits || 0) + 1;
             ctx.emit('DAMAGE', `Shell ${s + 1}: Superficial damage`, 'damage', 'info', zone, direction,
-              [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }]);
+              [{ table: 'B-5', rollType: '2d6', rolled: hitLocRollValue, result: 'Superficial' }], true);
             continue;
           }
 

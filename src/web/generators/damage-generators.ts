@@ -299,6 +299,7 @@ export function* applySubRollEffect(
   else if (outcomeLower.includes('no effect') || outcomeLower.includes('superficial')) {
     if (outcomeLower.includes('superficial')) {
       ac.superficialHits = (ac.superficialHits || 0) + 1;
+      isImportant = true; // include snapshot so UI updates superficial count
     }
     severity = 'info';
   }
@@ -528,7 +529,7 @@ export function* resolveCompartmentHitGen(
       case 'superficial':
         ctx.state.campaign.aircraft.superficialHits = (ctx.state.campaign.aircraft.superficialHits || 0) + 1;
         ctx.emit('DAMAGE', `${location}: Superficial — no effect`, 'damage', 'info', zone, direction,
-          [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Superficial' }]);
+          [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Superficial' }], true);
         break;
       case 'crew_wound': {
         const pos = effect.position as CrewPosition;
