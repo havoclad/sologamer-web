@@ -147,20 +147,27 @@ export function* resolveGunFire(
   direction: 'outbound' | 'inbound',
   getDestroyed: () => number,
   setDestroyed: (v: number) => void,
+  /** Tracks which crew member first destroyed/broke-off each fighter for kill splitting */
+  killTracker?: Map<number, CrewPosition>,
 ): Generator<MissionYield, void, number | number[] | undefined> {
   const rng = ctx.rng;
   const tables = ctx.tables;
   const cm = getCrewByPosition(ctx.state.campaign.crew, crewPos);
   if (!cm) return;
 
-  // Check fighter is still active (may have been destroyed by earlier gun in same phase)
-  if (isFighterOutOfAction(fighter)) return;
+  // Per §6.3, defensive fire is simultaneous — all allocated guns fire
+  // regardless of whether the fighter was already destroyed by another gun.
+  // Do NOT skip if fighter is out of action.
 
   // Deduct ammo when gun actually fires (not at allocation time)
   const gunObj = getGun(ctx.state.campaign.aircraft.guns, gun);
   gunObj.ammo--;
   // Keep legacy ammo in sync
   ctx.state.campaign.aircraft.ammo[gun as keyof AmmoState]--;
+
+  // If fighter was already destroyed/broken off by another simultaneous gun,
+  // still roll M-1 but skip M-2 damage (fighter is already gone)
+  const fighterAlreadyOut = isFighterOutOfAction(fighter);
 
   const defRollValue: number = yield* yieldCombatRoll(
     ctx,
@@ -175,57 +182,71 @@ export function* resolveGunFire(
 
   const fr = resolveDefensiveFire(hitReq, ctx.createFixedRng(defRollValue), false, mission.evasiveAction, false, cm.frostbite, false);
   if (fr.hit) {
-    const m2Mods: string[] = [];
-    const twinMod = gunObj.twin ? 1 : 0;
-    const fw190Mod = fighter.type === 'FW190' ? -1 : 0;
-    const m2Modifier = twinMod + fw190Mod;
-    if (gunObj.twin) m2Mods.push('twin mount +1');
-    if (fighter.type === 'FW190') m2Mods.push('FW190 -1 (note b)');
-    const m2ModStr = m2Mods.length > 0 ? ` (${m2Mods.join(', ')})` : '';
-
-    const dmgRollValue: number = yield* yieldCombatRoll(
-      ctx,
-      'M-2', 'Fighter Damage',
-      `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${m2ModStr}`,
-      '1d6',
-      [
-        { roll: '1-3', columns: { result: 'FCA — continues attack' } },
-        { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
-        { roll: '6', columns: { result: 'Destroyed' } },
-      ],
-      m2Modifier,
-      m2Mods.join(', ') || undefined,
-    );
-
-    const dmg = rollFighterDamage(ctx.createFixedRng(dmgRollValue), tables, gunObj.twin, fighter.type);
-    const status = applyFighterDamage(fighter, dmg);
-    const m2ModifiedRoll = Math.min(6, Math.max(1, dmgRollValue + m2Modifier));
-
-    const m2Detail = {
-      table: 'M-2', rollType: '1d6', rolled: dmgRollValue,
-      ...(m2Modifier !== 0 ? { modifier: m2Modifier, modifiedRoll: m2ModifiedRoll } : {}),
-    };
-
-    if (status.status === 'destroyed') {
-      setDestroyed(getDestroyed() + 1);
-      cm.kills++;
-      ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', zone, direction,
-        [
-          { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
-          { ...m2Detail, result: 'Destroyed', description: 'Fighter damage result' },
-        ], true);
-    } else if (status.status === 'breaks_off') {
-      ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', zone, direction,
-        [
-          { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-          { ...m2Detail, result: 'Breaks off' },
-        ]);
+    if (fighterAlreadyOut) {
+      // Fighter already dealt with by simultaneous fire — split kill credit
+      // Reduce first killer from 1.0 to 0.5, give this gunner 0.5
+      const firstKillerPos = killTracker?.get(fighter.id);
+      if (firstKillerPos) {
+        const firstKiller = getCrewByPosition(ctx.state.campaign.crew, firstKillerPos);
+        if (firstKiller) firstKiller.kills -= 0.5;
+      }
+      cm.kills += 0.5;
+      ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — also hits ${fighter.type} (simultaneous fire, +0.5 kill)`, 'combat', 'good', zone, direction,
+        [{ table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position} (simultaneous)` }], true);
     } else {
-      ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', zone, direction,
+      const m2Mods: string[] = [];
+      const twinMod = gunObj.twin ? 1 : 0;
+      const fw190Mod = fighter.type === 'FW190' ? -1 : 0;
+      const m2Modifier = twinMod + fw190Mod;
+      if (gunObj.twin) m2Mods.push('twin mount +1');
+      if (fighter.type === 'FW190') m2Mods.push('FW190 -1 (note b)');
+      const m2ModStr = m2Mods.length > 0 ? ` (${m2Mods.join(', ')})` : '';
+
+      const dmgRollValue: number = yield* yieldCombatRoll(
+        ctx,
+        'M-2', 'Fighter Damage',
+        `Damage to ${fighter.type} hit by ${GUN_LABELS[gun]}${m2ModStr}`,
+        '1d6',
         [
-          { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-          { ...m2Detail, result: 'Continues attack' },
-        ]);
+          { roll: '1-3', columns: { result: 'FCA — continues attack' } },
+          { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
+          { roll: '6', columns: { result: 'Destroyed' } },
+        ],
+        m2Modifier,
+        m2Mods.join(', ') || undefined,
+      );
+
+      const dmg = rollFighterDamage(ctx.createFixedRng(dmgRollValue), tables, gunObj.twin, fighter.type);
+      const status = applyFighterDamage(fighter, dmg);
+      const m2ModifiedRoll = Math.min(6, Math.max(1, dmgRollValue + m2Modifier));
+
+      const m2Detail = {
+        table: 'M-2', rollType: '1d6', rolled: dmgRollValue,
+        ...(m2Modifier !== 0 ? { modifier: m2Modifier, modifiedRoll: m2ModifiedRoll } : {}),
+      };
+
+      if (status.status === 'destroyed') {
+        setDestroyed(getDestroyed() + 1);
+        cm.kills++;
+        killTracker?.set(fighter.id, crewPos);
+        ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
+            { ...m2Detail, result: 'Destroyed', description: 'Fighter damage result' },
+          ], true);
+      } else if (status.status === 'breaks_off') {
+        ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+            { ...m2Detail, result: 'Breaks off' },
+          ]);
+      } else {
+        ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', zone, direction,
+          [
+            { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
+            { ...m2Detail, result: 'Continues attack' },
+          ]);
+      }
     }
   } else {
     ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) fires at ${fighter.position}... miss`, 'combat', 'info', zone, direction,
@@ -341,6 +362,7 @@ export function* resolveCombatRounds(
     });
 
     let delayedAllocations: Allocation[] = [];
+    const killTracker = new Map<number, CrewPosition>();
 
     if (eligibleGuns.length === 0) {
       ctx.emit('COMBAT', 'No guns available to fire!', 'combat', 'warn', zone, direction);
@@ -414,12 +436,13 @@ export function* resolveCombatRounds(
       }
 
       // ═══ RESOLVE REGULAR DEFENSIVE FIRE ═══
+      // Per §6.3, all defensive fire is simultaneous — all allocated guns fire.
       if (regularAllocations.length > 0) {
         ctx.emit('COMBAT', `Resolving defensive fire — ${plural(regularAllocations.length, 'gun')} firing`, 'combat', 'info', zone, direction, undefined, true);
       }
 
       for (const alloc of regularAllocations) {
-        yield* resolveGunFire(ctx, alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
+        yield* resolveGunFire(ctx, alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed, killTracker);
       }
 
       // Build summary for successive attack context
@@ -529,7 +552,7 @@ export function* resolveCombatRounds(
       if (tailGunner && tailGunner.status === 'active' && tailGunner.woundSeverity !== 'serious' && tailGunner.woundSeverity !== 'kia' && !tailGunObj.disabled) {
         ctx.emit('COMBAT', `Tail guns firing (delayed) — ${plural(delayedAllocations.length, 'target')}`, 'combat', 'info', zone, direction);
         for (const alloc of delayedAllocations) {
-          yield* resolveGunFire(ctx, alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed);
+          yield* resolveGunFire(ctx, alloc.gun, alloc.fighter, alloc.hitReq, alloc.crewPos, mission, zone, direction, getDestroyed, setDestroyed, killTracker);
         }
       } else {
         ctx.emit('COMBAT', 'Tail guns cannot fire — gunner down or gun knocked out', 'combat', 'warn', zone, direction);

@@ -131,15 +131,23 @@ describe('resolveGunFire', () => {
     expect(tailGunner!.kills).toBe(1);
   });
 
-  it('does nothing if fighter is already destroyed', () => {
+  it('still fires at already-destroyed fighter (simultaneous fire per §6.3)', () => {
     const fighter = createFighter(1, 'Me109', '12 High');
     fighter.damage.push('Destroyed');
+    const initialAmmo = ctx.state.campaign.aircraft.guns.find(g => g.id === 'Tail')!.ammo;
     const gen = resolveGunFire(
       ctx, 'Tail', fighter, 5, 'tail_gunner', createDefaultMission(),
       4, 'outbound', () => 0, () => {},
     );
-    const { yields } = driveGenerator(gen, []);
-    expect(yields.length).toBe(0); // no rolls needed
+    // Gun still fires — needs M-1 roll
+    const { yields } = driveGenerator(gen, [6]); // roll 6 = hit
+    expect(yields.length).toBe(1); // M-1 roll requested
+    // Ammo should be deducted
+    const finalAmmo = ctx.state.campaign.aircraft.guns.find(g => g.id === 'Tail')!.ammo;
+    expect(finalAmmo).toBe(initialAmmo - 1);
+    // Half kill credited for simultaneous hit
+    const tailGunner = ctx.state.campaign.crew.find(c => c.position === 'tail_gunner');
+    expect(tailGunner!.kills).toBe(0.5);
   });
 
   it('does nothing if crew member not found', () => {
