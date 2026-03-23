@@ -176,6 +176,9 @@ export function* resolveGunFire(
   const fr = resolveDefensiveFire(hitReq, ctx.createFixedRng(defRollValue), false, mission.evasiveAction, false, cm.frostbite, false);
   if (fr.hit) {
     const m2Mods: string[] = [];
+    const twinMod = gunObj.twin ? 1 : 0;
+    const fw190Mod = fighter.type === 'FW190' ? -1 : 0;
+    const m2Modifier = twinMod + fw190Mod;
     if (gunObj.twin) m2Mods.push('twin mount +1');
     if (fighter.type === 'FW190') m2Mods.push('FW190 -1 (note b)');
     const m2ModStr = m2Mods.length > 0 ? ` (${m2Mods.join(', ')})` : '';
@@ -190,10 +193,18 @@ export function* resolveGunFire(
         { roll: '4-5', columns: { result: 'FBOA — breaks off' } },
         { roll: '6', columns: { result: 'Destroyed' } },
       ],
+      m2Modifier,
+      m2Mods.join(', ') || undefined,
     );
 
     const dmg = rollFighterDamage(ctx.createFixedRng(dmgRollValue), tables, gunObj.twin, fighter.type);
     const status = applyFighterDamage(fighter, dmg);
+    const m2ModifiedRoll = Math.min(6, Math.max(1, dmgRollValue + m2Modifier));
+
+    const m2Detail = {
+      table: 'M-2', rollType: '1d6', rolled: dmgRollValue,
+      ...(m2Modifier !== 0 ? { modifier: m2Modifier, modifiedRoll: m2ModifiedRoll } : {}),
+    };
 
     if (status.status === 'destroyed') {
       setDestroyed(getDestroyed() + 1);
@@ -201,19 +212,19 @@ export function* resolveGunFire(
       ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} DESTROYED!`, 'combat', 'good', zone, direction,
         [
           { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)`, description: `${GUN_LABELS[gun]} vs ${fighter.position}` },
-          { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Destroyed', description: 'Fighter damage result' },
+          { ...m2Detail, result: 'Destroyed', description: 'Fighter damage result' },
         ], true);
     } else if (status.status === 'breaks_off') {
       ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} damaged, breaks off!`, 'combat', 'good', zone, direction,
         [
           { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-          { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Breaks off' },
+          { ...m2Detail, result: 'Breaks off' },
         ]);
     } else {
       ctx.emit('COMBAT', `${GUN_LABELS[gun]} (${cm.name}) — ${fighter.type} hit, continues!`, 'combat', 'warn', zone, direction,
         [
           { table: 'M-1', rollType: '1d6', rolled: defRollValue, result: `Hit (need ${hitReq}+)` },
-          { table: 'M-2', rollType: '1d6', rolled: dmgRollValue, result: 'Continues attack' },
+          { ...m2Detail, result: 'Continues attack' },
         ]);
     }
   } else {
