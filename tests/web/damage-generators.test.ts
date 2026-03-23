@@ -680,4 +680,51 @@ describe('resolveCompartmentHitGen', () => {
     expect(ctx.state.mission!.bombRunModifier).toBeLessThanOrEqual(-99);
     expect(ctx.state.mission!.bombRunModifierReasons.some(r => r.toLowerCase().includes('norden'))).toBe(true);
   });
+
+  it('P-2 roll 11 (window_heat_out) 1st hit has no effect', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [11]);
+    expect(ctx.state.campaign.aircraft.windowHeatHits).toBe(1);
+    expect(ctx.state.mission!.landingModifiers).toBe(0);
+  });
+
+  it('P-2 roll 11 (window_heat_out) 2nd hit causes landing -1', () => {
+    ctx.state.campaign.aircraft.windowHeatHits = 1;
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [11]);
+    expect(ctx.state.campaign.aircraft.windowHeatHits).toBe(2);
+    expect(ctx.state.campaign.aircraft.heatingOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+    expect(ctx.state.mission!.landingModifierReasons).toContain('Window heat out (2nd hit, landing -1)');
+  });
+
+  it('P-2 roll 11 (window_heat_out) 3rd hit has no additional effect', () => {
+    ctx.state.campaign.aircraft.windowHeatHits = 2;
+    ctx.state.campaign.aircraft.heatingOut = true;
+    ctx.state.mission!.landingModifiers = -1;
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [11]);
+    expect(ctx.state.campaign.aircraft.windowHeatHits).toBe(3);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1); // no additional penalty
+  });
+
+  it('P-6 roll 9 sub-roll 5 (port tailplane root hit) tracks cumulatively', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Tail Section', 'P-6', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [9, 5]); // roll 9 on P-6, sub-roll 5 = Port tailplane root hit
+    expect(ctx.state.campaign.aircraft.portTailplaneRootHits).toBe(1);
+  });
+
+  it('P-6 roll 9 sub-roll 6 (starboard tailplane root hit) tracks cumulatively', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Tail Section', 'P-6', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [9, 6]); // roll 9 on P-6, sub-roll 6 = Starboard tailplane root hit
+    expect(ctx.state.campaign.aircraft.starboardTailplaneRootHits).toBe(1);
+  });
+
+  it('P-6 tailplane root hit at 3 cumulative hits causes catastrophic failure', () => {
+    ctx.state.campaign.aircraft.portTailplaneRootHits = 2;
+    const gen = resolveCompartmentHitGen(ctx, 'Tail Section', 'P-6', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [9, 5]); // 3rd port tailplane root hit
+    expect(ctx.state.campaign.aircraft.portTailplaneRootHits).toBe(3);
+    expect(ctx.emitCalls.some(c => c[1].includes('RIPS OFF'))).toBe(true);
+  });
 });

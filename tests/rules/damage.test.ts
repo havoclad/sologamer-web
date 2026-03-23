@@ -28,8 +28,9 @@ function makeAircraft(overrides: Partial<AircraftState> = {}): AircraftState {
     ballTurretTrapped: false, portFlapInop: false, starboardFlapInop: false,
     portAileronInop: false, starboardAileronInop: false,
     portElevatorInop: false, starboardElevatorInop: false,
-    portWingRootHits: 0, starboardWingRootHits: 0, rudderHits: 0, superficialHits: 0,
-    controlCableHits: 0,
+    portWingRootHits: 0, starboardWingRootHits: 0, rudderHits: 0,
+    portTailplaneRootHits: 0, starboardTailplaneRootHits: 0, windowHeatHits: 0,
+    superficialHits: 0, controlCableHits: 0,
     intercomOut: false, gearIndicatorOut: false, flapsIndicatorOut: false,
     aileronControlsOut: false, elevatorControlsOut: false, rudderControlsOut: false,
     propFeatheringOut: false, engineExtinguishersOut: false, electricalSystemOut: false,
@@ -610,6 +611,13 @@ describe('Unhandled P-series effect values', () => {
     const eff = result.effects.find(e => e.type === 'equipment_damage');
     expect(eff).toBeDefined();
     expect(eff!.damageType).toBe('bomb_run_off_target');
+  });
+
+  it('P-2 roll 11 (window_heat_out) produces window_heat_hit effect', () => {
+    const result = rollCompartmentDamage('P-2', fixedRng(11), tables);
+    expect(result.result).toBe('Window Heat Out');
+    const eff = result.effects.find(e => e.type === 'window_heat_hit');
+    expect(eff).toBeDefined();
   });
 
   it('none of these effects fall through to generic system_damage or superficial', () => {

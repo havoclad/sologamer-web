@@ -212,9 +212,50 @@ export function* applySubRollEffect(
     }
     severity = 'bad'; isImportant = true;
   }
-  // ── Tailplane root hit ──
+  // ── Tailplane root hit (cumulative: 3 hits = tailplane rips off) ──
   else if (outcomeLower.includes('tailplane root')) {
-    severity = 'bad'; isImportant = true;
+    const isPort = outcomeLower.includes('port');
+    if (isPort) {
+      ac.portTailplaneRootHits = (ac.portTailplaneRootHits || 0) + 1;
+      const hits = ac.portTailplaneRootHits;
+      if (hits >= 3) {
+        severity = 'critical'; isImportant = true;
+        ctx.emit('DAMAGE', `${location}: Port tailplane root ${hits}/3 — TAILPLANE RIPS OFF!`, 'damage', 'critical', zone, direction,
+          [
+            { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+            { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+          ], true);
+        return;
+      } else {
+        severity = 'bad'; isImportant = true;
+        ctx.emit('DAMAGE', `${location}: Port tailplane root hit (${hits}/3)`, 'damage', 'bad', zone, direction,
+          [
+            { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+            { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+          ], true);
+        return;
+      }
+    } else {
+      ac.starboardTailplaneRootHits = (ac.starboardTailplaneRootHits || 0) + 1;
+      const hits = ac.starboardTailplaneRootHits;
+      if (hits >= 3) {
+        severity = 'critical'; isImportant = true;
+        ctx.emit('DAMAGE', `${location}: Starboard tailplane root ${hits}/3 — TAILPLANE RIPS OFF!`, 'damage', 'critical', zone, direction,
+          [
+            { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+            { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+          ], true);
+        return;
+      } else {
+        severity = 'bad'; isImportant = true;
+        ctx.emit('DAMAGE', `${location}: Starboard tailplane root hit (${hits}/3)`, 'damage', 'bad', zone, direction,
+          [
+            { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+            { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+          ], true);
+        return;
+      }
+    }
   }
   // ── Ball turret mechanism inoperable (trapped) ──
   else if (outcomeLower.includes('trapped') || (outcomeLower.includes('turret mechanism') && outcomeLower.includes('inoperable'))) {
@@ -613,6 +654,29 @@ export function* resolveCompartmentHitGen(
           }
           ctx.emit('DAMAGE', `Control Cables: 2nd+ hit — No Evasive Action, landing -1, Bomb Run automatically Off Target!`, 'damage', 'critical', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Control Cables (2nd hit — full effect)' }], true);
+        }
+        break;
+      }
+      case 'window_heat_hit': {
+        const ac3 = ctx.state.campaign.aircraft;
+        const windowHits = (ac3.windowHeatHits || 0) + 1;
+        ac3.windowHeatHits = windowHits;
+
+        if (windowHits === 1) {
+          ctx.emit('DAMAGE', `${location}: Window hit (1st) — no effect`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Window Heat Out (1st hit — no effect)' }], true);
+        } else if (windowHits === 2) {
+          ac3.heatingOut = true;
+          if (ctx.state.mission) {
+            ctx.state.mission.landingModifiers -= 1;
+            ctx.state.mission.landingModifierReasons.push('Window heat out (2nd hit, landing -1)');
+          }
+          ctx.emit('DAMAGE', `${location}: Window hit (2nd) — Heat Out! Landing -1`, 'damage', 'bad', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: 'Window Heat Out (2nd hit — landing -1)' }], true);
+        } else {
+          // 3rd+ hit — no additional effect per rules
+          ctx.emit('DAMAGE', `${location}: Window hit (${windowHits}th) — no additional effect`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Window Heat Out (${windowHits}th hit — no effect)` }], true);
         }
         break;
       }

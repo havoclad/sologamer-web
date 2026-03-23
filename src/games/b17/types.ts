@@ -115,6 +115,9 @@ export interface AircraftState {
   portWingRootHits: number;
   starboardWingRootHits: number;
   rudderHits: number;
+  portTailplaneRootHits: number;
+  starboardTailplaneRootHits: number;
+  windowHeatHits: number;
   superficialHits: number;
   controlCableHits: number;
 

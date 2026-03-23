@@ -145,7 +145,8 @@ export interface DamageEffect {
   type: 'gun_damage' | 'equipment_damage' | 'crew_wound' | 'engine_damage'
     | 'fire' | 'oxygen_hit' | 'heat_damage' | 'control_damage'
     | 'wing_root_hit' | 'rudder_hit' | 'destroyed' | 'superficial' | 'landing_modifier'
-    | 'follow_up_table' | 'system_damage' | 'control_cables' | 'instrument_damage';
+    | 'follow_up_table' | 'system_damage' | 'control_cables' | 'instrument_damage'
+    | 'window_heat_hit' | 'tailplane_root_hit';
   position?: string;
   severity?: string;
   damageType?: string;
@@ -249,6 +250,11 @@ export function rollCompartmentDamage(
   }
   if (pEffect === 'radio_room_heat_out') {
     effects.push({ type: 'heat_damage', target: 'radio_room' });
+  }
+
+  // Window heat out (P-2 roll 11) — cumulative: 1st = no effect, 2nd = landing -1
+  if (pEffect === 'window_heat_out') {
+    effects.push({ type: 'window_heat_hit' });
   }
 
   // Release mechanism out (P-3 roll 2) — bomb run -3
