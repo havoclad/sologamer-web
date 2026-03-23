@@ -87,6 +87,7 @@ export function* applySubRollEffect(
   dmg: DamageResult, location: string,
   subRollValue: number, outcome: string,
   zone: number, direction: 'outbound' | 'inbound',
+  executeBailout?: (controlled: boolean) => Generator<MissionYield, void, number | number[] | undefined>,
 ): Generator<MissionYield, void, number | number[] | undefined> {
   const ac = ctx.state.campaign.aircraft;
   const mission = ctx.state.mission;
@@ -231,6 +232,17 @@ export function* applySubRollEffect(
   else if (outcomeLower.includes('fire')) {
     ac.oxygenOut = true;
     severity = 'critical'; isImportant = true;
+
+    // If outcome references B1-3, chain to hand-held fire extinguisher resolution
+    if (outcomeLower.includes('b1-3') && executeBailout) {
+      ctx.emit('DAMAGE', `${location}: ${outcome}`, 'damage', severity, zone, direction,
+        [
+          { table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: `${location} damage` },
+          { table: damageTable, rollType: '1d6', rolled: subRollValue, result: outcome, description: 'Sub-roll result' },
+        ], isImportant);
+      yield* resolveCompartmentFireExtinguisher(ctx, location, zone, direction, executeBailout);
+      return;
+    }
   }
   // ── Oxygen hit (no fire) ──
   else if (outcomeLower.includes('oxygen')) {
@@ -265,6 +277,7 @@ export function* resolveGenericSubRoll(
   dmg: DamageResult, location: string,
   subRoll: Record<string, any>, _rollEntry: any,
   zone: number, direction: 'outbound' | 'inbound',
+  executeBailout?: (controlled: boolean) => Generator<MissionYield, void, number | number[] | undefined>,
 ): Generator<MissionYield, void, number | number[] | undefined> {
   // Build display rows from sub_roll keys
   const rows: PendingRoll['tableRows'] = Object.entries(subRoll)
@@ -287,7 +300,7 @@ export function* resolveGenericSubRoll(
     ctx,
     damageTable, dmgDiceType, dmgRollValue, dmg,
     location, subRollValue, outcome,
-    zone, direction,
+    zone, direction, executeBailout,
   );
 }
 
@@ -372,6 +385,65 @@ export function* resolveFireExtinguisher(
   ctx.emit('DAMAGE', `Both extinguishers exhausted — ${engLabel} fire continues!`, 'damage', 'critical', zone, direction,
     [{ table: 'B1-1', rollType: '1d6', rolled: roll2, result: 'Failed', description: 'Fire extinguisher roll (2nd)' }], true);
   ctx.emit('DAMAGE', 'Engine fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
+  yield* executeBailout(true);
+  return false;
+}
+
+// ─── resolveCompartmentFireExtinguisher (B1-3 hand-held extinguishers) ───
+
+/**
+ * Hand-held fire extinguisher sequence per Table B1-3 / §12.2.
+ *
+ * B1-3 rules: 1–4 = fire out, 5–6 = fire continues.
+ * Max 3 attempts per fire (each uses one of 5 portable extinguishers).
+ * If fire is not out after 3rd attempt → crew must bail out on Table G-6.
+ *
+ * Returns true if fire was extinguished, false if bailout was triggered.
+ */
+export function* resolveCompartmentFireExtinguisher(
+  ctx: GeneratorContext,
+  location: string, zone: number, direction: 'outbound' | 'inbound',
+  executeBailout: (controlled: boolean) => Generator<MissionYield, void, number | number[] | undefined>,
+): Generator<MissionYield, boolean, number | number[] | undefined> {
+  const ac = ctx.state.campaign.aircraft;
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const extRemaining = 5 - (ac.handExtinguishersUsed || 0);
+
+    if (extRemaining <= 0) {
+      ctx.emit('DAMAGE', `${location}: Compartment fire — no hand extinguishers remaining!`, 'damage', 'critical', zone, direction, undefined, true);
+      ctx.emit('DAMAGE', 'Fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
+      yield* executeBailout(true);
+      return false;
+    }
+
+    ctx.emit('DAMAGE', `${location}: Attempting to extinguish fire (attempt ${attempt}/${maxAttempts}, ${extRemaining} extinguishers remaining)`, 'damage', 'warn', zone, direction);
+    const roll: number = yield* yieldCombatRoll(
+      ctx,
+      'B1-3', `Hand Extinguisher (attempt ${attempt})`,
+      `Roll to extinguish ${location} fire (1-4 = out, 5-6 = continues)`, '1d6',
+      [
+        { roll: '1-4', columns: { result: 'Fire extinguished!' } },
+        { roll: '5-6', columns: { result: 'Fire continues' } },
+      ],
+    );
+
+    ac.handExtinguishersUsed = (ac.handExtinguishersUsed || 0) + 1;
+
+    if (roll <= 4) {
+      ctx.emit('DAMAGE', `${location}: Fire extinguished!`, 'damage', 'good', zone, direction,
+        [{ table: 'B1-3', rollType: '1d6', rolled: roll, result: 'Fire extinguished', description: `Hand extinguisher (attempt ${attempt})` }], true);
+      return true;
+    }
+
+    ctx.emit('DAMAGE', `${location}: Extinguisher failed (attempt ${attempt})`, 'damage', 'bad', zone, direction,
+      [{ table: 'B1-3', rollType: '1d6', rolled: roll, result: 'Fire continues', description: `Hand extinguisher (attempt ${attempt})` }]);
+  }
+
+  // All 3 attempts failed
+  ctx.emit('DAMAGE', `${location}: Fire cannot be controlled after ${maxAttempts} attempts!`, 'damage', 'critical', zone, direction, undefined, true);
+  ctx.emit('DAMAGE', 'Fire uncontrolled — crew ordered to bail out (G-6 controlled bailout)', 'damage', 'critical', zone, direction, undefined, true);
   yield* executeBailout(true);
   return false;
 }
@@ -778,7 +850,7 @@ export function* resolveCompartmentHitGen(
             ctx,
             damageTable, dmgDiceType, dmgRollValue, dmg,
             location, subRoll, rollEntry,
-            zone, direction,
+            zone, direction, executeBailout,
           );
         } else if (effect.table && effect.table !== 'sub_roll' && effect.table !== damageTable) {
           // ── Follow-up to another damage table (e.g. P-2 roll 9 → B1-2 Instruments) ──
@@ -849,6 +921,61 @@ export function* resolveCompartmentHitGen(
 
         ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', instrSeverity, zone, direction,
           [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], instrImportant);
+        break;
+      }
+      case 'heat_damage': {
+        ctx.state.campaign.aircraft.heatingOut = true;
+        const heatTarget = effect.target ?? 'unknown';
+        const heatLabel = heatTarget === 'pilot_copilot' ? 'Pilot/Co-Pilot' : heatTarget === 'radio_room' ? 'Radio Room' : heatTarget;
+        ctx.emit('DAMAGE', `${location}: ${heatLabel} compartment heat out`, 'damage', 'bad', zone, direction,
+          [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], true);
+        break;
+      }
+      case 'equipment_damage': {
+        if (effect.damageType === 'bomb_run_off_target') {
+          if (ctx.state.mission) {
+            ctx.state.mission.bombRunModifier -= 99;
+            ctx.state.mission.bombRunModifierReasons.push('Norden sight destroyed (bomb run off target)');
+          }
+          ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'critical', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], true);
+        } else {
+          ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'bad', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], true);
+        }
+        break;
+      }
+      case 'system_damage': {
+        const sysType = effect.damageType ?? '';
+        if (sysType === 'radio_out') {
+          ctx.state.campaign.aircraft.radioOut = true;
+          ctx.emit('DAMAGE', `${location}: Radio out — no Mayday`, 'damage', 'bad', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], true);
+        } else if (sysType === 'release_mechanism_out') {
+          ctx.state.campaign.aircraft.bombControlsInop = true;
+          if (ctx.state.mission) {
+            ctx.state.mission.bombRunModifier -= 3;
+            ctx.state.mission.bombRunModifierReasons.push('Bomb release mechanism -3');
+          }
+          ctx.emit('DAMAGE', `${location}: Bomb release mechanism out — bomb run -3`, 'damage', 'bad', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], true);
+        } else {
+          // Generic system damage fallback
+          const resultLower2 = (dmg.result ?? '').toLowerCase();
+          const descLower2 = (dmg.description ?? '').toLowerCase();
+          if (descLower2.includes('tail guns inoperable') || resultLower2.includes('tail guns inoperable')) {
+            disableGun(ctx.state.campaign.aircraft.guns, 'Tail');
+            ctx.emit('DAMAGE', `${location}: Tail guns inoperable!`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }], true);
+          } else if (descLower2.includes('ball turret') && (descLower2.includes('guns out') || descLower2.includes('inoperable'))) {
+            ctx.state.campaign.aircraft.ballTurretInop = true;
+            ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'bad', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }], true);
+          } else {
+            ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
+              [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+          }
+        }
         break;
       }
       default: {

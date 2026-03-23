@@ -140,6 +140,7 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     propFeatheringOut: ac.propFeatheringOut ?? false,
     engineExtinguishersOut: ac.engineExtinguishersOut ?? false,
     electricalSystemOut: ac.electricalSystemOut ?? false,
+    handExtinguishersUsed: ac.handExtinguishersUsed ?? 0,
   };
 }
 

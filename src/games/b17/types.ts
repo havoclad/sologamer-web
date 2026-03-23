@@ -128,6 +128,9 @@ export interface AircraftState {
   propFeatheringOut: boolean;
   engineExtinguishersOut: boolean;
   electricalSystemOut: boolean;
+
+  // ── B1-3 Hand-held fire extinguisher tracking ──
+  handExtinguishersUsed: number;
 }
 
 // ─── Mission ───

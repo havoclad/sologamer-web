@@ -157,6 +157,18 @@ export interface DamageEffect {
 }
 
 /**
+ * Pick only the "actionable" fields from a referenced entry so we can merge
+ * them into the referring entry without overwriting result/description/condition.
+ */
+function pickActionableFields(ref: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of ['sub_roll', 'follow_up', 'effect', 'damage_effects', 'cumulative']) {
+    if (key in ref) out[key] = ref[key];
+  }
+  return out;
+}
+
+/**
  * Roll for specific compartment damage per §6.4d.
  * Rolls on the appropriate P-1..P-6 or B1-1/B1-2 table.
  */
@@ -174,7 +186,38 @@ export function rollCompartmentDamage(
     };
   }
 
-  const entry = result.entry;
+  let entry = result.entry;
+
+  // Resolve "see" references: if the entry points to another roll, merge
+  // the referenced entry's effects (sub_roll, follow_up, effect, etc.)
+  // into this one.  Only resolve when the current entry has no effect of
+  // its own — entries that already carry an effect (e.g. control_cables,
+  // radio_out) use "see" only as a descriptive note.
+  const seeRef = (entry as any).see as string | undefined;
+  if (seeRef && !(entry as any).effect && !(entry as any).follow_up && !(entry as any).sub_roll && !(entry as any).damage_effects) {
+    // Simple same-table reference: "see": "3"
+    const simpleMatch = seeRef.match(/^(\d+)$/);
+    if (simpleMatch) {
+      const refEntry = tables.lookupValue(damageTable, parseInt(simpleMatch[1], 10));
+      if (refEntry) {
+        // Merge the referenced entry's actionable fields into a shallow copy
+        entry = { ...entry, ...pickActionableFields(refEntry) };
+      }
+    } else {
+      // Cross-table reference: "see": "B1-2:4"
+      const crossMatch = seeRef.match(/^([A-Za-z0-9-]+):(\d+)$/);
+      if (crossMatch) {
+        const refTable = crossMatch[1];
+        const refRoll = parseInt(crossMatch[2], 10);
+        const refEntry = tables.lookupValue(refTable, refRoll);
+        if (refEntry) {
+          // Merge the referenced entry's actionable fields
+          entry = { ...entry, ...pickActionableFields(refEntry) };
+        }
+      }
+    }
+  }
+
   const effects: DamageEffect[] = [];
 
   // Extract damage_effects if present in the JSON
@@ -184,7 +227,7 @@ export function rollCompartmentDamage(
         type: de.type,
         position: de.position,
         severity: de.severity,
-        damageType: de.damage_type,
+        damageType: de.damage_type ?? de.effect,
         engine: de.engine,
         table: de.table,
         target: de.target,
@@ -196,6 +239,28 @@ export function rollCompartmentDamage(
   if ((entry as any).effect === 'control_cables') {
     effects.push({ type: 'control_cables' });
   }
+
+  // P-series compartment-specific effects
+  const pEffect = (entry as any).effect as string | undefined;
+
+  // Heat out effects (P-2 roll 2, P-4 roll 2)
+  if (pEffect === 'pilot_copilot_heat_out') {
+    effects.push({ type: 'heat_damage', target: 'pilot_copilot' });
+  }
+  if (pEffect === 'radio_room_heat_out') {
+    effects.push({ type: 'heat_damage', target: 'radio_room' });
+  }
+
+  // Release mechanism out (P-3 roll 2) — bomb run -3
+  if (pEffect === 'release_mechanism_out') {
+    effects.push({ type: 'system_damage', damageType: 'release_mechanism_out', modifier: -3 });
+  }
+
+  // Radio out (P-4 rolls 4-5)
+  if (pEffect === 'radio_out') {
+    effects.push({ type: 'system_damage', damageType: 'radio_out' });
+  }
+
 
   // B1-2 instrument damage effects
   const b12Effect = (entry as any).effect as string | undefined;

@@ -487,6 +487,60 @@ describe('Bug regression: P-6 roll 7 rudder hits tracked correctly', () => {
   });
 });
 
+describe('Bug fix: see property references resolved', () => {
+  function fixedRng(twod6Value: number) {
+    return { d6: () => 1, twod6: () => twod6Value, int: (a: number) => a } as any;
+  }
+
+  it('P-3 roll 9 resolves see:"3" — produces sub_roll effect like roll 3 (bombs)', () => {
+    const result = rollCompartmentDamage('P-3', fixedRng(9), tables);
+    expect(result.result).toBe('Bombs');
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('sub_roll');
+    expect(followUp!.target).toBe('Bombs');
+  });
+
+  it('P-3 roll 10 resolves see:"5" — produces sub_roll effect like roll 5 (bomb bay doors)', () => {
+    const result = rollCompartmentDamage('P-3', fixedRng(10), tables);
+    expect(result.result).toBe('Bomb Bay Doors');
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('sub_roll');
+    expect(followUp!.target).toBe('Bomb Bay Doors');
+  });
+
+  it('P-3 roll 11 resolves see:"3" — produces sub_roll effect like roll 3 (bombs)', () => {
+    const result = rollCompartmentDamage('P-3', fixedRng(11), tables);
+    expect(result.result).toBe('Bombs');
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('sub_roll');
+    expect(followUp!.target).toBe('Bombs');
+  });
+
+  it('P-4 roll 3 resolves see:"B1-2:4" — produces intercom_out instrument_damage effect', () => {
+    const result = rollCompartmentDamage('P-4', fixedRng(3), tables);
+    expect(result.result).toBe('Intercom System Out');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('intercom_out');
+  });
+
+  it('P-4 roll 5 with see:"4" keeps its own radio_out effect (see is informational)', () => {
+    const result = rollCompartmentDamage('P-4', fixedRng(5), tables);
+    expect(result.result).toBe('Radio Out');
+    // Should have system_damage from its own effect, not be overridden
+    expect(result.effects.length).toBeGreaterThan(0);
+  });
+
+  it('P-3 roll 12 with see:"P-2:12" keeps its own control_cables effect', () => {
+    const result = rollCompartmentDamage('P-3', fixedRng(12), tables);
+    expect(result.result).toBe('Control Cables');
+    expect(result.effects.some(e => e.type === 'control_cables')).toBe(true);
+  });
+});
+
 describe('Bug regression: P-6 Tail guns inoperable', () => {
   it('P-6 roll 4 result describes tail guns inoperable', () => {
     // Roll 4 on P-6 = "Tail Turret — Tail guns inoperable"
@@ -501,5 +555,78 @@ describe('Bug regression: P-6 Tail guns inoperable', () => {
     expect(getGun(ac.guns, 'Tail').disabled).toBe(true);
     // Ammo is full and aircraft is otherwise fine, but tail guns should be inoperable
     expect(getGun(ac.guns, 'Tail').ammo).toBeGreaterThan(0);
+  });
+});
+
+describe('Unhandled P-series effect values', () => {
+  function fixedRng(twod6Value: number) {
+    return { d6: () => 1, twod6: () => twod6Value, int: (a: number) => a } as any;
+  }
+
+  it('P-2 roll 2 (pilot_copilot_heat_out) produces heat_damage effect', () => {
+    const result = rollCompartmentDamage('P-2', fixedRng(2), tables);
+    expect(result.result).toBe('Compartment Heat');
+    const eff = result.effects.find(e => e.type === 'heat_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.target).toBe('pilot_copilot');
+  });
+
+  it('P-3 roll 2 (release_mechanism_out) produces system_damage effect', () => {
+    const result = rollCompartmentDamage('P-3', fixedRng(2), tables);
+    expect(result.result).toBe('Bomb Release Mechanism');
+    const eff = result.effects.find(e => e.type === 'system_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('release_mechanism_out');
+    expect(eff!.modifier).toBe(-3);
+  });
+
+  it('P-4 roll 4 (radio_out) produces system_damage effect', () => {
+    const result = rollCompartmentDamage('P-4', fixedRng(4), tables);
+    expect(result.result).toBe('Radio Out');
+    const eff = result.effects.find(e => e.type === 'system_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('radio_out');
+  });
+
+  it('P-4 roll 5 (radio_out) also produces system_damage effect', () => {
+    const result = rollCompartmentDamage('P-4', fixedRng(5), tables);
+    expect(result.result).toBe('Radio Out');
+    const eff = result.effects.find(e => e.type === 'system_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('radio_out');
+  });
+
+  it('P-4 roll 2 (radio_room_heat_out) produces heat_damage effect', () => {
+    const result = rollCompartmentDamage('P-4', fixedRng(2), tables);
+    expect(result.result).toBe('Compartment Heat');
+    const eff = result.effects.find(e => e.type === 'heat_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.target).toBe('radio_room');
+  });
+
+  it('P-1 roll 2 (bomb_run_off_target via damage_effects) produces equipment_damage with bomb_run_off_target', () => {
+    const result = rollCompartmentDamage('P-1', fixedRng(2), tables);
+    expect(result.result).toBe('Norden Sight');
+    const eff = result.effects.find(e => e.type === 'equipment_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('bomb_run_off_target');
+  });
+
+  it('none of these effects fall through to generic system_damage or superficial', () => {
+    // P-2 roll 2
+    const r1 = rollCompartmentDamage('P-2', fixedRng(2), tables);
+    expect(r1.effects.some(e => e.type === 'superficial')).toBe(false);
+
+    // P-3 roll 2
+    const r2 = rollCompartmentDamage('P-3', fixedRng(2), tables);
+    expect(r2.effects.some(e => e.type === 'superficial')).toBe(false);
+
+    // P-4 rolls 2, 4, 5
+    const r3 = rollCompartmentDamage('P-4', fixedRng(2), tables);
+    expect(r3.effects.some(e => e.type === 'superficial')).toBe(false);
+    const r4 = rollCompartmentDamage('P-4', fixedRng(4), tables);
+    expect(r4.effects.some(e => e.type === 'superficial')).toBe(false);
+    const r5 = rollCompartmentDamage('P-4', fixedRng(5), tables);
+    expect(r5.effects.some(e => e.type === 'superficial')).toBe(false);
   });
 });

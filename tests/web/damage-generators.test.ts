@@ -449,6 +449,97 @@ describe('B1-2 instrument damage state application', () => {
   });
 });
 
+describe('compartment fire sub-rolls trigger B1-3 extinguisher resolution', () => {
+  let ctx: ReturnType<typeof createMockCtx>;
+  const noopBailout = function* () {} as any;
+
+  beforeEach(() => {
+    ctx = createMockCtx();
+  });
+
+  it('P-1 roll 12 sub-roll 6 (fire) triggers B1-3 extinguisher sequence', () => {
+    // P-1 roll 12 = Oxygen Supply Hit → sub-roll 6 = fire + oxygen out, roll B1-3
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', noopBailout,
+    );
+    // Roll 12 on P-1 (Oxygen Supply Hit), sub-roll 6 (fire), then B1-3 extinguisher roll 2 (fire out)
+    driveGenerator(gen, [12, 6, 2]);
+    expect(ctx.state.campaign.aircraft.oxygenOut).toBe(true);
+    // Should have a B1-3 extinguisher roll event
+    const b13Event = ctx.emitCalls.find(c =>
+      typeof c[1] === 'string' && c[1].includes('extinguish'),
+    );
+    expect(b13Event).toBeDefined();
+  });
+
+  it('P-2 roll 10 sub-roll 6 (fire) triggers B1-3 extinguisher sequence', () => {
+    // P-2 roll 10 = Oxygen System → sub-roll 6 = fire + oxygen out, roll B1-3
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout,
+    );
+    // Roll 10, sub-roll 6 (fire), B1-3 roll 1 (fire out)
+    driveGenerator(gen, [10, 6, 1]);
+    expect(ctx.state.campaign.aircraft.oxygenOut).toBe(true);
+    const b13Event = ctx.emitCalls.find(c =>
+      typeof c[1] === 'string' && c[1].includes('extinguish'),
+    );
+    expect(b13Event).toBeDefined();
+  });
+
+  it('compartment fire extinguisher uses hand extinguishers (not engine)', () => {
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', noopBailout,
+    );
+    // Roll 12, sub-roll 6 (fire), B1-3 roll 2 (fire out)
+    driveGenerator(gen, [12, 6, 2]);
+    expect(ctx.state.campaign.aircraft.handExtinguishersUsed).toBe(1);
+    expect(ctx.state.campaign.aircraft.fireExtinguishersUsed).toBe(0); // engine extinguishers untouched
+  });
+
+  it('compartment fire extinguisher retries up to 3 times then triggers bailout', () => {
+    let bailoutCalled = false;
+    const bailout = function* (controlled: boolean) {
+      bailoutCalled = true;
+      expect(controlled).toBe(true); // B1-3 failure = controlled bailout G-6
+    } as any;
+
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', bailout,
+    );
+    // Roll 12 (Oxygen), sub-roll 6 (fire), then 3 failed B1-3 rolls (5, 6, 5)
+    driveGenerator(gen, [12, 6, 5, 6, 5]);
+    expect(bailoutCalled).toBe(true);
+    expect(ctx.state.campaign.aircraft.handExtinguishersUsed).toBe(3);
+  });
+
+  it('compartment fire extinguisher succeeds on second attempt', () => {
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', noopBailout,
+    );
+    // Roll 12, sub-roll 6 (fire), B1-3 roll 5 (fail), B1-3 roll 3 (fire out)
+    driveGenerator(gen, [12, 6, 5, 3]);
+    expect(ctx.state.campaign.aircraft.handExtinguishersUsed).toBe(2);
+    // Verify fire extinguished event
+    const extEvent = ctx.emitCalls.find(c =>
+      typeof c[1] === 'string' && c[1].includes('extinguished'),
+    );
+    expect(extEvent).toBeDefined();
+  });
+
+  it('triggers bailout immediately when no hand extinguishers remain', () => {
+    let bailoutCalled = false;
+    const bailout = function* () { bailoutCalled = true; } as any;
+    ctx.state.campaign.aircraft.handExtinguishersUsed = 5; // all 5 used
+
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', bailout,
+    );
+    // Roll 12, sub-roll 6 (fire) — no extinguishers left, immediate bailout
+    driveGenerator(gen, [12, 6]);
+    expect(bailoutCalled).toBe(true);
+  });
+});
+
 describe('resolveCompartmentHitGen', () => {
   let ctx: ReturnType<typeof createMockCtx>;
   const noopBailout = function* () {} as any;
@@ -549,5 +640,44 @@ describe('resolveCompartmentHitGen', () => {
       if (call[4] !== undefined) expect(call[4]).toBe(5);
       if (call[5] !== undefined) expect(call[5]).toBe('inbound');
     }
+  });
+
+  it('P-2 roll 2 (pilot_copilot_heat_out) sets heatingOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [2]); // roll 2 on P-2 = Compartment Heat (pilot/copilot)
+    expect(ctx.state.campaign.aircraft.heatingOut).toBe(true);
+  });
+
+  it('P-4 roll 2 (radio_room_heat_out) sets heatingOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Radio Room', 'P-4', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [2]); // roll 2 on P-4 = Compartment Heat (radio room)
+    expect(ctx.state.campaign.aircraft.heatingOut).toBe(true);
+  });
+
+  it('P-3 roll 2 (release_mechanism_out) sets bombControlsInop and bombRunModifier -3', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Bomb Bay', 'P-3', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [2]); // roll 2 on P-3 = Bomb Release Mechanism
+    expect(ctx.state.campaign.aircraft.bombControlsInop).toBe(true);
+    expect(ctx.state.mission!.bombRunModifier).toBe(-3);
+    expect(ctx.state.mission!.bombRunModifierReasons).toContain('Bomb release mechanism -3');
+  });
+
+  it('P-4 roll 4 (radio_out) sets radioOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Radio Room', 'P-4', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [4]); // roll 4 on P-4 = Radio Out
+    expect(ctx.state.campaign.aircraft.radioOut).toBe(true);
+  });
+
+  it('P-4 roll 5 (radio_out) also sets radioOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Radio Room', 'P-4', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [5]); // roll 5 on P-4 = Radio Out
+    expect(ctx.state.campaign.aircraft.radioOut).toBe(true);
+  });
+
+  it('P-1 roll 2 (Norden sight / bomb_run_off_target) applies massive bomb run penalty', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Nose', 'P-1', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [2]); // roll 2 on P-1 = Norden Sight destroyed
+    expect(ctx.state.mission!.bombRunModifier).toBeLessThanOrEqual(-99);
+    expect(ctx.state.mission!.bombRunModifierReasons.some(r => r.toLowerCase().includes('norden'))).toBe(true);
   });
 });

@@ -33,6 +33,7 @@ export function createDefaultAircraft(): AircraftState {
     intercomOut: false, gearIndicatorOut: false, flapsIndicatorOut: false,
     aileronControlsOut: false, elevatorControlsOut: false, rudderControlsOut: false,
     propFeatheringOut: false, engineExtinguishersOut: false, electricalSystemOut: false,
+    handExtinguishersUsed: 0,
   };
 }
 

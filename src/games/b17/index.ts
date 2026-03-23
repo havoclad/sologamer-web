@@ -62,6 +62,7 @@ function createDefaultAircraft(): AircraftState {
     propFeatheringOut: false,
     engineExtinguishersOut: false,
     electricalSystemOut: false,
+    handExtinguishersUsed: 0,
   };
 }
 

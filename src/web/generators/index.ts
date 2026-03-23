@@ -5,7 +5,7 @@
 export type { GeneratorContext } from './generator-context.js';
 export { yieldCombatRoll, createPendingRoll } from './yield-helpers.js';
 export {
-  resolveCompartmentHitGen, resolveFireExtinguisher,
+  resolveCompartmentHitGen, resolveFireExtinguisher, resolveCompartmentFireExtinguisher,
   matchSubRollOutcome, resolveSubRollWound, applySubRollEffect,
   resolveGenericSubRoll,
 } from './damage-generators.js';
