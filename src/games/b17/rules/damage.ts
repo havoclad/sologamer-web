@@ -144,8 +144,8 @@ export interface DamageResult {
 export interface DamageEffect {
   type: 'gun_damage' | 'equipment_damage' | 'crew_wound' | 'engine_damage'
     | 'fire' | 'oxygen_hit' | 'heat_damage' | 'control_damage'
-    | 'wing_root_hit' | 'destroyed' | 'superficial' | 'landing_modifier'
-    | 'follow_up_table' | 'system_damage' | 'control_cables';
+    | 'wing_root_hit' | 'rudder_hit' | 'destroyed' | 'superficial' | 'landing_modifier'
+    | 'follow_up_table' | 'system_damage' | 'control_cables' | 'instrument_damage';
   position?: string;
   severity?: string;
   damageType?: string;
@@ -153,6 +153,7 @@ export interface DamageEffect {
   table?: string;
   modifier?: number;
   target?: string;
+  targets?: string[];
 }
 
 /**
@@ -196,12 +197,35 @@ export function rollCompartmentDamage(
     effects.push({ type: 'control_cables' });
   }
 
+  // B1-2 instrument damage effects
+  const b12Effect = (entry as any).effect as string | undefined;
+  if (b12Effect && b12Effect !== 'control_cables' && b12Effect !== 'destroyed') {
+    const B12_EFFECTS: Record<string, DamageEffect> = {
+      autopilot_out:            { type: 'instrument_damage', damageType: 'autopilot_out' },
+      gear_indicator_out:       { type: 'instrument_damage', damageType: 'gear_indicator_out', modifier: -3 },
+      intercom_out:             { type: 'instrument_damage', damageType: 'intercom_out' },
+      oxygen_system_out:        { type: 'instrument_damage', damageType: 'oxygen_system_out' },
+      flaps_indicator_out:      { type: 'instrument_damage', damageType: 'flaps_indicator_out', modifier: -1 },
+      aileron_controls_out:     { type: 'instrument_damage', damageType: 'aileron_controls_out', modifier: -1 },
+      elevator_controls_out:    { type: 'instrument_damage', damageType: 'elevator_controls_out', modifier: -1 },
+      rudder_controls_out:      { type: 'instrument_damage', damageType: 'rudder_controls_out', modifier: -1 },
+      prop_feathering_out:      { type: 'instrument_damage', damageType: 'prop_feathering_out' },
+      engine_extinguishers_out: { type: 'instrument_damage', damageType: 'engine_extinguishers_out' },
+      electrical_system_out:    { type: 'instrument_damage', damageType: 'electrical_system_out' },
+    };
+    const mapped = B12_EFFECTS[b12Effect];
+    if (mapped) {
+      effects.push(mapped);
+    }
+  }
+
   // Check for follow-up table rolls (skip if already handled as control_cables)
   if ((entry as any).follow_up?.table && (entry as any).effect !== 'control_cables') {
     effects.push({
       type: 'follow_up_table',
       table: (entry as any).follow_up.table,
       target: (entry as any).follow_up.target,
+      targets: (entry as any).follow_up.targets,
     });
   }
 
@@ -224,10 +248,17 @@ export function rollCompartmentDamage(
   // Skip if cumulative is a plain boolean (control_cables already handled above)
   if ((entry as any).cumulative && typeof (entry as any).cumulative === 'object') {
     const cum = (entry as any).cumulative;
-    effects.push({
-      type: 'wing_root_hit',
-      target: cum.type,
-    });
+    if (cum.type === 'rudder_hits') {
+      effects.push({
+        type: 'rudder_hit',
+        target: cum.type,
+      });
+    } else {
+      effects.push({
+        type: 'wing_root_hit',
+        target: cum.type,
+      });
+    }
   }
 
   // Only mark as superficial if the table entry explicitly says so.

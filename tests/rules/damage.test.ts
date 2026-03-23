@@ -23,6 +23,16 @@ function makeAircraft(overrides: Partial<AircraftState> = {}): AircraftState {
     wingSurfaceDamage: { left: 0, right: 0 },
     controlDamage: { rudder: false, elevator: false, ailerons: false },
     fireExtinguishersUsed: 0, guns: initializeGuns(), ammo: { Nose: 12, Port_Cheek: 12, Starboard_Cheek: 12, Top_Turret: 16, Ball_Turret: 16, Port_Waist: 12, Starboard_Waist: 12, Radio: 8, Tail: 16 },
+    navigatorEquipInop: false, bombControlsInop: false, autopilotInop: false,
+    tailWheelDamaged: false, brakesOut: false, landingGearInop: false,
+    ballTurretTrapped: false, portFlapInop: false, starboardFlapInop: false,
+    portAileronInop: false, starboardAileronInop: false,
+    portElevatorInop: false, starboardElevatorInop: false,
+    portWingRootHits: 0, starboardWingRootHits: 0, rudderHits: 0, superficialHits: 0,
+    controlCableHits: 0,
+    intercomOut: false, gearIndicatorOut: false, flapsIndicatorOut: false,
+    aileronControlsOut: false, elevatorControlsOut: false, rudderControlsOut: false,
+    propFeatheringOut: false, engineExtinguishersOut: false, electricalSystemOut: false,
     ...overrides,
   };
 }
@@ -289,6 +299,113 @@ describe('resolveBIP', () => {
   });
 });
 
+describe('B1-2 instrument damage effects', () => {
+  function fixedRng(twod6Value: number) {
+    return { d6: () => 1, twod6: () => twod6Value, int: (a: number) => a } as any;
+  }
+
+  it('B1-2 roll 2 (Autopilot) produces instrument_damage effect with autopilot_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(2), tables);
+    expect(result.result).toBe('Autopilot');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('autopilot_out');
+  });
+
+  it('B1-2 roll 3 (Gear Indicator) produces instrument_damage with modifier -3', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(3), tables);
+    expect(result.result).toBe('Landing Gear Indicator');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('gear_indicator_out');
+    expect(eff!.modifier).toBe(-3);
+  });
+
+  it('B1-2 roll 4 (Intercom) produces instrument_damage with intercom_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(4), tables);
+    expect(result.result).toBe('Intercom System');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('intercom_out');
+  });
+
+  it('B1-2 roll 5 (Oxygen System) produces instrument_damage with oxygen_system_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(5), tables);
+    expect(result.result).toBe('Oxygen System');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('oxygen_system_out');
+  });
+
+  it('B1-2 roll 6 (Flaps Indicator) produces instrument_damage with modifier -1', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(6), tables);
+    expect(result.result).toBe('Wing Flaps Indicator');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('flaps_indicator_out');
+    expect(eff!.modifier).toBe(-1);
+  });
+
+  it('B1-2 roll 7 (Aileron Controls) produces instrument_damage with modifier -1', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(7), tables);
+    expect(result.result).toBe('Aileron Controls');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('aileron_controls_out');
+    expect(eff!.modifier).toBe(-1);
+  });
+
+  it('B1-2 roll 8 (Elevator Controls) produces instrument_damage with modifier -1', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(8), tables);
+    expect(result.result).toBe('Elevator Controls');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('elevator_controls_out');
+    expect(eff!.modifier).toBe(-1);
+  });
+
+  it('B1-2 roll 9 (Rudder Controls) produces instrument_damage with modifier -1', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(9), tables);
+    expect(result.result).toBe('Rudder Controls');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('rudder_controls_out');
+    expect(eff!.modifier).toBe(-1);
+  });
+
+  it('B1-2 roll 10 (Prop Feathering) produces instrument_damage with prop_feathering_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(10), tables);
+    expect(result.result).toBe('Propeller Feathering');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('prop_feathering_out');
+  });
+
+  it('B1-2 roll 11 (Engine Extinguishers) produces instrument_damage with engine_extinguishers_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(11), tables);
+    expect(result.result).toBe('Engine Fire Extinguishers');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('engine_extinguishers_out');
+  });
+
+  it('B1-2 roll 12 (Electrical System) produces instrument_damage with electrical_system_out', () => {
+    const result = rollCompartmentDamage('B1-2', fixedRng(12), tables);
+    expect(result.result).toBe('Electrical System');
+    const eff = result.effects.find(e => e.type === 'instrument_damage');
+    expect(eff).toBeDefined();
+    expect(eff!.damageType).toBe('electrical_system_out');
+  });
+
+  it('no B1-2 result should fall through to system_damage', () => {
+    for (let roll = 2; roll <= 12; roll++) {
+      const result = rollCompartmentDamage('B1-2', fixedRng(roll), tables);
+      const hasSysDmg = result.effects.some(e => e.type === 'system_damage');
+      expect(hasSysDmg, `Roll ${roll} (${result.result}) should not have system_damage`).toBe(false);
+    }
+  });
+});
+
 // ─── Regression tests ───
 
 describe('Bug regression: P-5 Waist wound follow-up (B1-4)', () => {
@@ -316,6 +433,57 @@ describe('Bug regression: P-5 Waist wound follow-up (B1-4)', () => {
     const followUp = result.effects.find(e => e.type === 'follow_up_table');
     expect(followUp).toBeDefined();
     expect(followUp!.table).toBe('B1-4');
+  });
+});
+
+describe('Bug regression: P-1 roll 4 and P-2 roll 3 follow_up.targets (plural)', () => {
+  it('P-1 roll 4 produces follow_up_table with targets for Bombardier and Navigator', () => {
+    // Roll 4 on P-1 = "Bombardier and Navigator" with follow_up.targets array
+    const fixedRng = { d6: () => 2, twod6: () => 4, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-1', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+    expect(followUp!.targets).toEqual(['Bombardier', 'Navigator']);
+  });
+
+  it('P-2 roll 3 produces follow_up_table with targets for Pilot and Co-Pilot', () => {
+    // Roll 3 on P-2 = "Pilot and Co-Pilot" with follow_up.targets array
+    const fixedRng = { d6: () => 1, twod6: () => 3, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-2', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+    expect(followUp!.targets).toEqual(['Pilot', 'Co-Pilot']);
+  });
+
+  it('P-1 roll 5 still produces singular target for Navigator', () => {
+    // Roll 5 on P-1 = "Navigator" with follow_up.target (singular)
+    const fixedRng = { d6: () => 2, twod6: () => 5, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-1', fixedRng as any, tables);
+    const followUp = result.effects.find(e => e.type === 'follow_up_table');
+    expect(followUp).toBeDefined();
+    expect(followUp!.table).toBe('B1-4');
+    expect(followUp!.target).toBe('Navigator');
+  });
+});
+
+describe('Bug regression: P-6 roll 7 rudder hits tracked correctly', () => {
+  it('P-6 roll 7 produces rudder_hit effect, NOT wing_root_hit', () => {
+    // Roll 7 on P-6 = "Rudder" with cumulative rudder_hits
+    const fixedRng = { d6: () => 4, twod6: () => 7, int: (a: number, b: number) => a };
+    const result = rollCompartmentDamage('P-6', fixedRng as any, tables);
+    expect(result.result).toBe('Rudder');
+    expect(result.effects.some(e => e.type === 'rudder_hit')).toBe(true);
+    expect(result.effects.some(e => e.type === 'wing_root_hit')).toBe(false);
+  });
+
+  it('B1-1 roll 2 still produces wing_root_hit (not rudder_hit)', () => {
+    // Ensure we did not break wing root hit behavior
+    const result = rollCompartmentDamage('B1-1', createRNG(20), tables);
+    expect(result.result).toBe('Wing Root');
+    expect(result.effects.some(e => e.type === 'wing_root_hit')).toBe(true);
+    expect(result.effects.some(e => e.type === 'rudder_hit')).toBe(false);
   });
 });
 

@@ -128,8 +128,18 @@ function cloneAircraft(ac: AircraftState): AircraftState {
     starboardElevatorInop: ac.starboardElevatorInop ?? false,
     portWingRootHits: ac.portWingRootHits ?? 0,
     starboardWingRootHits: ac.starboardWingRootHits ?? 0,
+    rudderHits: ac.rudderHits ?? 0,
     superficialHits: ac.superficialHits ?? 0,
     controlCableHits: ac.controlCableHits ?? 0,
+    intercomOut: ac.intercomOut ?? false,
+    gearIndicatorOut: ac.gearIndicatorOut ?? false,
+    flapsIndicatorOut: ac.flapsIndicatorOut ?? false,
+    aileronControlsOut: ac.aileronControlsOut ?? false,
+    elevatorControlsOut: ac.elevatorControlsOut ?? false,
+    rudderControlsOut: ac.rudderControlsOut ?? false,
+    propFeatheringOut: ac.propFeatheringOut ?? false,
+    engineExtinguishersOut: ac.engineExtinguishersOut ?? false,
+    electricalSystemOut: ac.electricalSystemOut ?? false,
   };
 }
 

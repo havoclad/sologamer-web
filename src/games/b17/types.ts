@@ -114,8 +114,20 @@ export interface AircraftState {
   starboardElevatorInop: boolean;
   portWingRootHits: number;
   starboardWingRootHits: number;
+  rudderHits: number;
   superficialHits: number;
   controlCableHits: number;
+
+  // ── B1-2 Instrument damage tracking ──
+  intercomOut: boolean;
+  gearIndicatorOut: boolean;
+  flapsIndicatorOut: boolean;
+  aileronControlsOut: boolean;
+  elevatorControlsOut: boolean;
+  rudderControlsOut: boolean;
+  propFeatheringOut: boolean;
+  engineExtinguishersOut: boolean;
+  electricalSystemOut: boolean;
 }
 
 // ─── Mission ───

@@ -345,6 +345,110 @@ describe('resolveGenericSubRoll', () => {
   });
 });
 
+describe('B1-2 instrument damage state application', () => {
+  let ctx: ReturnType<typeof createMockCtx>;
+  const noopBailout = function* () {} as any;
+
+  beforeEach(() => {
+    ctx = createMockCtx();
+  });
+
+  // B1-2 is a 2d6 table. We need to feed roll values matching B1-2 entries.
+  // resolveCompartmentHitGen yields a pending roll, then we feed the value.
+
+  it('B1-2 roll 2 sets autopilotInop and bombRunModifier -2', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [2]); // roll 2 on B1-2 = Autopilot
+    expect(ctx.state.campaign.aircraft.autopilotInop).toBe(true);
+    expect(ctx.state.mission!.bombRunModifier).toBe(-2);
+  });
+
+  it('B1-2 roll 3 sets gearIndicatorOut and landingModifiers -3', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [3]); // roll 3 = Landing Gear Indicator
+    expect(ctx.state.campaign.aircraft.gearIndicatorOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-3);
+  });
+
+  it('B1-2 roll 4 sets intercomOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [4]); // roll 4 = Intercom System
+    expect(ctx.state.campaign.aircraft.intercomOut).toBe(true);
+  });
+
+  it('B1-2 roll 5 sets oxygenOut and drops to 10k out of formation', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [5]); // roll 5 = Oxygen System
+    expect(ctx.state.campaign.aircraft.oxygenOut).toBe(true);
+    expect(ctx.state.mission!.outOfFormation).toBe(true);
+    expect(ctx.state.mission!.altitude).toBe(10000);
+  });
+
+  it('B1-2 roll 6 sets flapsIndicatorOut and landingModifiers -1', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [6]); // roll 6 = Wing Flaps Indicator
+    expect(ctx.state.campaign.aircraft.flapsIndicatorOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+  });
+
+  it('B1-2 roll 7 sets aileronControlsOut and landingModifiers -1', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [7]); // roll 7 = Aileron Controls
+    expect(ctx.state.campaign.aircraft.aileronControlsOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+  });
+
+  it('B1-2 roll 8 sets elevatorControlsOut and landingModifiers -1', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [8]); // roll 8 = Elevator Controls
+    expect(ctx.state.campaign.aircraft.elevatorControlsOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+  });
+
+  it('B1-2 roll 9 sets rudderControlsOut and landingModifiers -1', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [9]); // roll 9 = Rudder Controls
+    expect(ctx.state.campaign.aircraft.rudderControlsOut).toBe(true);
+    expect(ctx.state.mission!.landingModifiers).toBe(-1);
+  });
+
+  it('B1-2 roll 10 sets propFeatheringOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [10]); // roll 10 = Propeller Feathering
+    expect(ctx.state.campaign.aircraft.propFeatheringOut).toBe(true);
+  });
+
+  it('B1-2 roll 11 sets engineExtinguishersOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [11]); // roll 11 = Engine Fire Extinguishers
+    expect(ctx.state.campaign.aircraft.engineExtinguishersOut).toBe(true);
+  });
+
+  it('B1-2 roll 12 sets electricalSystemOut', () => {
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [12]); // roll 12 = Electrical System
+    expect(ctx.state.campaign.aircraft.electricalSystemOut).toBe(true);
+  });
+
+  it('P-2 roll 9 (Instruments) follows up to B1-2 and applies effects', () => {
+    // P-2 roll 9 = Instruments → follow-up to B1-2
+    // First roll (9) triggers P-2 Instruments, second roll (2) triggers B1-2 Autopilot
+    const gen = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen, [9, 2]); // P-2 roll 9, then B1-2 roll 2 (Autopilot)
+    expect(ctx.state.campaign.aircraft.autopilotInop).toBe(true);
+    expect(ctx.state.mission!.bombRunModifier).toBe(-2);
+  });
+
+  it('B1-2 landing modifiers are cumulative', () => {
+    // Apply two different landing-affecting instrument damages
+    const gen1 = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen1, [6]); // Flaps indicator -1
+    const gen2 = resolveCompartmentHitGen(ctx, 'Pilot Compt.', 'B1-2', 4, 'outbound', noopBailout);
+    driveGenerator(gen2, [7]); // Aileron controls -1
+    expect(ctx.state.mission!.landingModifiers).toBe(-2);
+  });
+});
+
 describe('resolveCompartmentHitGen', () => {
   let ctx: ReturnType<typeof createMockCtx>;
   const noopBailout = function* () {} as any;
@@ -405,6 +509,34 @@ describe('resolveCompartmentHitGen', () => {
     // Should fall back to superficial damage
     const { yields } = driveGenerator(gen, [3]);
     expect(ctx.emitCalls.length).toBeGreaterThan(0);
+  });
+
+  it('P-1 roll 4 wounds both Bombardier and Navigator (plural targets)', () => {
+    // Roll 4 on P-1 = "Bombardier and Navigator" with follow_up.targets array
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Nose', 'P-1', 4, 'outbound', noopBailout,
+    );
+    // First roll = 4 (damage table), then two wound rolls (one per target)
+    const { yields } = driveGenerator(gen, [4, 2, 3]);
+    // Both bombardier and navigator should be wounded
+    const bombardier = ctx.state.campaign.crew.find(c => c.position === 'bombardier');
+    const navigator = ctx.state.campaign.crew.find(c => c.position === 'navigator');
+    expect(bombardier!.woundSeverity).not.toBe('none');
+    expect(navigator!.woundSeverity).not.toBe('none');
+  });
+
+  it('P-2 roll 3 wounds both Pilot and Co-Pilot (plural targets)', () => {
+    // Roll 3 on P-2 = "Pilot and Co-Pilot" with follow_up.targets array
+    const gen = resolveCompartmentHitGen(
+      ctx, 'Pilot Compt.', 'P-2', 4, 'outbound', noopBailout,
+    );
+    // First roll = 3 (damage table), then two wound rolls (one per target)
+    const { yields } = driveGenerator(gen, [3, 2, 3]);
+    // Both pilot and copilot should be wounded
+    const pilot = ctx.state.campaign.crew.find(c => c.position === 'pilot');
+    const copilot = ctx.state.campaign.crew.find(c => c.position === 'copilot');
+    expect(pilot!.woundSeverity).not.toBe('none');
+    expect(copilot!.woundSeverity).not.toBe('none');
   });
 
   it('emits events with correct zone and direction', () => {

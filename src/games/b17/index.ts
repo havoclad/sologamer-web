@@ -50,8 +50,18 @@ function createDefaultAircraft(): AircraftState {
     starboardElevatorInop: false,
     portWingRootHits: 0,
     starboardWingRootHits: 0,
+    rudderHits: 0,
     superficialHits: 0,
     controlCableHits: 0,
+    intercomOut: false,
+    gearIndicatorOut: false,
+    flapsIndicatorOut: false,
+    aileronControlsOut: false,
+    elevatorControlsOut: false,
+    rudderControlsOut: false,
+    propFeatheringOut: false,
+    engineExtinguishersOut: false,
+    electricalSystemOut: false,
   };
 }
 

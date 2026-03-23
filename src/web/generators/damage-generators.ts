@@ -500,6 +500,27 @@ export function* resolveCompartmentHitGen(
         }
         break;
       }
+      case 'rudder_hit': {
+        const ac2 = ctx.state.campaign.aircraft;
+        const rudderHits = (ac2.rudderHits || 0) + 1;
+        ac2.rudderHits = rudderHits;
+
+        if (rudderHits < 3) {
+          ctx.emit('DAMAGE', `Rudder hit ${rudderHits}/3 — no effect yet`, 'damage', 'info', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Rudder hit (${rudderHits}/3 — no effect)` }], true);
+        } else {
+          // 3rd+ hit: rudder inoperable
+          if (ctx.state.mission) {
+            ctx.state.mission.landingModifiers -= 1;
+            ctx.state.mission.landingModifierReasons.push('Rudder inoperable (landing -1)');
+            ctx.state.mission.bombRunModifier -= 99;
+            ctx.state.mission.bombRunModifierReasons.push('Rudder inoperable (bomb run off target)');
+          }
+          ctx.emit('DAMAGE', `Rudder hit ${rudderHits}/3 — Rudder INOPERABLE! Can only fly straight ahead, Bomb Run Off Target, landing -1`, 'damage', 'critical', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: `Rudder inoperable (${rudderHits}/3)` }], true);
+        }
+        break;
+      }
       case 'control_cables': {
         const ac = ctx.state.campaign.aircraft;
         const hits = (ac.controlCableHits || 0) + 1;
@@ -696,18 +717,35 @@ export function* resolveCompartmentHitGen(
           }
         } else if (effect.table === 'B1-4') {
           // ── Crew wound follow-up (B1-4) ──
-          const targetText = (effect.target ?? rollEntry?.follow_up?.target ?? '') as string;
           const woundTargets: CrewPosition[] = [];
-          if (/port\s*waist/i.test(targetText)) woundTargets.push('left_waist');
-          else if (/starboard\s*waist/i.test(targetText)) woundTargets.push('right_waist');
-          else if (/both\s*waist/i.test(targetText)) woundTargets.push('left_waist', 'right_waist');
-          else if (/tail/i.test(targetText)) woundTargets.push('tail_gunner');
-          else if (/ball/i.test(targetText)) woundTargets.push('ball_turret');
-          else if (/radio/i.test(targetText)) woundTargets.push('radioman');
-          else if (/navigator/i.test(targetText)) woundTargets.push('navigator');
-          else if (/bombardier/i.test(targetText)) woundTargets.push('bombardier');
-          else if (/pilot/i.test(targetText)) woundTargets.push('pilot');
-          else if (/engineer/i.test(targetText)) woundTargets.push('engineer');
+
+          // Map a single target text to crew position(s)
+          function mapTargetToPositions(text: string): CrewPosition[] {
+            if (/port\s*waist/i.test(text)) return ['left_waist'];
+            if (/starboard\s*waist/i.test(text)) return ['right_waist'];
+            if (/both\s*waist/i.test(text)) return ['left_waist', 'right_waist'];
+            if (/tail/i.test(text)) return ['tail_gunner'];
+            if (/ball/i.test(text)) return ['ball_turret'];
+            if (/radio/i.test(text)) return ['radioman'];
+            if (/navigator/i.test(text)) return ['navigator'];
+            if (/bombardier/i.test(text)) return ['bombardier'];
+            if (/co-?\s*pilot/i.test(text)) return ['copilot'];
+            if (/pilot/i.test(text)) return ['pilot'];
+            if (/engineer/i.test(text)) return ['engineer'];
+            return [];
+          }
+
+          // Handle plural targets array (e.g., ["Bombardier", "Navigator"])
+          const targetsArray = effect.targets ?? rollEntry?.follow_up?.targets;
+          if (Array.isArray(targetsArray)) {
+            for (const t of targetsArray) {
+              woundTargets.push(...mapTargetToPositions(t));
+            }
+          } else {
+            // Handle singular target string (existing behavior)
+            const targetText = (effect.target ?? rollEntry?.follow_up?.target ?? '') as string;
+            woundTargets.push(...mapTargetToPositions(targetText));
+          }
 
           for (const pos of woundTargets) {
             const crew = getCrewByPosition(ctx.state.campaign.crew, pos);
@@ -742,11 +780,75 @@ export function* resolveCompartmentHitGen(
             location, subRoll, rollEntry,
             zone, direction,
           );
+        } else if (effect.table && effect.table !== 'sub_roll' && effect.table !== damageTable) {
+          // ── Follow-up to another damage table (e.g. P-2 roll 9 → B1-2 Instruments) ──
+          ctx.emit('DAMAGE', `${location}: ${dmg.result} — roll on Table ${effect.table}`, 'damage', 'warn', zone, direction,
+            [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
+          yield* resolveCompartmentHitGen(ctx, dmg.result as string, effect.table as string, zone, direction, executeBailout);
         } else {
           // True generic fallback (no sub-roll data)
           ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', 'info', zone, direction,
             [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result }]);
         }
+        break;
+      }
+      case 'instrument_damage': {
+        const ac = ctx.state.campaign.aircraft;
+        const mission = ctx.state.mission;
+        const instrType = effect.damageType ?? '';
+        let instrSeverity: 'info' | 'warn' | 'bad' | 'critical' | 'good' = 'bad';
+        let instrImportant = true;
+
+        switch (instrType) {
+          case 'autopilot_out':
+            ac.autopilotInop = true;
+            if (mission) { mission.bombRunModifier -= 2; mission.bombRunModifierReasons.push('Autopilot out (B1-2) -2'); }
+            break;
+          case 'gear_indicator_out':
+            ac.gearIndicatorOut = true;
+            if (mission) { mission.landingModifiers -= 3; mission.landingModifierReasons.push('Gear indicator out (B1-2) -3'); }
+            instrSeverity = 'critical';
+            break;
+          case 'intercom_out':
+            ac.intercomOut = true;
+            break;
+          case 'oxygen_system_out':
+            ac.oxygenOut = true;
+            if (mission) { mission.outOfFormation = true; mission.altitude = 10000; }
+            instrSeverity = 'critical';
+            break;
+          case 'flaps_indicator_out':
+            ac.flapsIndicatorOut = true;
+            if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Flaps indicator out (B1-2) -1'); }
+            break;
+          case 'aileron_controls_out':
+            ac.aileronControlsOut = true;
+            if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Aileron controls out (B1-2) -1'); }
+            break;
+          case 'elevator_controls_out':
+            ac.elevatorControlsOut = true;
+            if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Elevator controls out (B1-2) -1'); }
+            break;
+          case 'rudder_controls_out':
+            ac.rudderControlsOut = true;
+            if (mission) { mission.landingModifiers -= 1; mission.landingModifierReasons.push('Rudder controls out (B1-2) -1'); }
+            break;
+          case 'prop_feathering_out':
+            ac.propFeatheringOut = true;
+            instrSeverity = 'warn';
+            break;
+          case 'engine_extinguishers_out':
+            ac.engineExtinguishersOut = true;
+            instrSeverity = 'warn';
+            break;
+          case 'electrical_system_out':
+            ac.electricalSystemOut = true;
+            instrSeverity = 'critical';
+            break;
+        }
+
+        ctx.emit('DAMAGE', `${location}: ${dmg.description || dmg.result}`, 'damage', instrSeverity, zone, direction,
+          [{ table: damageTable, rollType: dmgDiceType, rolled: dmgRollValue, result: dmg.result, description: dmg.description }], instrImportant);
         break;
       }
       default: {

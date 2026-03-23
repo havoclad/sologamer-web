@@ -29,7 +29,10 @@ export function createDefaultAircraft(): AircraftState {
     ballTurretTrapped: false, portFlapInop: false, starboardFlapInop: false,
     portAileronInop: false, starboardAileronInop: false,
     portElevatorInop: false, starboardElevatorInop: false,
-    portWingRootHits: 0, starboardWingRootHits: 0, superficialHits: 0,
+    portWingRootHits: 0, starboardWingRootHits: 0, rudderHits: 0, superficialHits: 0, controlCableHits: 0,
+    intercomOut: false, gearIndicatorOut: false, flapsIndicatorOut: false,
+    aileronControlsOut: false, elevatorControlsOut: false, rudderControlsOut: false,
+    propFeatheringOut: false, engineExtinguishersOut: false, electricalSystemOut: false,
   };
 }
 

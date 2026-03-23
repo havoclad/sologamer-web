@@ -977,6 +977,16 @@ function renderAircraft(ac) {
   if (ac.starboardAileronInop) damages.push('Stbd Aileron Inop');
   if (ac.controlDamage?.elevator && !ac.portElevatorInop && !ac.starboardElevatorInop) damages.push('Elevator Damage');
   if (ac.controlDamage?.ailerons && !ac.portAileronInop && !ac.starboardAileronInop) damages.push('Aileron Damage');
+  // B1-2 instrument damage
+  if (ac.intercomOut) damages.push('Intercom Out');
+  if (ac.gearIndicatorOut) damages.push('Gear Indicator Out');
+  if (ac.flapsIndicatorOut) damages.push('Flaps Indicator Out');
+  if (ac.aileronControlsOut) damages.push('Aileron Controls Out');
+  if (ac.elevatorControlsOut) damages.push('Elevator Controls Out');
+  if (ac.rudderControlsOut) damages.push('Rudder Controls Out');
+  if (ac.propFeatheringOut) damages.push('Prop Feathering Out');
+  if (ac.engineExtinguishersOut) damages.push('Engine Extinguishers Out');
+  if (ac.electricalSystemOut) damages.push('⚠ Electrical System Out');
 
   let dmgCount = 0;
 
@@ -1019,6 +1029,10 @@ function renderAircraft(ac) {
     if (ac.bombControlsInop) dmgItems.push({ text: 'Bomb Controls: Inoperable', cls: 'dmg-warn' });
     if (ac.autopilotInop) dmgItems.push({ text: 'Autopilot: Inoperable', cls: 'dmg-warn' });
     if (ac.bombBayDoorsInop) dmgItems.push({ text: 'Bomb Bay Doors: Inoperable', cls: 'dmg-warn' });
+    if (ac.intercomOut) dmgItems.push({ text: 'Intercom System: Out', cls: 'dmg-warn' });
+    if (ac.propFeatheringOut) dmgItems.push({ text: 'Prop Feathering: Out (emergency if engine fails)', cls: 'dmg-warn' });
+    if (ac.engineExtinguishersOut) dmgItems.push({ text: 'Engine Extinguishers: Out (emergency if engine fire)', cls: 'dmg-warn' });
+    if (ac.electricalSystemOut) dmgItems.push({ text: 'Electrical System: Out (bailout required)', cls: 'dmg-critical' });
 
     // Landing-affecting damage
     if (ac.tailWheelDamaged || ac.tailWheelInop) dmgItems.push({ text: 'Tailwheel: Damaged (landing -1)', cls: 'dmg-warn' });
@@ -1030,6 +1044,11 @@ function renderAircraft(ac) {
     if (ac.starboardAileronInop) dmgItems.push({ text: 'Starboard Aileron: Inoperable', cls: 'dmg-warn' });
     if (ac.portElevatorInop) dmgItems.push({ text: 'Port Elevator: Inoperable', cls: 'dmg-warn' });
     if (ac.starboardElevatorInop) dmgItems.push({ text: 'Starboard Elevator: Inoperable', cls: 'dmg-warn' });
+    if (ac.gearIndicatorOut) dmgItems.push({ text: 'Gear Indicator: Out (landing -3)', cls: 'dmg-critical' });
+    if (ac.flapsIndicatorOut) dmgItems.push({ text: 'Flaps Indicator: Out (landing -1)', cls: 'dmg-warn' });
+    if (ac.aileronControlsOut) dmgItems.push({ text: 'Aileron Controls: Out (landing -1)', cls: 'dmg-warn' });
+    if (ac.elevatorControlsOut) dmgItems.push({ text: 'Elevator Controls: Out (landing -1)', cls: 'dmg-warn' });
+    if (ac.rudderControlsOut) dmgItems.push({ text: 'Rudder Controls: Out (landing -1)', cls: 'dmg-warn' });
 
     // Control surfaces
     if (ac.controlDamage?.rudder) dmgItems.push({ text: 'Rudder: Damaged', cls: 'dmg-warn' });
