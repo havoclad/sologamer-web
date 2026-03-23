@@ -29,19 +29,21 @@ function makeFighter(overrides: Partial<Fighter> = {}): Fighter {
 
 describe('getFieldOfFire', () => {
   it('12 High allows Top Turret and Nose per M-1', () => {
-    const fof = getFieldOfFire('12 High', tables);
+    const fof = getFieldOfFire('12 High', tables, 'Me109');
     expect(fof.has('Top_Turret')).toBe(true);
     expect(fof.has('Nose')).toBe(true);
     expect(fof.get('Top_Turret')).toBe(6);
   });
 
-  it('6 High allows Ball Turret, Tail, both Waists per M-1', () => {
-    const fof = getFieldOfFire('6 High', tables);
-    expect(fof.has('Ball_Turret')).toBe(true);
+  it('6 High allows Top Turret, Radio, Tail per M-1', () => {
+    const fof = getFieldOfFire('6 High', tables, 'FW190');
+    expect(fof.has('Top_Turret')).toBe(true);
+    expect(fof.has('Radio')).toBe(true);
     expect(fof.has('Tail')).toBe(true);
-    expect(fof.get('Tail')).toBe(4); // Tail hits on 4+ from 6 o'clock
-    expect(fof.has('Port_Waist')).toBe(true);
-    expect(fof.has('Starboard_Waist')).toBe(true);
+    expect(fof.size).toBe(3);
+    expect(fof.get('Top_Turret')).toBe(4);
+    expect(fof.get('Radio')).toBe(6);
+    expect(fof.get('Tail')).toBe(4);
   });
 
   it('Vertical Dive only allows Top Turret and Radio per B-3/M-1', () => {
@@ -58,7 +60,43 @@ describe('getFieldOfFire', () => {
     const fof = getFieldOfFire('Vertical Climb', tables);
     expect(fof.has('Ball_Turret')).toBe(true);
     expect(fof.size).toBe(1);
-    expect(fof.get('Ball_Turret')).toBe(4); // 3-6 to hit (represented as 4 threshold)
+    expect(fof.get('Ball_Turret')).toBe(4);
+  });
+
+  it('Me110 gets lower hit numbers at 3/9 o\'clock turret positions', () => {
+    const me110 = getFieldOfFire('3 Level', tables, 'Me110');
+    expect(me110.get('Top_Turret')).toBe(4);
+    expect(me110.get('Ball_Turret')).toBe(4);
+    expect(me110.get('Starboard_Waist')).toBe(6); // waist unchanged
+
+    const me109 = getFieldOfFire('3 Level', tables, 'Me109');
+    expect(me109.get('Top_Turret')).toBe(5);
+    expect(me109.get('Ball_Turret')).toBe(5);
+    expect(me109.get('Starboard_Waist')).toBe(6);
+  });
+
+  it('Me110 gets lower hit numbers at 6 o\'clock positions', () => {
+    const me110 = getFieldOfFire('6 High', tables, 'Me110');
+    expect(me110.get('Top_Turret')).toBe(3);
+    expect(me110.get('Tail')).toBe(3);
+    expect(me110.get('Radio')).toBe(6); // radio unchanged
+
+    const fw190 = getFieldOfFire('6 High', tables, 'FW190');
+    expect(fw190.get('Top_Turret')).toBe(4);
+    expect(fw190.get('Tail')).toBe(4);
+  });
+
+  it('defaults to FW190 hit numbers when no fighter type given', () => {
+    const fof = getFieldOfFire('6 High', tables);
+    expect(fof.get('Top_Turret')).toBe(4);
+    expect(fof.get('Tail')).toBe(4);
+  });
+
+  it('9 o\'clock mirrors 3 o\'clock with port-side guns', () => {
+    const me110 = getFieldOfFire('9 Level', tables, 'Me110');
+    expect(me110.get('Top_Turret')).toBe(4);
+    expect(me110.get('Ball_Turret')).toBe(4);
+    expect(me110.get('Port_Waist')).toBe(6);
   });
 });
 

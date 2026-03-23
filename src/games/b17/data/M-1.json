@@ -2,87 +2,88 @@
     "Title": "M-1 B-17 DEFENSIVE FIRE",
     "table_type": "roll",
     "rolltype": "1d6",
-    "Description": "B-17 MGs with Field of Fire. Roll once die per fighter; roll needed on one die to hit.",
+    "Description": "B-17 MGs with Field of Fire. Roll one die per fighter; roll needed on one die to hit.",
     "Notes": [
-        "The Tail guns (Ball Turret and Top Turret) guns may be allocated to any fighter attacking from the 10:30, 12, or 1:30 positions, whether High, Level, or Low. However, this defensive fire is not resolved until after all other defensive fire and all German offensive fire is resolved. Thus the target fighter could be shot down, or the Tail Guns themselves be knocked out, before the Tail Guns get a chance to fire. No ammunition is marked off unless the Tail Guns actually shoot. Tail Guns firing in this manner must roll a '6' to hit, regardless of the position of the fighter. Tail Guns may not fire in this manner if the intercom is out."
+        "190 = FW 190, 110 = ME 110, 109 = ME 109.",
+        "Regardless of any modifiers in effect, a roll of 6 is always a hit. If the result is a hit, go to Table M-2 to determine damage.",
+        "An Ace Gunner (credited with 5 kills) adds 1 to all Defensive Fire rolls.",
+        "Hit numbers vary by fighter type at 3/9 and 6 o'clock turret/tail positions. Me110 (twin-engine) is easier to hit. Per-type values are encoded in gun_positions as { FW190: n, Me109: n, Me110: n }.",
+        "The Tail Guns may be allocated to any fighter attacking from the 10:30, 12, or 1:30 positions, whether High, Level, or Low. However, this defensive fire is not resolved until after all other defensive fire and all German offensive fire is resolved. Thus the target fighter could be shot down, or the Tail Guns themselves be knocked out, before the Tail Guns get a chance to fire. No ammunition is marked off unless the Tail Guns actually shoot. Tail Guns firing in this manner must roll a '6' to hit, regardless of the position of the fighter. Tail Guns may not fire in this manner if the intercom is out."
     ],
     "gun_positions": {
-        "12_level": {
-            "Top_Turret": 6,
-            "Nose": 6
-        },
-        "10:30_level": {
-            "Top_Turret": 6,
-            "Nose": 6
-        },
-        "9_level": {
-            "Top_Turret": 6
-        },
-        "6_level": {
-            "Ball_Turret": 6,
-            "Tail": 4
-        },
-        "3_level": {
-            "Top_Turret": 6
-        },
-        "1:30_level": {
-            "Top_Turret": 6,
-            "Starboard_Cheek": 6
-        },
         "12_high": {
             "Top_Turret": 6,
             "Nose": 6
         },
-        "10:30_high": {
+        "12_level": {
             "Top_Turret": 6,
-            "Nose": 6,
-            "Port_Cheek": 6
+            "Nose": 6
         },
-        "9_high": {
-            "Top_Turret": 6,
-            "Port_Waist": 6,
-            "Radio": 6
-        },
-        "6_high": {
+        "12_low": {
             "Ball_Turret": 6,
-            "Tail": 4,
-            "Port_Waist": 6,
-            "Starboard_Waist": 6
-        },
-        "3_high": {
-            "Top_Turret": 6,
-            "Starboard_Waist": 6,
-            "Radio": 6
+            "Nose": 6
         },
         "1:30_high": {
             "Top_Turret": 6,
-            "Nose": 6,
+            "Starboard_Cheek": 6,
+            "Starboard_Waist": 6
+        },
+        "1:30_level": {
             "Starboard_Cheek": 6
         },
-        "12_low": {
-            "Ball_Turret": 6
+        "1:30_low": {
+            "Ball_Turret": 6,
+            "Starboard_Cheek": 6
+        },
+        "10:30_high": {
+            "Top_Turret": 6,
+            "Port_Cheek": 6,
+            "Port_Waist": 6
+        },
+        "10:30_level": {
+            "Port_Cheek": 6
         },
         "10:30_low": {
-            "Ball_Turret": 6
-        },
-        "9_low": {
             "Ball_Turret": 6,
-            "Port_Waist": 6,
-            "Radio": 6
+            "Port_Cheek": 6
         },
-        "6_low": {
-            "Ball_Turret": 6,
-            "Tail": 4,
-            "Port_Waist": 6,
+        "3_high": {
+            "Top_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Starboard_Waist": 6
+        },
+        "3_level": {
+            "Top_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Ball_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
             "Starboard_Waist": 6
         },
         "3_low": {
-            "Ball_Turret": 6,
-            "Starboard_Waist": 6,
-            "Radio": 6
+            "Ball_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Starboard_Waist": 6
         },
-        "1:30_low": {
-            "Ball_Turret": 6
+        "9_high": {
+            "Top_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Port_Waist": 6
+        },
+        "9_level": {
+            "Top_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Ball_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Port_Waist": 6
+        },
+        "9_low": {
+            "Ball_Turret": { "FW190": 5, "Me109": 5, "Me110": 4 },
+            "Port_Waist": 6
+        },
+        "6_high": {
+            "Top_Turret": { "FW190": 4, "Me109": 4, "Me110": 3 },
+            "Radio": 6,
+            "Tail": { "FW190": 4, "Me109": 4, "Me110": 3 }
+        },
+        "6_level": {
+            "Tail": { "FW190": 4, "Me109": 4, "Me110": 3 }
+        },
+        "6_low": {
+            "Ball_Turret": { "FW190": 4, "Me109": 4, "Me110": 3 },
+            "Tail": { "FW190": 4, "Me109": 4, "Me110": 3 }
         },
         "vertical_dive": {
             "Top_Turret": 6,

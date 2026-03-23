@@ -77,7 +77,7 @@ export function* playerRemoveFighters(
     prompt: `Select ${actualCount} fighter${actualCount > 1 ? 's' : ''} to remove:`,
     options: fighters.map(f => {
       // Build field-of-fire summary for this fighter
-      const fieldOfFire = getFieldOfFire(f.position, tables);
+      const fieldOfFire = getFieldOfFire(f.position, tables, f.type);
       const gunDescs: string[] = [];
       for (const [gun, hitReq] of fieldOfFire) {
         const gunObj = getGun(ctx.state.campaign.aircraft.guns, gun);
@@ -290,7 +290,7 @@ export function* resolveCombatRounds(
     const gunEntries: GunEntry[] = [];
 
     for (const fighter of activeFighters) {
-      const fieldOfFire = getFieldOfFire(fighter.position, tables);
+      const fieldOfFire = getFieldOfFire(fighter.position, tables, fighter.type);
       for (const [gun, hitReq] of fieldOfFire) {
         let entry = gunEntries.find(e => e.gun === gun);
         if (!entry) {

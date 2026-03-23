@@ -50,16 +50,19 @@ export type GunPosition =
  *
  * Per §9.1, only 2 of 3 nose section guns may fire simultaneously.
  * Per §9.2, Tail can fire at 10:30/12/1:30 positions (resolved last, must roll 6).
+ *
+ * Per M-1, hit numbers vary by fighter type at 3/9 and 6 o'clock positions.
+ * Me110 (twin-engine) is easier to hit than FW190/Me109.
  */
 export function getFieldOfFire(
   position: AttackPosition,
   tables: TableStore,
+  fighterType?: FighterType,
 ): Map<GunPosition, number> {
   const m1 = tables.get('M-1');
   if (!m1) throw new Error('M-1 table not found');
 
   const raw = m1.raw as any;
-  const posKey = position.replace(/ /g, '_').replace(':', ':').toLowerCase();
   // Normalize the key to match M-1 JSON format
   const normalizedKey = normalizeM1Key(position);
   const gunData = raw.gun_positions?.[normalizedKey];
@@ -68,7 +71,13 @@ export function getFieldOfFire(
   if (!gunData) return result;
 
   for (const [gun, hitOn] of Object.entries(gunData)) {
-    result.set(gun as GunPosition, hitOn as number);
+    if (typeof hitOn === 'number') {
+      result.set(gun as GunPosition, hitOn);
+    } else if (typeof hitOn === 'object' && hitOn !== null) {
+      // Per-fighter-type hit number: { FW190: n, Me109: n, Me110: n }
+      const perType = hitOn as Record<string, number>;
+      result.set(gun as GunPosition, perType[fighterType ?? 'FW190']);
+    }
   }
 
   return result;
